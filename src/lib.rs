@@ -29,6 +29,27 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
         DnaRank { n, seq, counts }
     }
 
+    /// Loop over packed characters.
+    pub fn ranks_naive(&self, pos: usize) -> [usize; 4] {
+        let chunk_idx = pos / STRIDE;
+        let byte_idx = chunk_idx * (STRIDE / 4);
+        let mut ranks = self.counts[chunk_idx];
+
+        for &packed in &self.seq[byte_idx..pos / 4] {
+            for i in 0..4 {
+                let c = (packed >> (i * 2)) & 0b11;
+                ranks[c as usize] += 1;
+            }
+        }
+        let packed = self.seq[pos / 4];
+        for i in 0..pos % 4 {
+            let c = (packed >> (i * 2)) & 0b11;
+            ranks[c as usize] += 1;
+        }
+
+        ranks
+    }
+
     /// Count a u64 at a time.
     pub fn ranks(&self, pos: usize) -> [usize; 4] {
         let chunk_idx = pos / STRIDE;
