@@ -35,7 +35,13 @@ where
     }
     let ns_u64 = start.elapsed().as_nanos() as f64 / q as f64;
 
-    eprintln!("DnaRank<{STRIDE:>4}>:  {bits:>6.2} bit  {ns_naive:>5.1} ns  {ns_u64:>5.1} ns  ",);
+    let start = std::time::Instant::now();
+    for &q in &queries {
+        check(q, rank.ranks_u64_prefetch(q));
+    }
+    let ns_u64_pf = start.elapsed().as_nanos() as f64 / q as f64;
+
+    eprintln!("DnaRank<{STRIDE:>4}>:  {bits:>6.2} bit  {ns_naive:>5.1} ns  {ns_u64:>5.1} ns  {ns_u64_pf:>5.1} ns  ",);
 }
 
 fn main() {

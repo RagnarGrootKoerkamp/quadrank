@@ -64,7 +64,6 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
         let chunk_idx = pos / STRIDE;
         let byte_idx = chunk_idx * (STRIDE / 4);
         let mut ranks = self.counts[chunk_idx];
-        assert_eq!(ranks.iter().sum::<usize>(), chunk_idx * STRIDE);
 
         for idx in (byte_idx..pos.div_ceil(4)).step_by(8) {
             let chunk = u64::from_le_bytes(self.seq[idx..idx + 8].try_into().unwrap());
@@ -78,6 +77,35 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
             for c in 0..4 {
                 ranks[c as usize] += count_u64(chunk, c);
             }
+        }
+        let extra_counted = (32 - pos) % 32;
+        ranks[0] -= extra_counted;
+
+        ranks
+    }
+
+    // Prefetch the ranks, and only read them after scanning.
+    pub fn ranks_u64_prefetch(&self, pos: usize) -> [usize; 4] {
+        let chunk_idx = pos / STRIDE;
+        let byte_idx = chunk_idx * (STRIDE / 4);
+        prefetch_index(&self.counts, chunk_idx);
+        let mut ranks = [0; 4];
+
+        for idx in (byte_idx..pos.div_ceil(4)).step_by(8) {
+            let chunk = u64::from_le_bytes(self.seq[idx..idx + 8].try_into().unwrap());
+            let low_bits = (pos - idx * 4).min(32) * 2;
+            let mask = if low_bits == 64 {
+                u64::MAX
+            } else {
+                (1u64 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            for c in 0..4 {
+                ranks[c as usize] += count_u64(chunk, c);
+            }
+        }
+        for c in 0..4 {
+            ranks[c] += self.counts[chunk_idx][c];
         }
         let extra_counted = (32 - pos) % 32;
         ranks[0] -= extra_counted;
@@ -105,4 +133,26 @@ fn count_u64(word: u64, c: u8) -> usize {
     // |01| otherwise
     let union = (tmp | (tmp >> 1)) & scatter;
     32 - union.count_ones() as usize
+}
+
+/// Prefetch the given cacheline into L1 cache.
+pub(crate) fn prefetch_index<T>(s: &[T], index: usize) {
+    let ptr = s.as_ptr().wrapping_add(index) as *const u64;
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        std::arch::x86_64::_mm_prefetch(ptr as *const i8, std::arch::x86_64::_MM_HINT_T0);
+    }
+    #[cfg(target_arch = "x86")]
+    unsafe {
+        std::arch::x86::_mm_prefetch(ptr as *const i8, std::arch::x86::_MM_HINT_T0);
+    }
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        // TODO: Put this behind a feature flag.
+        // std::arch::aarch64::_prefetch(ptr as *const i8, std::arch::aarch64::_PREFETCH_LOCALITY3);
+    }
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64")))]
+    {
+        // Do nothing.
+    }
 }
