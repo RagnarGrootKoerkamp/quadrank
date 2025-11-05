@@ -1,9 +1,12 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
-use std::hint::black_box;
-
-use dna_rank::DnaRank;
+use dna_rank::{DnaRank, Ranks};
 use mem_dbg::MemSize;
+
+#[inline(never)]
+fn check(pos: usize, ranks: Ranks) {
+    assert_eq!(pos, ranks.iter().sum());
+}
 
 fn bench_dna_rank<const STRIDE: usize>()
 where
@@ -21,14 +24,14 @@ where
         .collect::<Vec<_>>();
 
     let start = std::time::Instant::now();
-    for q in &queries {
-        black_box(rank.ranks_naive(*q));
+    for &q in &queries {
+        check(q, rank.ranks_naive(q));
     }
     let ns_naive = start.elapsed().as_nanos() as f64 / q as f64;
 
     let start = std::time::Instant::now();
-    for q in &queries {
-        black_box(rank.ranks_u64(*q));
+    for &q in &queries {
+        check(q, rank.ranks_u64(q));
     }
     let ns_u64 = start.elapsed().as_nanos() as f64 / q as f64;
 
