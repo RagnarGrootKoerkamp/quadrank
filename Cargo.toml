@@ -1,0 +1,8 @@
+[package]
+name = "dna-rank"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+packed-seq = "4.2.0"
+rand = "0.9.2"
