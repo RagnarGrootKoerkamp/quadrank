@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-use dna_rank::{DnaRank, Rank};
+use dna_rank::DnaRank;
 use mem_dbg::MemSize;
 
 fn bench_dna_rank<const STRIDE: usize>() {

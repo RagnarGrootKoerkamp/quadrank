@@ -1,17 +1,6 @@
-use packed_seq::{PackedSeqVec, Seq, SeqVec};
+use packed_seq::{PackedSeqVec, SeqVec};
 
 pub type Ranks = [usize; 4];
-
-pub trait Rank {
-    fn new(seq: &[u8]) -> Self;
-    fn rank(&self, pos: usize, c: u8) -> usize {
-        self.ranks(pos)[packed_seq::pack_char(c) as usize]
-    }
-    fn ranks(&self, pos: usize) -> Ranks;
-    fn interval_ranks(&self, pos1: usize, pos2: usize) -> (Ranks, Ranks) {
-        (self.ranks(pos1), self.ranks(pos2))
-    }
-}
 
 #[derive(mem_dbg::MemSize)]
 pub struct DnaRank<const STRIDE: usize> {
@@ -20,8 +9,8 @@ pub struct DnaRank<const STRIDE: usize> {
     counts: Vec<Ranks>,
 }
 
-impl<const STRIDE: usize> Rank for DnaRank<STRIDE> {
-    fn new(seq: &[u8]) -> Self {
+impl<const STRIDE: usize> DnaRank<STRIDE> {
+    pub fn new(seq: &[u8]) -> Self {
         assert!(STRIDE % 4 == 0, "STRIDE must be a multiple of 4");
         let mut counts = Vec::with_capacity(seq.len().div_ceil(STRIDE));
         let mut ranks = [0; 4];
@@ -40,12 +29,13 @@ impl<const STRIDE: usize> Rank for DnaRank<STRIDE> {
         DnaRank { n, seq, counts }
     }
 
-    fn ranks(&self, pos: usize) -> [usize; 4] {
-        let idx = pos / STRIDE;
-        let offset = idx * (STRIDE / 4);
-        let mut ranks = self.counts[idx];
+    /// Count a u64 at a time.
+    pub fn ranks(&self, pos: usize) -> [usize; 4] {
+        let chunk_idx = pos / STRIDE;
+        let byte_idx = chunk_idx * (STRIDE / 4);
+        let mut ranks = self.counts[chunk_idx];
 
-        for idx in (offset..pos.div_ceil(4)).step_by(32) {
+        for idx in (byte_idx..pos.div_ceil(4)).step_by(32) {
             let chunk = u64::from_le_bytes(self.seq[idx..idx + 8].try_into().unwrap());
             let low_bits = (pos - idx).max(32) * 2;
             let chunk = chunk & ((1u64 << low_bits) - 1);
