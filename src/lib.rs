@@ -2,7 +2,7 @@
 #![feature(generic_const_exprs)]
 use packed_seq::{PackedSeqVec, SeqVec};
 
-pub type Ranks = [usize; 4];
+pub type Ranks = [u32; 4];
 
 #[derive(mem_dbg::MemSize)]
 pub struct DnaRank<const STRIDE: usize> {
@@ -39,7 +39,7 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
     }
 
     /// Loop over packed characters.
-    pub fn ranks_naive(&self, pos: usize) -> [usize; 4] {
+    pub fn ranks_naive(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / STRIDE;
         let byte_idx = chunk_idx * (STRIDE / 4);
         let mut ranks = self.counts[chunk_idx];
@@ -60,7 +60,7 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
     }
 
     /// Count a u64 at a time.
-    pub fn ranks_u64(&self, pos: usize) -> [usize; 4] {
+    pub fn ranks_u64(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / STRIDE;
         let byte_idx = chunk_idx * (STRIDE / 4);
         let mut ranks = self.counts[chunk_idx];
@@ -79,13 +79,13 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
             }
         }
         let extra_counted = (32 - pos) % 32;
-        ranks[0] -= extra_counted;
+        ranks[0] -= extra_counted as u32;
 
         ranks
     }
 
     // Prefetch the ranks, and only read them after scanning.
-    pub fn ranks_u64_prefetch(&self, pos: usize) -> [usize; 4] {
+    pub fn ranks_u64_prefetch(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / STRIDE;
         let byte_idx = chunk_idx * (STRIDE / 4);
         prefetch_index(&self.counts, chunk_idx);
@@ -108,13 +108,13 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
             ranks[c] += self.counts[chunk_idx][c];
         }
         let extra_counted = (32 - pos) % 32;
-        ranks[0] -= extra_counted;
+        ranks[0] -= extra_counted as u32;
 
         ranks
     }
 
     // Count u128 at a time.
-    pub fn ranks_u128(&self, pos: usize) -> [usize; 4] {
+    pub fn ranks_u128(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / STRIDE;
         let byte_idx = chunk_idx * (STRIDE / 4);
         prefetch_index(&self.counts, chunk_idx);
@@ -137,17 +137,17 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
             ranks[c] += self.counts[chunk_idx][c];
         }
         let extra_counted = (64 - pos) % 64;
-        ranks[0] -= extra_counted;
+        ranks[0] -= extra_counted as u32;
 
         ranks
     }
 }
 
-fn count_u8x8(word: &[u8; 8], c: u8) -> usize {
+fn count_u8x8(word: &[u8; 8], c: u8) -> u32 {
     count_u64(u64::from_le_bytes(*word), c)
 }
 
-fn count_u64(word: u64, c: u8) -> usize {
+fn count_u64(word: u64, c: u8) -> u32 {
     assert!(c < 4);
     // c = 00, 01, 10, 11 = cc
     // scatter = |01|01|01|...
@@ -161,10 +161,10 @@ fn count_u64(word: u64, c: u8) -> usize {
     // |00| when c
     // |01| otherwise
     let union = (tmp | (tmp >> 1)) & scatter;
-    32 - union.count_ones() as usize
+    32 - union.count_ones()
 }
 
-fn count_u128(word: u128, c: u8) -> usize {
+fn count_u128(word: u128, c: u8) -> u32 {
     assert!(c < 4);
     // c = 00, 01, 10, 11 = cc
     // scatter = |01|01|01|...
@@ -178,7 +178,7 @@ fn count_u128(word: u128, c: u8) -> usize {
     // |00| when c
     // |01| otherwise
     let union = (tmp | (tmp >> 1)) & scatter;
-    64 - union.count_ones() as usize
+    64 - union.count_ones()
 }
 
 /// Prefetch the given cacheline into L1 cache.

@@ -5,7 +5,7 @@ use mem_dbg::MemSize;
 
 #[inline(never)]
 fn check(pos: usize, ranks: Ranks) {
-    assert_eq!(pos, ranks.iter().sum());
+    assert_eq!(pos as u32, ranks.iter().sum());
 }
 
 fn bench_dna_rank<const STRIDE: usize>()
