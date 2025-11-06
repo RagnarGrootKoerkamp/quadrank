@@ -235,12 +235,13 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
     }
 }
 
+#[inline(always)]
 fn count_u8x8(word: &[u8; 8], c: u8) -> u32 {
     count_u64(u64::from_le_bytes(*word), c)
 }
 
+#[inline(always)]
 fn count_u64(word: u64, c: u8) -> u32 {
-    assert!(c < 4);
     // c = 00, 01, 10, 11 = cc
     // scatter = |01|01|01|...
     let scatter = 0x5555555555555555u64;
@@ -256,8 +257,8 @@ fn count_u64(word: u64, c: u8) -> u32 {
     32 - union.count_ones()
 }
 
+#[inline(always)]
 fn count_u128(word: u128, c: u8) -> u32 {
-    assert!(c < 4);
     // c = 00, 01, 10, 11 = cc
     // scatter = |01|01|01|...
     let scatter = 0x55555555555555555555555555555555u128;

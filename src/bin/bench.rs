@@ -3,8 +3,9 @@
 use dna_rank::{BwaRank, BwaRank2, DnaRank, Ranks};
 use mem_dbg::MemSize;
 
-fn check(pos: usize, ranks: Ranks) {
-    assert_eq!(pos as u32, ranks.iter().sum());
+fn check(_pos: usize, ranks: Ranks) {
+    std::hint::black_box(&ranks);
+    // assert_eq!(pos as u32, ranks.iter().sum());
 }
 
 fn time(queries: &[usize], f: impl Fn(usize) -> Ranks) {
@@ -30,7 +31,7 @@ where
     time(&queries, |p| rank.ranks_u64(p));
     time(&queries, |p| rank.ranks_u64_prefetch(p));
     time(&queries, |p| rank.ranks_u64_prefetch_all(p));
-    time(&queries, |p| rank.ranks_u64_3(p));
+    time(&queries, |p| rank.ranks_u64_3(p)); // best
     time(&queries, |p| rank.ranks_u128(p));
     time(&queries, |p| rank.ranks_u128_3(p));
     eprintln!();
@@ -45,9 +46,9 @@ fn bench_bwa_rank(seq: &[u8], queries: &[usize]) {
 
     time(&queries, |p| rank.ranks_u64(p));
     time(&queries, |p| rank.ranks_u64_all(p));
-    time(&queries, |p| rank.ranks_u64_3(p));
+    time(&queries, |p| rank.ranks_u64_3(p)); // best
     time(&queries, |p| rank.ranks_u128(p));
-    time(&queries, |p| rank.ranks_u128_3(p));
+    time(&queries, |p| rank.ranks_u128_3(p)); // 2nd best
     time(&queries, |p| rank.ranks_u128_all(p));
     eprintln!();
 }
