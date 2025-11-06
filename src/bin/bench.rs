@@ -3,9 +3,13 @@
 use dna_rank::{BwaRank, BwaRank2, DnaRank, Ranks};
 use mem_dbg::MemSize;
 
-fn check(_pos: usize, ranks: Ranks) {
+fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
-    // assert_eq!(pos as u32, ranks.iter().sum());
+    let pos = pos as u32;
+    debug_assert_eq!(
+        ranks,
+        [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
+    );
 }
 
 fn time(queries: &[usize], f: impl Fn(usize) -> Ranks) {
@@ -17,6 +21,7 @@ fn time(queries: &[usize], f: impl Fn(usize) -> Ranks) {
     eprint!(" {ns:>5.1}",);
 }
 
+#[inline(never)]
 fn bench_dna_rank<const STRIDE: usize>(seq: &[u8], queries: &[usize])
 where
     [(); STRIDE / 4]:,
@@ -37,6 +42,7 @@ where
     eprintln!();
 }
 
+#[inline(never)]
 fn bench_bwa_rank(seq: &[u8], queries: &[usize]) {
     eprint!("{:<20}:", "BwaRank");
     let rank = BwaRank::new(&seq);
@@ -58,6 +64,7 @@ fn bench_bwa_rank(seq: &[u8], queries: &[usize]) {
     eprintln!();
 }
 
+#[inline(never)]
 fn bench_bwa2_rank(seq: &[u8], queries: &[usize]) {
     eprint!("{:<20}:", "BwaRank");
     let rank = BwaRank2::new(&seq);
@@ -74,7 +81,7 @@ fn main() {
     let q = 10_000_000;
     for n in [100_000, 10_000_000, 1_000_000_000] {
         eprintln!("n = {}", n);
-        let seq = b"ACGT".repeat(n / 4);
+        let seq = b"ACTG".repeat(n / 4);
         let queries = (0..q)
             .map(|_| rand::random_range(0..seq.len()))
             .collect::<Vec<_>>();
