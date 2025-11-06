@@ -114,6 +114,34 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
     }
 
     // Prefetch the ranks, and only read them after scanning.
+    pub fn ranks_u64_3(&self, pos: usize) -> Ranks {
+        let chunk_idx = pos / STRIDE;
+        let byte_idx = chunk_idx * (STRIDE / 4);
+        prefetch_index(&self.counts, chunk_idx);
+        let mut ranks = [0; 4];
+
+        for idx in (byte_idx..pos.div_ceil(4)).step_by(8) {
+            let chunk = u64::from_le_bytes(self.seq[idx..idx + 8].try_into().unwrap());
+            let low_bits = (pos - idx * 4).min(32) * 2;
+            let mask = if low_bits == 64 {
+                u64::MAX
+            } else {
+                (1u64 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            for c in 1..4 {
+                ranks[c as usize] += count_u64(chunk, c);
+            }
+        }
+        for c in 1..4 {
+            ranks[c] += self.counts[chunk_idx][c];
+        }
+        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+
+        ranks
+    }
+
+    // Prefetch the ranks, and only read them after scanning.
     pub fn ranks_u64_prefetch_all(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / STRIDE;
         let byte_idx = chunk_idx * (STRIDE / 4);
@@ -167,6 +195,34 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
         }
         let extra_counted = (64 - pos) % 64;
         ranks[0] -= extra_counted as u32;
+
+        ranks
+    }
+
+    // Count u128 at a time.
+    pub fn ranks_u128_3(&self, pos: usize) -> Ranks {
+        let chunk_idx = pos / STRIDE;
+        let byte_idx = chunk_idx * (STRIDE / 4);
+        prefetch_index(&self.counts, chunk_idx);
+        let mut ranks = [0; 4];
+
+        for idx in (byte_idx..pos.div_ceil(4)).step_by(16) {
+            let chunk = u128::from_le_bytes(self.seq[idx..idx + 16].try_into().unwrap());
+            let low_bits = (pos - idx * 4).min(64) * 2;
+            let mask = if low_bits == 128 {
+                u128::MAX
+            } else {
+                (1u128 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            for c in 1..4 {
+                ranks[c as usize] += count_u128(chunk, c);
+            }
+        }
+        for c in 1..4 {
+            ranks[c] += self.counts[chunk_idx][c];
+        }
+        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
 
         ranks
     }
@@ -307,6 +363,33 @@ impl BwaRank {
         ranks
     }
 
+    pub fn ranks_u64_3(&self, pos: usize) -> Ranks {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+        let chunk = &self.blocks[chunk_idx];
+        let mut ranks = [0; 4];
+        let chunk_pos = pos % 128;
+
+        for idx in (0..chunk_pos.div_ceil(4)).step_by(8) {
+            let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
+            let low_bits = (chunk_pos - idx * 4).min(32) * 2;
+            let mask = if low_bits == 64 {
+                u64::MAX
+            } else {
+                (1u64 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            for c in 1..4 {
+                ranks[c as usize] += count_u64(chunk, c);
+            }
+        }
+        for c in 1..4 {
+            ranks[c] += chunk.ranks[c] as u32;
+        }
+        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        ranks
+    }
+
     pub fn ranks_u128(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / 128;
         prefetch_index(&self.blocks, chunk_idx);
@@ -332,6 +415,33 @@ impl BwaRank {
         }
         let extra_counted = (64 - pos) % 64;
         ranks[0] -= extra_counted as u32;
+        ranks
+    }
+
+    pub fn ranks_u128_3(&self, pos: usize) -> Ranks {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+        let chunk = &self.blocks[chunk_idx];
+        let mut ranks = [0; 4];
+        let chunk_pos = pos % 128;
+
+        for idx in (0..chunk_pos.div_ceil(4)).step_by(16) {
+            let chunk = u128::from_le_bytes(chunk.seq[idx..idx + 16].try_into().unwrap());
+            let low_bits = (chunk_pos - idx * 4).min(64) * 2;
+            let mask = if low_bits == 128 {
+                u128::MAX
+            } else {
+                (1u128 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            for c in 1..4 {
+                ranks[c as usize] += count_u128(chunk, c);
+            }
+        }
+        for c in 1..4 {
+            ranks[c] += chunk.ranks[c] as u32;
+        }
+        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
         ranks
     }
 

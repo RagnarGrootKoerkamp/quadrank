@@ -37,7 +37,9 @@ where
     time(&queries, |p| rank.ranks_u64(p));
     time(&queries, |p| rank.ranks_u64_prefetch(p));
     time(&queries, |p| rank.ranks_u64_prefetch_all(p));
+    time(&queries, |p| rank.ranks_u64_3(p));
     time(&queries, |p| rank.ranks_u128(p));
+    time(&queries, |p| rank.ranks_u128_3(p));
     eprintln!();
 }
 
@@ -56,7 +58,9 @@ fn bench_bwa_rank(n: usize) {
 
     time(&queries, |p| rank.ranks_u64(p));
     time(&queries, |p| rank.ranks_u64_all(p));
+    time(&queries, |p| rank.ranks_u64_3(p));
     time(&queries, |p| rank.ranks_u128(p));
+    time(&queries, |p| rank.ranks_u128_3(p));
     time(&queries, |p| rank.ranks_u128_all(p));
     eprintln!();
 }
