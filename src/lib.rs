@@ -1309,6 +1309,12 @@ impl BwaRank4 {
     }
 
     #[inline(always)]
+    pub fn prefetch(&self, pos: usize) {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+    }
+
+    #[inline(always)]
     pub fn ranks_u64_3(&self, pos: usize) -> Ranks {
         let chunk_idx = pos / 128;
         prefetch_index(&self.blocks, chunk_idx);

@@ -21,6 +21,41 @@ fn time(queries: &[usize], f: impl Fn(usize) -> Ranks) {
     eprint!(" {ns:>5.1}",);
 }
 
+fn time_batch<const BATCH: usize>(
+    queries: &[usize],
+    prefetch: impl Fn(usize),
+    f: impl Fn(usize) -> Ranks,
+) {
+    let start = std::time::Instant::now();
+    let qs = queries.as_chunks::<BATCH>().0;
+    for batch in qs {
+        for &q in batch {
+            prefetch(q);
+        }
+        for &q in batch {
+            check(q, f(q));
+        }
+    }
+    let q = BATCH * qs.len();
+    let ns = start.elapsed().as_nanos() as f64 / q as f64;
+    eprint!(" {ns:>5.1}",);
+}
+
+fn time_stream(
+    queries: &[usize],
+    lookahead: usize,
+    prefetch: impl Fn(usize),
+    f: impl Fn(usize) -> Ranks,
+) {
+    let start = std::time::Instant::now();
+    for (&q, &ahead) in queries.iter().zip(&queries[lookahead..]) {
+        prefetch(ahead);
+        check(q, f(q));
+    }
+    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
+    eprint!(" {ns:>5.1}",);
+}
+
 #[inline(never)]
 fn bench_dna_rank<const STRIDE: usize>(seq: &[u8], queries: &[usize])
 where
@@ -105,9 +140,35 @@ fn bench_bwa4_rank(seq: &[u8], queries: &[usize]) {
     let bits = 4.0;
     eprint!("{bits:>6.2}b |");
 
-    time(&queries, |p| rank.ranks_u64_3(p)); // overall fastest
+    time(&queries, |p| rank.ranks_u64_3(p));
     time(&queries, |p| rank.ranks_bytecount_16_all(p));
     time(&queries, |p| rank.ranks_simd_popcount(p));
+    eprint!(" |");
+    time_batch::<32>(&queries, |p| rank.prefetch(p), |p| rank.ranks_u64_3(p));
+    time_batch::<32>(
+        &queries,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_bytecount_16_all(p),
+    );
+    time_batch::<32>(
+        &queries,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_simd_popcount(p),
+    );
+    eprint!(" |");
+    time_stream(&queries, 32, |p| rank.prefetch(p), |p| rank.ranks_u64_3(p));
+    time_stream(
+        &queries,
+        32,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_bytecount_16_all(p),
+    );
+    time_stream(
+        &queries,
+        32,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_simd_popcount(p),
+    );
     eprintln!();
 }
 
