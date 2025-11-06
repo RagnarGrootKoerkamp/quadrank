@@ -71,11 +71,13 @@ fn bench_bwa2_rank(seq: &[u8], queries: &[usize]) {
     eprint!("{:<20}:", "BwaRank");
     let rank = BwaRank2::new(&seq);
 
-    let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+    // let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+    let bits = 4.0;
     eprint!("{bits:>6.2}b |");
 
     time(&queries, |p| rank.ranks_u128_3(p)); // overall fastest
     time(&queries, |p| rank.ranks_bytecount_16_all(p));
+    time(&queries, |p| rank.ranks_simd_popcount(p));
     eprintln!();
 }
 

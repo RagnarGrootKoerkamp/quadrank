@@ -1,6 +1,10 @@
 #![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
-use std::hint::black_box;
+#![feature(generic_const_exprs, portable_simd)]
+use std::{
+    arch::x86_64::_mm256_shuffle_pd,
+    hint::black_box,
+    simd::{u32x8, u64x4, u8x32},
+};
 
 use packed_seq::{PackedSeqVec, SeqVec};
 
@@ -901,6 +905,80 @@ impl BwaRank2 {
         for c in 0..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
         }
+        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        ranks
+    }
+
+    #[inline(always)]
+    pub fn ranks_simd_popcount(&self, pos: usize) -> Ranks {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+        let chunk = &self.blocks[chunk_idx];
+        let mut ranks = [0; 4];
+        let chunk_pos = pos % 128;
+
+        // 0 or 1 for left or right half
+        let half = chunk_pos / 64;
+
+        // Offset of chunk and half.
+        for c in 1..4 {
+            ranks[c] += chunk.ranks[c - 1] as u32 + chunk.meta[4 * half + c] as u32;
+        }
+
+        {
+            use std::mem::transmute as t;
+
+            // Count the upper or lower half 128 bits.
+            let idx = half * 16;
+            let chunk = u128::from_le_bytes(chunk.seq[idx..idx + 16].try_into().unwrap());
+            let low_bits = chunk_pos.saturating_sub(idx * 4).min(64) * 2;
+            let mask = if low_bits == 128 {
+                u128::MAX
+            } else {
+                (1u128 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            let chunk: [u64; 2] = unsafe { t(chunk) };
+
+            // count AC in first half, GT in second half.
+            let simd: u8x32 = unsafe { t([chunk[0], chunk[1], chunk[0], chunk[1]]) };
+            let mask5 = u8x32::splat(0x55);
+            let mask3: u64x4 = unsafe { t(u8x32::splat(0x33)) };
+            let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
+            // bits of the 4 chars
+            // 0000 | 1010  (0, 2)
+            const c1: u8x32 = u8x32::from_array(unsafe { t([[!0u8; 16], [!0xAAu8; 16]]) });
+            // 0101 | 1111  (1, 3)
+            const c2: u8x32 = u8x32::from_array(unsafe { t([[!0x55u8; 16], [!0xFFu8; 16]]) });
+
+            let x1 = simd ^ c1;
+            let y1 = (x1 & (x1 >> 1)) & mask5;
+            let x2 = simd ^ c2;
+            let y2 = (x2 & (x2 >> 1)) & mask5;
+
+            // Go from
+            // c0 c0 | c1 c1
+            // c2 c2 | c3 c3
+            // to: (shuffle)
+            // c0 c2 | c1 c3
+            // c0 c2 | c1 c3
+            // where each value is a u64
+
+            let a: u64x4 = unsafe { t(_mm256_shuffle_pd::<0>(t(y1), t(y2))) };
+            let b: u64x4 = unsafe { t(_mm256_shuffle_pd::<15>(t(y1), t(y2))) };
+            // Now reduce.
+            let sum2 = a + b;
+            let sum4 = (sum2 & mask3) + ((sum2 >> 2) & mask3);
+            let sum8 = (sum4 & mask_f) + ((sum4 >> 4) & mask_f);
+            // now each byte has a sum of 8 values.
+            // Accumulate these to the high byte of each u64.
+            let sum8: u64x4 = unsafe { t(sum8) };
+            let sum_all = (sum8 * u64x4::splat(0x0101_0101_0101_0101)) >> u64x4::splat(56);
+            for c in 0..4 {
+                ranks[c] += sum_all[c] as u32;
+            }
+        }
+
         ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
         ranks
     }
