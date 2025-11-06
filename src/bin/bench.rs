@@ -314,6 +314,7 @@ fn bench_bwa4_rank(seq: &[u8], queries: &[usize]) {
     eprint!(" |");
     // time_async_join_all_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
     time_async_manual_join_all_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
+    time_async_manual_join_all_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
     eprintln!();
 }
 
