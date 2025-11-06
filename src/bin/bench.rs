@@ -6,7 +6,7 @@ use cassette::Cassette;
 use dna_rank::{BwaRank, BwaRank2, BwaRank3, BwaRank4, DnaRank, Ranks};
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
 use mem_dbg::MemSize;
-use smol::{LocalExecutor, stream::StreamExt};
+use smol::{LocalExecutor, future::poll_once, stream::StreamExt};
 
 fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
@@ -159,24 +159,11 @@ where
     for batch in queries.as_chunks::<32>().0 {
         let mut futures: Pin<&mut [_; 32]> = std::pin::pin!(from_fn(|i| f(batch[i])));
 
-        for mut f in iter_pin_mut(futures.as_mut()) {
-            poll_fn(|cx| {
-                // eprintln!("First poll");
-                let r = f.as_mut().poll(cx);
-                assert!(r.is_pending());
-                std::task::Poll::Ready(())
-            })
-            .await;
+        for f in iter_pin_mut(futures.as_mut()) {
+            assert!(poll_once(f).await.is_none());
         }
-
-        for mut f in iter_pin_mut(futures.as_mut()) {
-            poll_fn(|cx| {
-                // eprintln!("Second poll");
-                let r = f.as_mut().poll(cx);
-                assert!(r.is_ready());
-                r
-            })
-            .await;
+        for f in iter_pin_mut(futures.as_mut()) {
+            assert!(poll_once(f).await.is_some());
         }
     }
 }

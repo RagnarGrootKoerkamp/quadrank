@@ -191,6 +191,7 @@ version = "0.1.0"
 dependencies = [
  "cassette",
  "futures",
+ "futures-lite",
  "mem_dbg",
  "packed-seq",
  "rand",
