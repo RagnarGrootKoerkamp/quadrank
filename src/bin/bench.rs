@@ -52,6 +52,9 @@ fn bench_bwa_rank(seq: &[u8], queries: &[usize]) {
     time(&queries, |p| rank.ranks_u128_all(p));
     time(&queries, |p| rank.ranks_bytecount(p));
     time(&queries, |p| rank.ranks_bytecount_4(p)); // original
+    time(&queries, |p| rank.ranks_bytecount_8(p));
+    time(&queries, |p| rank.ranks_bytecount_16(p));
+    time(&queries, |p| rank.ranks_bytecount_16_all(p));
     eprintln!();
 }
 
@@ -79,7 +82,5 @@ fn main() {
         bench_bwa_rank(&seq, &queries);
         bench_dna_rank::<64>(&seq, &queries);
         bench_dna_rank::<128>(&seq, &queries);
-        bench_dna_rank::<256>(&seq, &queries);
-        bench_dna_rank::<512>(&seq, &queries);
     }
 }
