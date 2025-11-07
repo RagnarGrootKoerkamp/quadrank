@@ -13,7 +13,7 @@ pub trait Block {
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self;
     fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, pos: usize) -> Ranks;
-    fn count1(&self, pos: usize, c: u8) -> u32 {
+    fn count1(&self, _pos: usize, _c: u8) -> u32 {
         unimplemented!()
     }
 }
@@ -25,7 +25,7 @@ pub struct Ranker<B: Block> {
 impl<B: Block> Ranker<B> {
     pub fn new(seq: &[u8]) -> Self
     where
-        [(); { B::B }]:,
+        [(); B::B]:,
     {
         let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
         packed_seq.resize(packed_seq.len() + B::B, 0);
@@ -110,32 +110,4 @@ pub(crate) fn prefetch_index<T>(s: &[T], index: usize) {
     {
         // Do nothing.
     }
-}
-
-fn yield_no_wake() -> impl Future<Output = ()> {
-    struct Yield(bool);
-    impl Yield {
-        fn new() -> Self {
-            Yield(false)
-        }
-    }
-    impl Future for Yield {
-        type Output = ();
-
-        #[inline(always)]
-        fn poll(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<()> {
-            if self.0 {
-                std::task::Poll::Ready(())
-            } else {
-                self.get_mut().0 = true;
-                // cx.waker().wake_by_ref();
-                std::task::Poll::Pending
-            }
-        }
-    }
-
-    Yield::new()
 }

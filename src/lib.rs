@@ -1,4 +1,4 @@
-#![allow(incomplete_features, unused)]
+#![allow(incomplete_features)]
 #![feature(
     generic_const_exprs,
     portable_simd,
@@ -7,24 +7,14 @@
     exact_div
 )]
 
-use std::{
-    arch::x86_64::{_mm256_shuffle_pd, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64},
-    hint::black_box,
-    mem::transmute,
-    ops::Coroutine,
-    simd::{u8x32, u16x16, u32x8, u64x4},
-};
-
 pub mod blocks;
 pub mod count;
 pub mod count4;
 pub mod ranker;
 
 use count::*;
-use count4::*;
 use packed_seq::{PackedSeqVec, SeqVec};
 use ranker::prefetch_index;
-use smol::future::yield_now;
 
 pub type Ranks = [u32; 4];
 

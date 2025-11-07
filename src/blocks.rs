@@ -258,8 +258,6 @@ impl Block for QuartBlock {
     #[inline(always)]
     fn count1(&self, pos: usize, c: u8) -> u32 {
         let mut rank = 0;
-        let chunk_pos = pos % 128;
-
         let quart = pos / 32;
         let quart_pos = pos % 32;
         let idx = quart * 8;
