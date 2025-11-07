@@ -4,11 +4,7 @@
     portable_simd,
     coroutines,
     coroutine_trait,
-    stmt_expr_attributes,
-    exact_div,
-    fn_traits,
-    trait_alias,
-    inherent_associated_types
+    exact_div
 )]
 
 use std::{
