@@ -95,11 +95,10 @@ impl Block for HalfBlock {
     #[inline(always)]
     fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
-        let chunk_pos = pos % 128;
 
         // 0 or 1 for left or right half
-        let half = chunk_pos / 64;
-        let half_pos = chunk_pos % 64;
+        let half = pos / 64;
+        let half_pos = pos % 64;
 
         // Offset of chunk and half.
         for c in 0..4 {
@@ -157,11 +156,10 @@ impl Block for HalfBlock2 {
     #[inline(always)]
     fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
-        let chunk_pos = pos % 128;
 
         // 0 or 1 for left or right half
-        let half = chunk_pos / 64;
-        let half_pos = chunk_pos % 64;
+        let half = pos / 64;
+        let half_pos = pos % 64;
 
         let idx = half * 16;
         let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
@@ -224,9 +222,7 @@ impl Block for QuartBlock {
     #[inline(always)]
     fn count<C: CountFn<8>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
-        let chunk_pos = pos % 128;
 
-        // 0 or 1 for left or right half
         let quart = pos / 32;
         let quart_pos = pos % 32;
 
