@@ -445,6 +445,12 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
         |p| ranker.prefetch(p),
         |p| ranker.count::<count4::SimdCount4, false>(p),
     );
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::SimdCount5, false>(p),
+    );
 
     // eprint!(" |");
 
