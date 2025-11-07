@@ -1,15 +1,19 @@
+use crate::Ranks;
+use crate::count::count_u8x8;
+use packed_seq::{PackedSeqVec, SeqVec};
 use std::ops::Coroutine;
 
-use packed_seq::{PackedSeqVec, SeqVec};
-
-use crate::Ranks;
-
-trait Block {
+pub trait Block {
+    /// Number of bytes per block.
+    const B: usize;
     /// Number of characters per block.
     const N: usize;
 
-    fn new(data: &[u8]) -> Self;
-    fn count(&self, pos: usize) -> Ranks;
+    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self;
+}
+
+pub trait BlockCount<Block> {
+    fn count(block: &Block, pos: usize) -> Ranks;
 }
 
 struct Ranker<B: Block> {
@@ -17,14 +21,29 @@ struct Ranker<B: Block> {
 }
 
 impl<B: Block> Ranker<B> {
-    fn new(seq: &[u8]) -> Self {
+    fn new(seq: &[u8]) -> Self
+    where
+        [(); { B::B }]:,
+    {
         let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
-        packed_seq.reserve(B::N / 4);
-        let bytes_per_block = B::N.exact_div(4).unwrap();
+        packed_seq.reserve(B::B);
+
+        let mut ranks = [0; 4];
         Self {
             blocks: packed_seq
-                .chunks_exact(bytes_per_block)
-                .map(|chunk| B::new(chunk))
+                .as_chunks::<{ B::B }>()
+                .0
+                .iter()
+                .map(|chunk| {
+                    let start_ranks = ranks;
+                    for chunk in chunk.as_chunks::<8>().0 {
+                        for c in 0..4 {
+                            ranks[c as usize] += count_u8x8(chunk, c);
+                        }
+                    }
+
+                    B::new(start_ranks, chunk)
+                })
                 .collect(),
         }
     }
@@ -32,23 +51,29 @@ impl<B: Block> Ranker<B> {
         let block_idx = pos / B::N;
         prefetch_index(&self.blocks, block_idx);
     }
-    fn count(&self, pos: usize) -> Ranks {
+    fn count<BR: BlockCount<B>>(&self, pos: usize) -> Ranks {
         let block_idx = pos / B::N;
         let block_pos = pos % B::N;
-        self.blocks[block_idx].count(block_pos)
+        BR::count(&self.blocks[block_idx], block_pos)
     }
-    fn count_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
+    fn count_coro<BR: BlockCount<B>>(
+        &self,
+        pos: usize,
+    ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
         self.prefetch(pos);
         #[inline(always)]
         #[coroutine]
-        move || self.count(pos)
+        move || self.count::<BR>(pos)
     }
-    fn count_coro2(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
+    fn count_coro2<BR: BlockCount<B>>(
+        &self,
+        pos: usize,
+    ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
         #[inline(always)]
         #[coroutine]
         move || {
             self.prefetch(pos);
-            self.count(pos)
+            self.count::<BR>(pos)
         }
     }
 }

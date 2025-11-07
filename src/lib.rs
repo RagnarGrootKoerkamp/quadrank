@@ -5,7 +5,8 @@
     coroutines,
     coroutine_trait,
     stmt_expr_attributes,
-    exact_div
+    exact_div,
+    fn_traits
 )]
 use std::{
     arch::x86_64::{_mm256_shuffle_pd, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64},

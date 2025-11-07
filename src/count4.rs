@@ -5,10 +5,24 @@ use std::{
     simd::{u8x32, u32x8, u64x4},
 };
 
-use crate::count::{count_u8, count_u64, count_u128};
+use crate::{
+    Ranks,
+    count::{count_u8, count_u64, count_u128},
+};
+
+pub trait CountFn<const B: usize> {
+    /// Function that can count on B bytes of data.
+    fn count(data: &[u8; B], pos: usize) -> Ranks;
+}
+
+impl<const B: usize, F: Fn(&[u8; B], usize) -> Ranks + Default> CountFn<B> for F {
+    fn count(data: &[u8; B], pos: usize) -> Ranks {
+        F::default().call((data, pos))
+    }
+}
 
 #[inline(always)]
-fn naive(data: &[u8], pos: usize) -> [u32; 4] {
+fn naive<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut counts = [0u32; 4];
     for &byte in &data[0..pos / 4] {
         for i in 0..4 {
@@ -27,7 +41,7 @@ fn naive(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn u64_popcnt(data: &[u8], pos: usize) -> [u32; 4] {
+fn u64_popcnt<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut ranks = [0; 4];
     for idx in (0..pos.div_ceil(4)).step_by(8) {
         let chunk = u64::from_le_bytes(data[idx..idx + 8].try_into().unwrap());
@@ -46,7 +60,7 @@ fn u64_popcnt(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn u64_popcnt_3(data: &[u8], pos: usize) -> [u32; 4] {
+fn u64_popcnt_3<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut ranks = [0; 4];
     for idx in (0..pos.div_ceil(4)).step_by(8) {
         let chunk = u64::from_le_bytes(data[idx..idx + 8].try_into().unwrap());
@@ -65,7 +79,7 @@ fn u64_popcnt_3(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn u128_popcnt(data: &[u8], pos: usize) -> [u32; 4] {
+fn u128_popcnt<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut ranks = [0; 4];
     for idx in (0..pos.div_ceil(4)).step_by(16) {
         let chunk = u128::from_le_bytes(data[idx..idx + 16].try_into().unwrap());
@@ -84,7 +98,7 @@ fn u128_popcnt(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn u128_popcnt_3(data: &[u8], pos: usize) -> [u32; 4] {
+fn u128_popcnt_3<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut ranks = [0; 4];
     for idx in (0..pos.div_ceil(4)).step_by(16) {
         let chunk = u128::from_le_bytes(data[idx..idx + 16].try_into().unwrap());
@@ -116,7 +130,7 @@ const BYTE_COUNTS: [u32; 256] = {
 };
 
 #[inline(always)]
-fn byte_lookup(data: &[u8], pos: usize) -> [u32; 4] {
+fn byte_lookup<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut counts: u32 = 0;
 
     for idx in 0..pos.div_ceil(4) {
@@ -131,7 +145,7 @@ fn byte_lookup(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn byte_lookup_4(data: &[u8], pos: usize) -> [u32; 4] {
+fn byte_lookup_4<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut counts: u32 = 0;
 
     for idx in (0..pos.div_ceil(4)).step_by(4) {
@@ -149,7 +163,7 @@ fn byte_lookup_4(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn byte_lookup_8(data: &[u8], pos: usize) -> [u32; 4] {
+fn byte_lookup_8<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut counts: u32 = 0;
 
     for idx in (0..pos.div_ceil(4)).step_by(8) {
@@ -175,7 +189,7 @@ fn byte_lookup_8(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn byte_lookup_16(data: &[u8], pos: usize) -> [u32; 4] {
+fn byte_lookup_16<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     let mut counts: u32 = 0;
 
     for idx in (0..pos.div_ceil(4)).step_by(16) {
@@ -209,7 +223,7 @@ fn byte_lookup_16(data: &[u8], pos: usize) -> [u32; 4] {
 }
 
 #[inline(always)]
-fn byte_lookup_16x2(data: &[u8; 32], pos: usize) -> [u32; 4] {
+fn byte_lookup_16x2(data: &[u8; 32], pos: usize) -> Ranks {
     let mut counts: u32 = 0;
 
     for idx in (0..32).step_by(16) {
@@ -244,7 +258,7 @@ fn byte_lookup_16x2(data: &[u8; 32], pos: usize) -> [u32; 4] {
 
 // Count the upper or lower half 128 bits.
 #[inline(always)]
-fn simd_count_u128(data: &[u8; 16], pos: usize) -> [u32; 4] {
+fn simd_count_u128(data: &[u8; 16], pos: usize) -> Ranks {
     let mut ranks = [0; 4];
     {
         use std::mem::transmute as t;
