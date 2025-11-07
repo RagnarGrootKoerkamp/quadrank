@@ -1507,59 +1507,63 @@ impl BwaRank4 {
     }
 
     #[inline(always)]
-    pub async fn ranks_u64_popcnt_async_nowake(&self, pos: usize) -> Ranks {
-        let chunk_idx = pos / 128;
-        prefetch_index(&self.blocks, chunk_idx);
+    pub fn ranks_u64_popcnt_async_nowake(&self, pos: usize) -> impl Future<Output = Ranks> {
+        async move {
+            let chunk_idx = pos / 128;
+            prefetch_index(&self.blocks, chunk_idx);
 
-        struct X(bool);
-        impl Future for X {
-            type Output = ();
+            struct X(bool);
+            impl Future for X {
+                type Output = ();
 
-            #[inline(always)]
-            fn poll(
-                self: std::pin::Pin<&mut Self>,
-                cx: &mut std::task::Context<'_>,
-            ) -> std::task::Poll<Self::Output> {
-                if self.0 {
-                    std::task::Poll::Ready(())
-                } else {
-                    self.get_mut().0 = true;
-                    // cx.waker().wake_by_ref();
-                    std::task::Poll::Pending
+                #[inline(always)]
+                fn poll(
+                    self: std::pin::Pin<&mut Self>,
+                    cx: &mut std::task::Context<'_>,
+                ) -> std::task::Poll<Self::Output> {
+                    if self.0 {
+                        std::task::Poll::Ready(())
+                    } else {
+                        self.get_mut().0 = true;
+                        // cx.waker().wake_by_ref();
+                        std::task::Poll::Pending
+                    }
                 }
             }
-        }
-        X(false).await;
+            X(false).await;
 
-        let chunk = &self.blocks[chunk_idx];
-        let chunk_pos = pos % 128;
-        let quart_pos = pos % 32;
+            // Recomputed to reduce the state across the await point.
+            let chunk_idx = pos / 128;
+            let chunk = &self.blocks[chunk_idx];
+            let chunk_pos = pos % 128;
+            let quart_pos = pos % 32;
 
-        let quart = chunk_pos / 32;
-        let mut ranks = [0; 4];
+            let quart = chunk_pos / 32;
+            let mut ranks = [0; 4];
 
-        // Count chosen quart.
-        {
-            let idx = quart * 8;
-            let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
-            let mask = self.masks[quart_pos];
-            let chunk = chunk & mask;
-            for c in 0..4 {
-                ranks[c as usize] += count_u64(chunk, c);
+            // Count chosen quart.
+            {
+                let idx = quart * 8;
+                let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
+                let mask = self.masks[quart_pos];
+                let chunk = chunk & mask;
+                for c in 0..4 {
+                    ranks[c as usize] += count_u64(chunk, c);
+                }
             }
-        }
 
-        for c in 0..4 {
-            ranks[c] += chunk.ranks[c];
-        }
-        for c in 0..4 {
-            ranks[c] += (chunk.part_ranks[c] >> (quart * 8)) & 0xff;
-        }
+            for c in 0..4 {
+                ranks[c] += chunk.ranks[c];
+            }
+            for c in 0..4 {
+                ranks[c] += (chunk.part_ranks[c] >> (quart * 8)) & 0xff;
+            }
 
-        // Fix count for 0.
-        let extra_counted = 32 - quart_pos;
-        ranks[0] -= extra_counted as u32;
+            // Fix count for 0.
+            let extra_counted = 32 - quart_pos;
+            ranks[0] -= extra_counted as u32;
 
-        ranks
+            ranks
+        }
     }
 }

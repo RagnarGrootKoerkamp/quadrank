@@ -159,6 +159,7 @@ async fn async_batches<F>(queries: &[usize], f: impl Fn(usize) -> F)
 where
     F: Future<Output = Ranks>,
 {
+    // eprintln!("size of future: {}", std::mem::size_of::<F>());
     for batch in queries.as_chunks::<32>().0 {
         let mut futures: Pin<&mut [_; 32]> = std::pin::pin!(from_fn(|i| f(batch[i])));
 
