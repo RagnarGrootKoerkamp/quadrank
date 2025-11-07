@@ -1561,7 +1561,10 @@ impl BwaRank4 {
     }
 
     #[inline(always)]
-    pub fn ranks_u64_popcnt_coro2(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> {
+    pub fn ranks_u64_popcnt_coro2(
+        &self,
+        pos: usize,
+    ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
         #[inline(always)]
         #[coroutine]
         move || {
@@ -1605,7 +1608,10 @@ impl BwaRank4 {
     }
 
     #[inline(always)]
-    pub fn ranks_u64_popcnt_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> {
+    pub fn ranks_u64_popcnt_coro(
+        &self,
+        pos: usize,
+    ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
         let chunk_idx = pos / 128;
         prefetch_index(&self.blocks, chunk_idx);
         #[inline(always)]

@@ -1,6 +1,15 @@
 #![allow(incomplete_features, dead_code)]
 #![feature(generic_const_exprs, coroutines, coroutine_trait, stmt_expr_attributes)]
-use std::{array::from_fn, mem::MaybeUninit, ops::Coroutine, pin::Pin, task::Context};
+use std::{
+    array::from_fn,
+    mem::MaybeUninit,
+    ops::{
+        Coroutine,
+        CoroutineState::{Complete, Yielded},
+    },
+    pin::{Pin, pin},
+    task::Context,
+};
 
 use dna_rank::{BwaRank, BwaRank2, BwaRank3, BwaRank4, DnaRank, Ranks};
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
@@ -161,7 +170,7 @@ where
 {
     // eprintln!("size of future: {}", std::mem::size_of::<F>());
     for batch in queries.as_chunks::<32>().0 {
-        let mut futures: Pin<&mut [_; 32]> = std::pin::pin!(from_fn(|i| f(batch[i])));
+        let mut futures: Pin<&mut [_; 32]> = pin!(from_fn(|i| f(batch[i])));
 
         // for f in iter_pin_mut(futures.as_mut()) {
         //     assert!(poll_once(f).await.is_none());
@@ -254,23 +263,23 @@ where
 #[inline(always)]
 fn time_coro2_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
 where
-    F: Coroutine<Return = Ranks>,
+    F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
     for batch in queries.as_chunks::<32>().0 {
-        let mut futures: Pin<&mut [_; 32]> = std::pin::pin!(from_fn(|i| f(batch[i])));
+        let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
 
-        for f in iter_pin_mut(futures.as_mut()) {
-            match f.resume(()) {
-                std::ops::CoroutineState::Yielded(_) => {}
-                std::ops::CoroutineState::Complete(_) => panic!(),
+        for f in &mut futures {
+            match pin!(f).resume(()) {
+                Yielded(_) => {}
+                Complete(_) => panic!(),
             };
         }
 
-        for (q, f) in batch.iter().zip(iter_pin_mut(futures.as_mut())) {
-            let fq = match f.resume(()) {
-                std::ops::CoroutineState::Yielded(_) => panic!(),
-                std::ops::CoroutineState::Complete(fq) => fq,
+        for (q, f) in batch.iter().zip(&mut futures) {
+            let fq = match pin!(f).resume(()) {
+                Yielded(_) => panic!(),
+                Complete(fq) => fq,
             };
             check(*q, fq);
         }
@@ -282,16 +291,15 @@ where
 #[inline(always)]
 fn time_coro2_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
 where
-    F: Coroutine<Return = Ranks>,
+    F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
     let mut futures: [MaybeUninit<(usize, F)>; 32] = from_fn(|_| MaybeUninit::uninit());
     for i in 0..32 {
         futures[i] = MaybeUninit::new((queries[i], f(queries[i])));
-        let pin = unsafe { Pin::new_unchecked(&mut futures[i].assume_init_mut().1) };
-        match pin.resume(()) {
-            std::ops::CoroutineState::Yielded(_) => {}
-            std::ops::CoroutineState::Complete(_) => panic!(),
+        match pin!(unsafe { &mut futures[i].assume_init_mut().1 }).resume(()) {
+            Yielded(_) => {}
+            Complete(_) => panic!(),
         };
     }
 
@@ -299,11 +307,9 @@ where
         // finish the old state
         {
             let (q, future) = unsafe { futures[i % 32].assume_init_mut() };
-            let pin = unsafe { Pin::new_unchecked(future) };
-            // let fq = poll_once(pin).await.unwrap();
-            let fq = match pin.resume(()) {
-                std::ops::CoroutineState::Yielded(_) => panic!(),
-                std::ops::CoroutineState::Complete(fq) => fq,
+            let fq = match pin!(future).resume(()) {
+                Yielded(_) => panic!(),
+                Complete(fq) => fq,
             };
             check(*q, fq);
         }
@@ -313,8 +319,8 @@ where
             futures[i % 32] = MaybeUninit::new((q, f(q)));
             let pin = unsafe { Pin::new_unchecked(&mut futures[i % 32].assume_init_mut().1) };
             match pin.resume(()) {
-                std::ops::CoroutineState::Yielded(_) => {}
-                std::ops::CoroutineState::Complete(_) => panic!(),
+                Yielded(_) => {}
+                Complete(_) => panic!(),
             };
         }
     }
@@ -325,16 +331,16 @@ where
 #[inline(always)]
 fn time_coro_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
 where
-    F: Coroutine<Return = Ranks>,
+    F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
     for batch in queries.as_chunks::<32>().0 {
-        let mut futures: Pin<&mut [_; 32]> = std::pin::pin!(from_fn(|i| f(batch[i])));
+        let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
 
-        for (q, f) in batch.iter().zip(iter_pin_mut(futures.as_mut())) {
-            let fq = match f.resume(()) {
-                std::ops::CoroutineState::Yielded(_) => panic!(),
-                std::ops::CoroutineState::Complete(fq) => fq,
+        for (q, f) in batch.iter().zip(&mut futures) {
+            let fq = match pin!(f).resume(()) {
+                Yielded(_) => panic!(),
+                Complete(fq) => fq,
             };
             check(*q, fq);
         }
@@ -346,25 +352,21 @@ where
 #[inline(always)]
 fn time_coro_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
 where
-    F: Coroutine<Return = Ranks>,
+    F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
     let mut futures: [MaybeUninit<(usize, F)>; 32] = from_fn(|_| MaybeUninit::uninit());
     for i in 0..32 {
         futures[i] = MaybeUninit::new((queries[i], f(queries[i])));
-        // let pin = unsafe { Pin::new_unchecked(&mut futures[i].assume_init_mut().1) };
-        // assert!(poll_once(pin).await.is_none());
     }
 
     for (i, &q) in queries.iter().enumerate() {
         // finish the old state
         {
             let (q, future) = unsafe { futures[i % 32].assume_init_mut() };
-            let pin = unsafe { Pin::new_unchecked(future) };
-            // let fq = poll_once(pin).await.unwrap();
-            let fq = match pin.resume(()) {
-                std::ops::CoroutineState::Yielded(_) => panic!(),
-                std::ops::CoroutineState::Complete(fq) => fq,
+            let fq = match pin!(future).resume(()) {
+                Yielded(_) => panic!(),
+                Complete(fq) => fq,
             };
             check(*q, fq);
         }
@@ -372,8 +374,6 @@ where
         // new future
         {
             futures[i % 32] = MaybeUninit::new((q, f(q)));
-            // let pin = unsafe { Pin::new_unchecked(&mut futures[i % 32].assume_init_mut().1) };
-            // assert!(poll_once(pin).await.is_none());
         }
     }
     let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
@@ -464,44 +464,44 @@ fn bench_bwa4_rank(seq: &[u8], queries: &[usize]) {
     let bits = 4.0;
     eprint!("{bits:>6.2}b |");
 
-    time(&queries, |p| rank.ranks_u64_popcnt(p));
-    // time(&queries, |p| rank.ranks_bytecount_16_all(p));
-    // time(&queries, |p| rank.ranks_simd_popcount(p));
-    eprint!(" |");
-    time_batch::<32>(&queries, |p| rank.prefetch(p), |p| rank.ranks_u64_popcnt(p));
-    time_stream(
-        &queries,
-        32,
-        |p| rank.prefetch(p),
-        |p| rank.ranks_u64_popcnt(p),
-    );
+    // time(&queries, |p| rank.ranks_u64_popcnt(p));
+    // // time(&queries, |p| rank.ranks_bytecount_16_all(p));
+    // // time(&queries, |p| rank.ranks_simd_popcount(p));
+    // eprint!(" |");
+    // time_batch::<32>(&queries, |p| rank.prefetch(p), |p| rank.ranks_u64_popcnt(p));
+    // time_stream(
+    //     &queries,
+    //     32,
+    //     |p| rank.prefetch(p),
+    //     |p| rank.ranks_u64_popcnt(p),
+    // );
 
+    // // eprint!(" |");
+    // // time_async_one_task(
+    // //     &queries,
+    // //     32,
+    // //     |p| rank.ranks_u64_popcnt_async(p),
+    // // );
+    // // eprint!(" |");
+    // // time_async_futures_ordered(
+    // //     &queries,
+    // //     32,
+    // //     |p| rank.ranks_u64_popcnt_async(p),
+    // // );
     // eprint!(" |");
-    // time_async_one_task(
-    //     &queries,
-    //     32,
-    //     |p| rank.ranks_u64_popcnt_async(p),
-    // );
+    // // time_async_join_all_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
+    // // time_async_smol_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
+    // // time_async_smol_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
+    // // time_async_cassette_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
+    // time_async_cassette_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
+    // // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p)); // SLOW
+    // // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p)); // HANGS
+    // // time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
+    // time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
     // eprint!(" |");
-    // time_async_futures_ordered(
-    //     &queries,
-    //     32,
-    //     |p| rank.ranks_u64_popcnt_async(p),
-    // );
-    eprint!(" |");
-    // time_async_join_all_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    // time_async_smol_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    // time_async_smol_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
-    // time_async_cassette_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    time_async_cassette_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
-    // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p)); // SLOW
-    // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p)); // HANGS
-    // time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
-    eprint!(" |");
-    time_coro2_batch(&queries, 32, |p| rank.ranks_u64_popcnt_coro2(p));
-    time_coro2_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro2(p));
-    eprint!(" |");
+    // time_coro2_batch(&queries, 32, |p| rank.ranks_u64_popcnt_coro2(p));
+    // time_coro2_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro2(p));
+    // eprint!(" |");
     time_coro_batch(&queries, 32, |p| rank.ranks_u64_popcnt_coro(p));
     time_coro_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro(p));
     eprintln!();
@@ -533,7 +533,3 @@ fn main() {
         // bench_dna_rank::<128>(&seq, &queries);
     }
 }
-
-// TODO: AsyncIterator => probably not the right framework.
-// TODO: Generators
-// TODO: Coroutines
