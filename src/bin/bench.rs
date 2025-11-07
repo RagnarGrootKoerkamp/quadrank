@@ -15,6 +15,7 @@ use dna_rank::{
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
 use mem_dbg::MemSize;
 use smol::{LocalExecutor, future::poll_once, stream::StreamExt};
+use sux::{bits::BitVec, traits::Rank};
 
 fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
@@ -489,6 +490,9 @@ fn bench_best(seq: &[u8], queries: &QS) {
     let rank = BwaRank4::new(&seq);
     let bits = 4.0;
     eprint!("{bits:>6.2}b |");
+    time(&queries, |p| rank.ranks_u64_popcnt(p));
+
+    eprint!(" |");
     time_stream(
         &queries,
         B,
@@ -524,6 +528,10 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
 
     let ranker = Ranker::<QuartBlock>::new(&seq);
 
+    time(&queries, |p| ranker.count::<count4::U64Popcnt, C3>(p));
+
+    eprint!(" |");
+
     time_stream(
         &queries,
         B,
@@ -557,6 +565,21 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     eprintln!();
 }
 
+#[inline(never)]
+fn bench_rank9(seq: &[u8], queries: &QS) {
+    eprint!("{:<20}:", "rank9");
+
+    // Cast to slice of usize.
+    let bitvec = unsafe { BitVec::from_raw_parts(seq.align_to().1, seq.len() * 8) };
+    let rank9 = sux::rank_sel::Rank9::new(bitvec);
+
+    let bits = rank9.mem_size(Default::default()) as f64 / seq.len() as f64;
+    eprint!("{bits:>6.2}b |");
+
+    time(&queries, |p| [rank9.rank(p) as u32, 0, 0, 0]);
+    eprintln!();
+}
+
 fn main() {
     #[cfg(debug_assertions)]
     let q = 100_000;
@@ -577,6 +600,7 @@ fn main() {
                 .collect::<Vec<_>>()
         });
 
+        bench_rank9(&seq, &queries);
         bench_quart::<true>(&seq, &queries);
         bench_quart::<false>(&seq, &queries);
         bench_best(&seq, &queries);

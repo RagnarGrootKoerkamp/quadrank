@@ -11,6 +11,7 @@ mem_dbg = "0.3.2"
 packed-seq = "4.2.0"
 rand = "0.9.2"
 smol = "2.0.2"
+sux = "0.9.1"
 
 [profile.release]
 debug = true
