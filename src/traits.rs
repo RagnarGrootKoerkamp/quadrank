@@ -1,5 +1,4 @@
 use crate::count::count_u8x8;
-use crate::yield_no_wake;
 use crate::{Ranks, count4::CountFn};
 use packed_seq::{PackedSeqVec, SeqVec};
 use std::ops::Coroutine;
@@ -111,4 +110,32 @@ pub(crate) fn prefetch_index<T>(s: &[T], index: usize) {
     {
         // Do nothing.
     }
+}
+
+fn yield_no_wake() -> impl Future<Output = ()> {
+    struct Yield(bool);
+    impl Yield {
+        fn new() -> Self {
+            Yield(false)
+        }
+    }
+    impl Future for Yield {
+        type Output = ();
+
+        #[inline(always)]
+        fn poll(
+            self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<()> {
+            if self.0 {
+                std::task::Poll::Ready(())
+            } else {
+                self.get_mut().0 = true;
+                // cx.waker().wake_by_ref();
+                std::task::Poll::Pending
+            }
+        }
+    }
+
+    Yield::new()
 }

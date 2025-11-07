@@ -1681,30 +1681,3 @@ impl BwaRank4 {
         }
     }
 }
-
-fn yield_no_wake() -> impl Future<Output = ()> {
-    Yield::new()
-}
-struct Yield(bool);
-impl Yield {
-    fn new() -> Self {
-        Yield(false)
-    }
-}
-impl Future for Yield {
-    type Output = ();
-
-    #[inline(always)]
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<()> {
-        if self.0 {
-            std::task::Poll::Ready(())
-        } else {
-            self.get_mut().0 = true;
-            // cx.waker().wake_by_ref();
-            std::task::Poll::Pending
-        }
-    }
-}
