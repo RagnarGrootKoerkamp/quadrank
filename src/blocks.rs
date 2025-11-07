@@ -19,8 +19,9 @@ pub struct FullBlock {
 }
 
 impl Block for FullBlock {
-    const B: usize = 32;
-    const N: usize = 128;
+    const B: usize = 32; // Bytes of characters in block.
+    const N: usize = 128; // Number of characters in block.
+    const C: usize = 32; // Bytes of the underlying count function.
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         FullBlock {
@@ -28,36 +29,25 @@ impl Block for FullBlock {
             seq: *data,
         }
     }
-}
 
-impl FullBlock {
-    fn count_4<C: CountFn<32>>(&self, pos: usize) -> Ranks {
+    #[inline(always)]
+    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
         for c in 0..4 {
             ranks[c] += self.ranks[c] as u32;
         }
 
-        let inner_counts = C::count(&self.seq, pos);
+        let inner_counts = CF::count(&self.seq, pos);
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
 
-        let extra_counted = (4usize.wrapping_sub(pos)) % 4;
-        ranks[0] -= extra_counted as u32;
-        ranks
-    }
-
-    fn count_3<C: CountFn<32>>(&self, pos: usize) -> Ranks {
-        let mut ranks = [0; 4];
-        for c in 0..4 {
-            ranks[c] += self.ranks[c] as u32;
+        if C3 {
+            ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            let extra_counted = (4usize.wrapping_sub(pos)) % 4;
+            ranks[0] -= extra_counted as u32;
         }
-        let inner_counts = C::count(&self.seq, pos);
-        for c in 0..4 {
-            ranks[c] += inner_counts[c];
-        }
-
-        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
         ranks
     }
 }
@@ -85,6 +75,7 @@ pub struct HalfBlock {
 impl Block for HalfBlock {
     const B: usize = 32;
     const N: usize = 128;
+    const C: usize = 16;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut meta = [0; 8];
@@ -100,15 +91,15 @@ impl Block for HalfBlock {
             seq: *data,
         }
     }
-}
 
-impl HalfBlock {
-    fn count_3<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
         let chunk_pos = pos % 128;
 
         // 0 or 1 for left or right half
         let half = chunk_pos / 64;
+        let half_pos = chunk_pos % 64;
 
         // Offset of chunk and half.
         for c in 0..4 {
@@ -116,11 +107,12 @@ impl HalfBlock {
         }
 
         let idx = half * 16;
-        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), pos);
+        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
 
+        assert!(C3);
         ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
         ranks
     }
@@ -146,6 +138,7 @@ pub struct HalfBlock2 {
 impl Block for HalfBlock2 {
     const B: usize = 32;
     const N: usize = 128;
+    const C: usize = 16;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut half_ranks = ranks;
@@ -160,18 +153,18 @@ impl Block for HalfBlock2 {
             seq: *data,
         }
     }
-}
 
-impl HalfBlock2 {
-    fn count_4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
         let chunk_pos = pos % 128;
 
         // 0 or 1 for left or right half
         let half = chunk_pos / 64;
+        let half_pos = chunk_pos % 64;
 
         let idx = half * 16;
-        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), pos);
+        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
@@ -179,28 +172,13 @@ impl HalfBlock2 {
             ranks[c] += self.ranks[half][c];
         }
 
-        let extra_counted = (4usize.wrapping_sub(pos)) % 4;
-        ranks[0] -= extra_counted as u32;
-        ranks
-    }
-
-    fn count_3<C: CountFn<16>>(&self, pos: usize) -> Ranks {
-        let mut ranks = [0; 4];
-        let chunk_pos = pos % 128;
-
-        // 0 or 1 for left or right half
-        let half = chunk_pos / 64;
-
-        let idx = half * 16;
-        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), pos);
-        for c in 0..4 {
-            ranks[c] += inner_counts[c];
-        }
-        for c in 0..4 {
-            ranks[c] += self.ranks[half][c];
+        if C3 {
+            ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            let extra_counted = (4usize.wrapping_sub(pos)) % 4;
+            ranks[0] -= extra_counted as u32;
         }
 
-        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
         ranks
     }
 }
@@ -221,6 +199,7 @@ pub struct QuartBlock {
 impl Block for QuartBlock {
     const B: usize = 32;
     const N: usize = 128;
+    const C: usize = 8;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut part_ranks = [0; 4];
@@ -241,10 +220,9 @@ impl Block for QuartBlock {
             seq: *data,
         }
     }
-}
 
-impl QuartBlock {
-    fn count_4<C: CountFn<8>>(&self, pos: usize) -> Ranks {
+    #[inline(always)]
+    fn count<C: CountFn<8>, const C3: bool>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
         let chunk_pos = pos % 128;
 
@@ -253,7 +231,7 @@ impl QuartBlock {
         let quart_pos = pos % 32;
 
         let idx = quart * 8;
-        let inner_counts = C::count(&self.seq[idx..idx + 8].try_into().unwrap(), pos);
+        let inner_counts = C::count(&self.seq[idx..idx + 8].try_into().unwrap(), quart_pos);
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
@@ -261,29 +239,13 @@ impl QuartBlock {
             ranks[c] += (self.part_ranks[c] >> (quart * 8)) & 0xff;
         }
 
-        let extra_counted = (4usize.wrapping_sub(pos)) % 4;
-        ranks[0] -= extra_counted as u32;
-        ranks
-    }
-
-    fn count_3<C: CountFn<8>>(&self, pos: usize) -> Ranks {
-        let mut ranks = [0; 4];
-        let chunk_pos = pos % 128;
-
-        // 0 or 1 for left or right half
-        let quart = pos / 32;
-        let quart_pos = pos % 32;
-
-        let idx = quart * 8;
-        let inner_counts = C::count(&self.seq[idx..idx + 8].try_into().unwrap(), pos);
-        for c in 0..4 {
-            ranks[c] += inner_counts[c];
-        }
-        for c in 0..4 {
-            ranks[c] += (self.part_ranks[c] >> (quart * 8)) & 0xff;
+        if C3 {
+            ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            let extra_counted = (4usize.wrapping_sub(pos)) % 4;
+            ranks[0] -= extra_counted as u32;
         }
 
-        ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
         ranks
     }
 }

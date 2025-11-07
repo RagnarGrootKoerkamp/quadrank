@@ -8,7 +8,10 @@ use std::{
     task::Context,
 };
 
-use dna_rank::{BwaRank, BwaRank2, BwaRank3, BwaRank4, DnaRank, Ranks};
+use dna_rank::{
+    BwaRank, BwaRank2, BwaRank3, BwaRank4, DnaRank, Ranks, blocks::QuartBlock, count4,
+    traits::Ranker,
+};
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
 use mem_dbg::MemSize;
 use smol::{LocalExecutor, future::poll_once, stream::StreamExt};
@@ -516,6 +519,47 @@ fn bench_best(seq: &[u8], queries: &[usize]) {
     eprintln!();
 }
 
+#[inline(never)]
+fn bench_quart<const C3: bool>(seq: &[u8], queries: &[usize]) {
+    eprint!("{:<20}:", format!("QuartBlock {C3}"));
+    let bits = 4.0;
+    eprint!("{bits:>6.2}b |");
+
+    let ranker = Ranker::<QuartBlock>::new(&seq);
+
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::U64Popcnt, C3>(p),
+    );
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::ByteLookup8, C3>(p),
+    );
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::SimdCount, C3>(p),
+    );
+
+    eprint!(" |");
+
+    time_coro_stream(&queries, B, |p| {
+        ranker.count_coro::<count4::U64Popcnt, C3>(p)
+    });
+    time_coro_stream(&queries, B, |p| {
+        ranker.count_coro::<count4::ByteLookup8, C3>(p)
+    });
+    time_coro_stream(&queries, B, |p| {
+        ranker.count_coro::<count4::SimdCount, C3>(p)
+    });
+    eprintln!();
+}
+
 fn main() {
     #[cfg(debug_assertions)]
     let q = 100_000;
@@ -534,6 +578,8 @@ fn main() {
             .map(|_| rand::random_range(0..seq.len()))
             .collect::<Vec<_>>();
 
+        bench_quart::<true>(&seq, &queries);
+        bench_quart::<false>(&seq, &queries);
         bench_best(&seq, &queries);
 
         // bench_bwa4_rank(&seq, &queries);

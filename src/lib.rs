@@ -6,8 +6,11 @@
     coroutine_trait,
     stmt_expr_attributes,
     exact_div,
-    fn_traits
+    fn_traits,
+    trait_alias,
+    inherent_associated_types
 )]
+
 use std::{
     arch::x86_64::{_mm256_shuffle_pd, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64},
     hint::black_box,
@@ -16,10 +19,10 @@ use std::{
     simd::{u8x32, u16x16, u32x8, u64x4},
 };
 
-mod blocks;
-mod count;
-mod count4;
-mod traits;
+pub mod blocks;
+pub mod count;
+pub mod count4;
+pub mod traits;
 
 use count::*;
 use count4::*;
@@ -1687,7 +1690,7 @@ impl Future for Yield {
     fn poll(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    ) -> std::task::Poll<()> {
         if self.0 {
             std::task::Poll::Ready(())
         } else {

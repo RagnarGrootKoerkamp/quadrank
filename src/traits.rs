@@ -1,32 +1,32 @@
-use crate::Ranks;
 use crate::count::count_u8x8;
+use crate::yield_no_wake;
+use crate::{Ranks, count4::CountFn};
 use packed_seq::{PackedSeqVec, SeqVec};
 use std::ops::Coroutine;
 
 pub trait Block {
     /// Number of bytes per block.
     const B: usize;
-    /// Number of characters per block.
+    /// Number of charactcrate::{Ranks, count4::CountFn}k.
     const N: usize;
+    /// Bytes of the underlying count function.
+    const C: usize;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self;
+    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, pos: usize) -> Ranks;
 }
 
-pub trait BlockCount<Block> {
-    fn count(block: &Block, pos: usize) -> Ranks;
-}
-
-struct Ranker<B: Block> {
+pub struct Ranker<B: Block> {
     blocks: Vec<B>,
 }
 
 impl<B: Block> Ranker<B> {
-    fn new(seq: &[u8]) -> Self
+    pub fn new(seq: &[u8]) -> Self
     where
         [(); { B::B }]:,
     {
         let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
-        packed_seq.reserve(B::B);
+        packed_seq.resize(packed_seq.len() + B::B, 0);
 
         let mut ranks = [0; 4];
         Self {
@@ -47,25 +47,29 @@ impl<B: Block> Ranker<B> {
                 .collect(),
         }
     }
-    fn prefetch(&self, pos: usize) {
+    #[inline(always)]
+    pub fn prefetch(&self, pos: usize) {
         let block_idx = pos / B::N;
         prefetch_index(&self.blocks, block_idx);
     }
-    fn count<BR: BlockCount<B>>(&self, pos: usize) -> Ranks {
+    #[inline(always)]
+    pub fn count<CF: CountFn<{ B::C }>, const C3: bool>(&self, pos: usize) -> Ranks {
         let block_idx = pos / B::N;
         let block_pos = pos % B::N;
-        BR::count(&self.blocks[block_idx], block_pos)
+        self.blocks[block_idx].count::<CF, C3>(block_pos)
     }
-    fn count_coro<BR: BlockCount<B>>(
+    #[inline(always)]
+    pub fn count_coro<CF: CountFn<{ B::C }>, const C3: bool>(
         &self,
         pos: usize,
     ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
         self.prefetch(pos);
         #[inline(always)]
         #[coroutine]
-        move || self.count::<BR>(pos)
+        move || self.count::<CF, C3>(pos)
     }
-    fn count_coro2<BR: BlockCount<B>>(
+    #[inline(always)]
+    pub fn count_coro2<CF: CountFn<{ B::C }>, const C3: bool>(
         &self,
         pos: usize,
     ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
@@ -73,7 +77,8 @@ impl<B: Block> Ranker<B> {
         #[coroutine]
         move || {
             self.prefetch(pos);
-            self.count::<BR>(pos)
+            yield;
+            self.count::<CF, C3>(pos)
         }
     }
 }
