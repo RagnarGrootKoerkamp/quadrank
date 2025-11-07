@@ -294,19 +294,19 @@ where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
-    let mut futures: [MaybeUninit<(usize, F)>; 32] = from_fn(|_| MaybeUninit::uninit());
-    for i in 0..32 {
-        futures[i] = MaybeUninit::new((queries[i], f(queries[i])));
-        match pin!(unsafe { &mut futures[i].assume_init_mut().1 }).resume(()) {
+    let mut futures: [(usize, F); 32] = from_fn(|i| {
+        let mut qf = (queries[i], f(queries[i]));
+        match pin!(&mut qf.1).resume(()) {
             Yielded(_) => {}
             Complete(_) => panic!(),
         };
-    }
+        qf
+    });
 
     for (i, &q) in queries.iter().enumerate() {
         // finish the old state
         {
-            let (q, future) = unsafe { futures[i % 32].assume_init_mut() };
+            let (q, future) = &mut futures[i % 32];
             let fq = match pin!(future).resume(()) {
                 Yielded(_) => panic!(),
                 Complete(fq) => fq,
@@ -316,9 +316,9 @@ where
 
         // new future
         {
-            futures[i % 32] = MaybeUninit::new((q, f(q)));
-            let pin = unsafe { Pin::new_unchecked(&mut futures[i % 32].assume_init_mut().1) };
-            match pin.resume(()) {
+            futures[i % 32] = (q, f(q));
+            let future = &mut futures[i % 32].1;
+            match pin!(future).resume(()) {
                 Yielded(_) => {}
                 Complete(_) => panic!(),
             };
@@ -355,15 +355,12 @@ where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
-    let mut futures: [MaybeUninit<(usize, F)>; 32] = from_fn(|_| MaybeUninit::uninit());
-    for i in 0..32 {
-        futures[i] = MaybeUninit::new((queries[i], f(queries[i])));
-    }
+    let mut futures: [(usize, F); 32] = from_fn(|i| (queries[i], f(queries[i])));
 
     for (i, &q) in queries.iter().enumerate() {
         // finish the old state
         {
-            let (q, future) = unsafe { futures[i % 32].assume_init_mut() };
+            let (q, future) = &mut futures[i % 32];
             let fq = match pin!(future).resume(()) {
                 Yielded(_) => panic!(),
                 Complete(fq) => fq,
@@ -373,7 +370,7 @@ where
 
         // new future
         {
-            futures[i % 32] = MaybeUninit::new((q, f(q)));
+            futures[i % 32] = (q, f(q));
         }
     }
     let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
