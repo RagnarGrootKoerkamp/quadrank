@@ -260,7 +260,6 @@ impl<const STRIDE: usize> DnaRank<STRIDE> {
     }
 }
 
-
 /// For each 128bp, store:
 /// - 4 u64 counts, for 256bits total
 /// - 256 bits of packed sequence.
@@ -282,8 +281,6 @@ pub struct BwaBlock {
 pub struct BwaRank {
     n: usize,
     blocks: Vec<BwaBlock>,
-    /// For each byte, a u32 consisting of 4 u8's containing the count of ACTG in byte.
-    counts: [u32; 256],
 }
 
 impl BwaRank {
@@ -307,11 +304,7 @@ impl BwaRank {
             }
         }
 
-        BwaRank {
-            n,
-            blocks,
-            counts: init_counts(),
-        }
+        BwaRank { n, blocks }
     }
 
     #[inline(always)]
@@ -333,7 +326,7 @@ impl BwaRank {
             let low_bits = (pos - idx * 4).min(4) * 2;
             let mask = (1u64 << low_bits) - 1;
             let byte = byte & mask as u8;
-            counts += self.counts[byte as usize];
+            counts += BYTE_COUNTS[byte as usize];
         }
         for c in 0..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
@@ -362,10 +355,10 @@ impl BwaRank {
             let low_bits = (pos - idx * 4).min(16) * 2;
             let mask = (1u64 << low_bits) - 1;
             let chunk = chunk & mask as u32;
-            counts += self.counts[(chunk >> 0) as u8 as usize];
-            counts += self.counts[(chunk >> 8) as u8 as usize];
-            counts += self.counts[(chunk >> 16) as u8 as usize];
-            counts += self.counts[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
         }
         for c in 0..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
@@ -398,14 +391,14 @@ impl BwaRank {
                 (1u64 << low_bits) - 1
             };
             let chunk = chunk & mask;
-            counts += self.counts[(chunk >> 0) as u8 as usize];
-            counts += self.counts[(chunk >> 8) as u8 as usize];
-            counts += self.counts[(chunk >> 16) as u8 as usize];
-            counts += self.counts[(chunk >> 24) as u8 as usize];
-            counts += self.counts[(chunk >> 32) as u8 as usize];
-            counts += self.counts[(chunk >> 40) as u8 as usize];
-            counts += self.counts[(chunk >> 48) as u8 as usize];
-            counts += self.counts[(chunk >> 56) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
         }
         for c in 0..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
@@ -438,22 +431,22 @@ impl BwaRank {
                 (1u128 << low_bits) - 1
             };
             let chunk = chunk & mask;
-            counts += self.counts[(chunk >> 0) as u8 as usize];
-            counts += self.counts[(chunk >> 8) as u8 as usize];
-            counts += self.counts[(chunk >> 16) as u8 as usize];
-            counts += self.counts[(chunk >> 24) as u8 as usize];
-            counts += self.counts[(chunk >> 32) as u8 as usize];
-            counts += self.counts[(chunk >> 40) as u8 as usize];
-            counts += self.counts[(chunk >> 48) as u8 as usize];
-            counts += self.counts[(chunk >> 56) as u8 as usize];
-            counts += self.counts[(chunk >> 64) as u8 as usize];
-            counts += self.counts[(chunk >> 72) as u8 as usize];
-            counts += self.counts[(chunk >> 80) as u8 as usize];
-            counts += self.counts[(chunk >> 88) as u8 as usize];
-            counts += self.counts[(chunk >> 96) as u8 as usize];
-            counts += self.counts[(chunk >> 104) as u8 as usize];
-            counts += self.counts[(chunk >> 112) as u8 as usize];
-            counts += self.counts[(chunk >> 120) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 64) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 72) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 80) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 88) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 96) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 104) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 112) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 120) as u8 as usize];
         }
         for c in 0..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
@@ -488,22 +481,22 @@ impl BwaRank {
             let chunk = chunk & mask;
             let chunk = chunk;
             // Black_box to prevent SIMD (gather is slow..).
-            counts += black_box(self.counts[(chunk >> 0) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 8) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 16) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 24) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 32) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 40) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 48) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 56) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 64) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 72) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 80) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 88) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 96) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 104) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 112) as u8 as usize]);
-            counts += black_box(self.counts[(chunk >> 120) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 0) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 8) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 16) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 24) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 32) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 40) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 48) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 56) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 64) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 72) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 80) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 88) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 96) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 104) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 112) as u8 as usize]);
+            counts += black_box(BYTE_COUNTS[(chunk >> 120) as u8 as usize]);
         }
         for c in 0..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
@@ -686,16 +679,6 @@ impl BwaRank {
     }
 }
 
-fn init_counts() -> [u32; 256] {
-    let mut counts = [0u32; 256];
-    for b in 0..256 {
-        for c in 0..4 {
-            counts[b] |= (count_u8(b as u8, c) as u32) << (c * 8);
-        }
-    }
-    counts
-}
-
 /// Each 128bit contains 16 u8 with two counts:
 /// - the first element has 2 4bit counts of A and C,
 /// - the second element has 2 4bit counts of G and T.
@@ -735,7 +718,6 @@ pub struct BwaBlock2 {
 pub struct BwaRank2 {
     n: usize,
     blocks: Vec<BwaBlock2>,
-    counts: [u32; 256],
 }
 
 impl BwaRank2 {
@@ -767,11 +749,7 @@ impl BwaRank2 {
             }
         }
 
-        BwaRank2 {
-            n,
-            blocks,
-            counts: init_counts(),
-        }
+        BwaRank2 { n, blocks }
     }
 
     #[inline(always)]
@@ -841,22 +819,22 @@ impl BwaRank2 {
                 (1u128 << low_bits) - 1
             };
             let chunk = chunk & mask;
-            counts += self.counts[(chunk >> 0) as u8 as usize];
-            counts += self.counts[(chunk >> 8) as u8 as usize];
-            counts += self.counts[(chunk >> 16) as u8 as usize];
-            counts += self.counts[(chunk >> 24) as u8 as usize];
-            counts += self.counts[(chunk >> 32) as u8 as usize];
-            counts += self.counts[(chunk >> 40) as u8 as usize];
-            counts += self.counts[(chunk >> 48) as u8 as usize];
-            counts += self.counts[(chunk >> 56) as u8 as usize];
-            counts += self.counts[(chunk >> 64) as u8 as usize];
-            counts += self.counts[(chunk >> 72) as u8 as usize];
-            counts += self.counts[(chunk >> 80) as u8 as usize];
-            counts += self.counts[(chunk >> 88) as u8 as usize];
-            counts += self.counts[(chunk >> 96) as u8 as usize];
-            counts += self.counts[(chunk >> 104) as u8 as usize];
-            counts += self.counts[(chunk >> 112) as u8 as usize];
-            counts += self.counts[(chunk >> 120) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 64) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 72) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 80) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 88) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 96) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 104) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 112) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 120) as u8 as usize];
         }
         for c in 1..4 {
             ranks[c] += (counts >> (8 * c)) as u8 as u32;
@@ -965,7 +943,6 @@ pub struct BwaBlock3 {
 pub struct BwaRank3 {
     n: usize,
     blocks: Vec<BwaBlock3>,
-    counts: [u32; 256],
     masks: [[u64; 2]; 64],
 }
 
@@ -1009,12 +986,7 @@ impl BwaRank3 {
             masks[i] = unsafe { std::mem::transmute(mask) };
         }
 
-        BwaRank3 {
-            n,
-            blocks,
-            counts: init_counts(),
-            masks,
-        }
+        BwaRank3 { n, blocks, masks }
     }
 
     #[inline(always)]
@@ -1071,22 +1043,22 @@ impl BwaRank3 {
             let chunk = u128::from_le_bytes(chunk.seq[idx..idx + 16].try_into().unwrap());
             let mask: u128 = unsafe { transmute(self.masks[half_pos]) };
             let chunk = chunk & mask;
-            counts += self.counts[(chunk >> 0) as u8 as usize];
-            counts += self.counts[(chunk >> 8) as u8 as usize];
-            counts += self.counts[(chunk >> 16) as u8 as usize];
-            counts += self.counts[(chunk >> 24) as u8 as usize];
-            counts += self.counts[(chunk >> 32) as u8 as usize];
-            counts += self.counts[(chunk >> 40) as u8 as usize];
-            counts += self.counts[(chunk >> 48) as u8 as usize];
-            counts += self.counts[(chunk >> 56) as u8 as usize];
-            counts += self.counts[(chunk >> 64) as u8 as usize];
-            counts += self.counts[(chunk >> 72) as u8 as usize];
-            counts += self.counts[(chunk >> 80) as u8 as usize];
-            counts += self.counts[(chunk >> 88) as u8 as usize];
-            counts += self.counts[(chunk >> 96) as u8 as usize];
-            counts += self.counts[(chunk >> 104) as u8 as usize];
-            counts += self.counts[(chunk >> 112) as u8 as usize];
-            counts += self.counts[(chunk >> 120) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 64) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 72) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 80) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 88) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 96) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 104) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 112) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 120) as u8 as usize];
         }
 
         for c in 0..4 {
@@ -1195,7 +1167,6 @@ pub struct BwaBlock4 {
 pub struct BwaRank4 {
     n: usize,
     blocks: Vec<BwaBlock4>,
-    counts: [u32; 256],
     masks: [u64; 64],
 }
 
@@ -1241,12 +1212,7 @@ impl BwaRank4 {
             masks[i] = mask;
         }
 
-        BwaRank4 {
-            n,
-            blocks,
-            counts: init_counts(),
-            masks,
-        }
+        BwaRank4 { n, blocks, masks }
     }
 
     #[inline(always)]
@@ -1310,14 +1276,14 @@ impl BwaRank4 {
             let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
             let mask = self.masks[quart_pos];
             let chunk = chunk & mask;
-            counts += self.counts[(chunk >> 0) as u8 as usize];
-            counts += self.counts[(chunk >> 8) as u8 as usize];
-            counts += self.counts[(chunk >> 16) as u8 as usize];
-            counts += self.counts[(chunk >> 24) as u8 as usize];
-            counts += self.counts[(chunk >> 32) as u8 as usize];
-            counts += self.counts[(chunk >> 40) as u8 as usize];
-            counts += self.counts[(chunk >> 48) as u8 as usize];
-            counts += self.counts[(chunk >> 56) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
         }
 
         for c in 0..4 {
@@ -1611,14 +1577,14 @@ impl BwaRank4 {
                 let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
                 let mask = self.masks[quart_pos];
                 let chunk = chunk & mask;
-                counts += self.counts[(chunk >> 0) as u8 as usize];
-                counts += self.counts[(chunk >> 8) as u8 as usize];
-                counts += self.counts[(chunk >> 16) as u8 as usize];
-                counts += self.counts[(chunk >> 24) as u8 as usize];
-                counts += self.counts[(chunk >> 32) as u8 as usize];
-                counts += self.counts[(chunk >> 40) as u8 as usize];
-                counts += self.counts[(chunk >> 48) as u8 as usize];
-                counts += self.counts[(chunk >> 56) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+                counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
             }
 
             for c in 0..4 {

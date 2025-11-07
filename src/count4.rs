@@ -116,7 +116,7 @@ fn u128_popcnt_3<const B: usize>(data: &[u8; B], pos: usize) -> Ranks {
     ranks
 }
 
-const BYTE_COUNTS: [u32; 256] = {
+pub const BYTE_COUNTS: [u32; 256] = {
     let mut counts = [0u32; 256];
     let mut b = 0;
     while b < 256 {
