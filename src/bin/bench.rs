@@ -36,7 +36,7 @@ fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
         .collect();
     times.sort();
     let ns2 = times[2] as f64 / queries[0].len() as f64;
-    eprint!(" {ns2:>4.1}",);
+    eprint!(" {ns2:>5.2}",);
 }
 
 fn time(queries: &QS, f: impl Fn(usize) -> Ranks) {
@@ -451,8 +451,20 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
         |p| ranker.prefetch(p),
         |p| ranker.count::<count4::SimdCount5, false>(p),
     );
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::SimdCount6, false>(p),
+    );
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::SimdCount7, false>(p),
+    );
 
-    // eprint!(" |");
+    eprint!(" |");
 
     // time_coro_stream(&queries, B, |p| {
     //     ranker.count_coro::<count4::U64Popcnt, C3>(p)
@@ -460,9 +472,9 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     // time_coro_stream(&queries, B, |p| {
     //     ranker.count_coro::<count4::ByteLookup8, C3>(p)
     // });
-    // time_coro_stream(&queries, B, |p| {
-    //     ranker.count_coro::<count4::SimdCount2, false>(p)
-    // });
+    time_coro_stream(&queries, B, |p| {
+        ranker.count_coro::<count4::SimdCount7, false>(p)
+    });
     eprintln!();
 }
 
