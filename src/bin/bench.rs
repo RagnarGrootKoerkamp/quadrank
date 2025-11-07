@@ -25,131 +25,132 @@ fn check(pos: usize, ranks: Ranks) {
     );
 }
 
-fn time(queries: &[usize], f: impl Fn(usize) -> Ranks) {
-    let start = std::time::Instant::now();
-    for &q in queries {
-        check(q, f(q));
-    }
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
+type QS = [Vec<usize>; 5];
+
+fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
+    let mut times: Vec<_> = queries
+        .iter()
+        .map(|queries| {
+            let start = std::time::Instant::now();
+            f(&queries);
+            start.elapsed().as_nanos()
+        })
+        .collect();
+    times.sort();
+    let ns2 = times[2] as f64 / queries[0].len() as f64;
+    eprint!(" {ns2:>4.1}",);
+}
+
+fn time(queries: &QS, f: impl Fn(usize) -> Ranks) {
+    time_fn(queries, |queries| {
+        for &q in queries {
+            check(q, f(q));
+        }
+    });
 }
 
 fn time_batch<const BATCH: usize>(
-    queries: &[usize],
+    queries: &QS,
     prefetch: impl Fn(usize),
     f: impl Fn(usize) -> Ranks,
 ) {
-    let start = std::time::Instant::now();
-    let qs = queries.as_chunks::<BATCH>().0;
-    for batch in qs {
-        for &q in batch {
-            prefetch(q);
+    time_fn(queries, |queries| {
+        let qs = queries.as_chunks::<BATCH>().0;
+        for batch in qs {
+            for &q in batch {
+                prefetch(q);
+            }
+            for &q in batch {
+                check(q, f(q));
+            }
         }
-        for &q in batch {
-            check(q, f(q));
-        }
-    }
-    let q = BATCH * qs.len();
-    let ns = start.elapsed().as_nanos() as f64 / q as f64;
-    eprint!(" {ns:>5.1}",);
+    })
 }
 
 fn time_stream(
-    queries: &[usize],
+    queries: &QS,
     lookahead: usize,
     prefetch: impl Fn(usize),
     f: impl Fn(usize) -> Ranks,
 ) {
-    let start = std::time::Instant::now();
-
-    for (&q, &ahead) in queries.iter().zip(&queries[lookahead..]) {
-        prefetch(ahead);
-        check(q, f(q));
-    }
-
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
-}
-
-fn time_async_one_task<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
-where
-    F: Future<Output = Ranks>,
-{
-    let start = std::time::Instant::now();
-
-    let local_ex = LocalExecutor::new();
-
-    smol::future::block_on(local_ex.run(async {
-        let mut handles: [_; 32] = from_fn(
-            #[inline(always)]
-            |i| (queries[i], f(queries[i])),
-        );
-        for (i, &q) in queries[32..].iter().enumerate() {
-            let newhandle = f(q);
-
-            let (q, handle) = std::mem::replace(&mut handles[i % 32], (q, newhandle));
-            let fq = handle.await;
-            check(q, fq);
+    time_fn(queries, |queries| {
+        for (&q, &ahead) in queries.iter().zip(&queries[lookahead..]) {
+            prefetch(ahead);
+            check(q, f(q));
         }
-        // for (q, handle) in handles {
-        //     let fq = handle.await;
-        //     check(q, fq);
-        // }
-    }));
-
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
+    });
 }
 
-fn time_async_futures_ordered<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_one_task<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
 where
     F: Future<Output = Ranks>,
 {
-    let start = std::time::Instant::now();
+    time_fn(queries, |queries| {
+        let local_ex = LocalExecutor::new();
 
-    let local_ex = LocalExecutor::new();
+        smol::future::block_on(local_ex.run(async {
+            let mut handles: [_; 32] = from_fn(
+                #[inline(always)]
+                |i| (queries[i], f(queries[i])),
+            );
+            for (i, &q) in queries[32..].iter().enumerate() {
+                let newhandle = f(q);
 
-    smol::future::block_on(local_ex.run(async {
-        let cx = &mut Context::from_waker(noop_waker_ref());
-        for batch in queries.as_chunks::<32>().0 {
-            let mut futures: FuturesOrdered<_> = batch.iter().map(|&q| f(q)).collect();
-
-            for &q in batch {
-                let fq = loop {
-                    match futures.poll_next(cx) {
-                        std::task::Poll::Ready(fq) => break fq.unwrap(),
-                        std::task::Poll::Pending => continue,
-                    }
-                };
+                let (q, handle) = std::mem::replace(&mut handles[i % 32], (q, newhandle));
+                let fq = handle.await;
                 check(q, fq);
             }
-        }
-    }));
-
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
+            // for (q, handle) in handles {
+            //     let fq = handle.await;
+            //     check(q, fq);
+            // }
+        }));
+    });
 }
 
-fn time_async_join_all_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_futures_ordered<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
 where
     F: Future<Output = Ranks>,
 {
-    let start = std::time::Instant::now();
+    time_fn(queries, |queries| {
+        let local_ex = LocalExecutor::new();
 
-    let local_ex = LocalExecutor::new();
+        smol::future::block_on(local_ex.run(async {
+            let cx = &mut Context::from_waker(noop_waker_ref());
+            for batch in queries.as_chunks::<32>().0 {
+                let mut futures: FuturesOrdered<_> = batch.iter().map(|&q| f(q)).collect();
 
-    smol::future::block_on(local_ex.run(async {
-        for batch in queries.as_chunks::<16>().0 {
-            let futures = batch.iter().map(|&q| f(q));
-            // NOTE: This needs batches of size <30 to avoid switching to a heavy implementation.
-            for (&q, fq) in batch.iter().zip(join_all(futures).await) {
-                check(q, fq);
+                for &q in batch {
+                    let fq = loop {
+                        match futures.poll_next(cx) {
+                            std::task::Poll::Ready(fq) => break fq.unwrap(),
+                            std::task::Poll::Pending => continue,
+                        }
+                    };
+                    check(q, fq);
+                }
             }
-        }
-    }));
+        }));
+    });
+}
 
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
+fn time_async_join_all_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Future<Output = Ranks>,
+{
+    time_fn(queries, |queries| {
+        let local_ex = LocalExecutor::new();
+
+        smol::future::block_on(local_ex.run(async {
+            for batch in queries.as_chunks::<16>().0 {
+                let futures = batch.iter().map(|&q| f(q));
+                // NOTE: This needs batches of size <30 to avoid switching to a heavy implementation.
+                for (&q, fq) in batch.iter().zip(join_all(futures).await) {
+                    check(q, fq);
+                }
+            }
+        }));
+    });
 }
 
 /// copied from futures crate
@@ -215,152 +216,148 @@ where
 }
 
 #[inline(always)]
-fn time_async_smol_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_smol_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
 where
     F: Future<Output = Ranks>,
 {
-    let start = std::time::Instant::now();
-    let local_ex = LocalExecutor::new();
-    smol::future::block_on(local_ex.run(async { async_batches(queries, f).await }));
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
-}
-
-#[inline(always)]
-fn time_async_cassette_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
-where
-    F: Future<Output = Ranks>,
-{
-    let start = std::time::Instant::now();
-    let future = core::pin::pin!(async { async_batches(queries, f).await });
-    cassette::block_on(future);
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
-}
-
-#[inline(always)]
-fn time_async_smol_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
-where
-    F: Future<Output = Ranks>,
-{
-    let start = std::time::Instant::now();
-    let local_ex = LocalExecutor::new();
-    smol::future::block_on(local_ex.run(async { async_stream(queries, f).await }));
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
-}
-
-#[inline(always)]
-fn time_async_cassette_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
-where
-    F: Future<Output = Ranks>,
-{
-    let start = std::time::Instant::now();
-    let future = core::pin::pin!(async { async_stream(queries, f).await });
-    cassette::block_on(future);
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
-}
-
-#[inline(always)]
-fn time_coro2_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
-where
-    F: Coroutine<Return = Ranks> + Unpin,
-{
-    let start = std::time::Instant::now();
-    for batch in queries.as_chunks::<32>().0 {
-        let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
-
-        for f in &mut futures {
-            pin!(f).resume(());
-        }
-
-        for (q, func) in batch.iter().zip(&mut futures) {
-            let Complete(fq) = pin!(func).resume(()) else {
-                panic!()
-            };
-            check(*q, fq);
-        }
-    }
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
-}
-
-#[inline(always)]
-fn time_coro2_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
-where
-    F: Coroutine<Return = Ranks> + Unpin,
-{
-    let start = std::time::Instant::now();
-    let mut funcs: [F; 32] = from_fn(|i| {
-        let mut func = f(queries[i]);
-        pin!(&mut func).resume(());
-        func
+    let f = &f;
+    time_fn(queries, |queries| {
+        let local_ex = LocalExecutor::new();
+        smol::future::block_on(local_ex.run(async move { async_batches(queries, f).await }));
     });
-
-    for i in 0..queries.len() - 32 {
-        // Finish the old fn.
-        let func = &mut funcs[i % 32];
-        let Complete(fq) = pin!(func).resume(()) else {
-            panic!()
-        };
-        check(queries[i], fq);
-
-        // Start a new fn.
-        funcs[i % 32] = f(queries[i + 32]);
-        pin!(&mut funcs[i % 32]).resume(());
-    }
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
 }
 
 #[inline(always)]
-fn time_coro_batch<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_cassette_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Future<Output = Ranks>,
+{
+    let f = &f;
+    time_fn(queries, |queries| {
+        let future = core::pin::pin!(async { async_batches(queries, f).await });
+        cassette::block_on(future);
+    });
+}
+
+#[inline(always)]
+fn time_async_smol_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Future<Output = Ranks>,
+{
+    let f = &f;
+    time_fn(queries, |queries| {
+        let local_ex = LocalExecutor::new();
+        smol::future::block_on(local_ex.run(async { async_stream(queries, f).await }));
+    });
+}
+
+#[inline(always)]
+fn time_async_cassette_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Future<Output = Ranks>,
+{
+    let f = &f;
+    time_fn(queries, |queries| {
+        let future = core::pin::pin!(async { async_stream(queries, f).await });
+        cassette::block_on(future);
+    });
+}
+
+#[inline(always)]
+fn time_coro2_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
-    let start = std::time::Instant::now();
-    for batch in queries.as_chunks::<B>().0 {
-        let mut funcs: [_; B] = from_fn(|i| f(batch[i]));
+    time_fn(queries, |queries| {
+        for batch in queries.as_chunks::<32>().0 {
+            let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
 
-        for (q, func) in batch.iter().zip(&mut funcs) {
+            for f in &mut futures {
+                pin!(f).resume(());
+            }
+
+            for (q, func) in batch.iter().zip(&mut futures) {
+                let Complete(fq) = pin!(func).resume(()) else {
+                    panic!()
+                };
+                check(*q, fq);
+            }
+        }
+    });
+}
+
+#[inline(always)]
+fn time_coro2_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Coroutine<Return = Ranks> + Unpin,
+{
+    time_fn(queries, |queries| {
+        let mut funcs: [F; 32] = from_fn(|i| {
+            let mut func = f(queries[i]);
+            pin!(&mut func).resume(());
+            func
+        });
+
+        for i in 0..queries.len() - 32 {
+            // Finish the old fn.
+            let func = &mut funcs[i % 32];
             let Complete(fq) = pin!(func).resume(()) else {
                 panic!()
             };
-            check(*q, fq);
+            check(queries[i], fq);
+
+            // Start a new fn.
+            funcs[i % 32] = f(queries[i + 32]);
+            pin!(&mut funcs[i % 32]).resume(());
         }
-    }
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
+    });
+}
+
+#[inline(always)]
+fn time_coro_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Coroutine<Return = Ranks> + Unpin,
+{
+    time_fn(queries, |queries| {
+        for batch in queries.as_chunks::<B>().0 {
+            let mut funcs: [_; B] = from_fn(|i| f(batch[i]));
+
+            for (q, func) in batch.iter().zip(&mut funcs) {
+                let Complete(fq) = pin!(func).resume(()) else {
+                    panic!()
+                };
+                check(*q, fq);
+            }
+        }
+    });
 }
 
 const B: usize = 32;
 
 #[inline(always)]
-fn time_coro_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_coro_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
-    let start = std::time::Instant::now();
-    let mut funcs: [F; B] = from_fn(|i| f(queries[i]));
+    time_fn(queries, |queries| {
+        let mut funcs: [F; B] = from_fn(|i| f(queries[i]));
 
-    for i in 0..queries.len() - B {
-        // finish the old state
-        let func = &mut funcs[i % B];
-        let Complete(fq) = pin!(func).resume(()) else {
-            panic!()
-        };
-        check(queries[i], fq);
+        for i in 0..queries.len() - B {
+            // finish the old state
+            let func = &mut funcs[i % B];
+            let Complete(fq) = pin!(func).resume(()) else {
+                panic!()
+            };
+            check(queries[i], fq);
 
-        // new future
-        funcs[i % B] = f(queries[i + B]);
-    }
-    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
-    eprint!(" {ns:>5.1}",);
+            // new future
+            funcs[i % B] = f(queries[i + B]);
+        }
+    });
 }
 
 #[inline(never)]
-fn bench_dna_rank<const STRIDE: usize>(seq: &[u8], queries: &[usize])
+fn bench_dna_rank<const STRIDE: usize>(seq: &[u8], queries: &QS)
 where
     [(); STRIDE / 4]:,
 {
@@ -382,7 +379,7 @@ where
 }
 
 #[inline(never)]
-fn bench_bwa_rank(seq: &[u8], queries: &[usize]) {
+fn bench_bwa_rank(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", "BwaRank");
     let rank = BwaRank::new(&seq);
 
@@ -405,7 +402,7 @@ fn bench_bwa_rank(seq: &[u8], queries: &[usize]) {
 }
 
 #[inline(never)]
-fn bench_bwa2_rank(seq: &[u8], queries: &[usize]) {
+fn bench_bwa2_rank(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", "BwaRank2");
     let rank = BwaRank2::new(&seq);
 
@@ -420,7 +417,7 @@ fn bench_bwa2_rank(seq: &[u8], queries: &[usize]) {
 }
 
 #[inline(never)]
-fn bench_bwa3_rank(seq: &[u8], queries: &[usize]) {
+fn bench_bwa3_rank(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", "BwaRank3");
     let rank = BwaRank3::new(&seq);
 
@@ -435,7 +432,7 @@ fn bench_bwa3_rank(seq: &[u8], queries: &[usize]) {
 }
 
 #[inline(never)]
-fn bench_bwa4_rank(seq: &[u8], queries: &[usize]) {
+fn bench_bwa4_rank(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", "BwaRank4");
     let rank = BwaRank4::new(&seq);
 
@@ -487,7 +484,7 @@ fn bench_bwa4_rank(seq: &[u8], queries: &[usize]) {
 }
 
 #[inline(never)]
-fn bench_best(seq: &[u8], queries: &[usize]) {
+fn bench_best(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", "BwaRank4");
     let rank = BwaRank4::new(&seq);
     let bits = 4.0;
@@ -520,7 +517,7 @@ fn bench_best(seq: &[u8], queries: &[usize]) {
 }
 
 #[inline(never)]
-fn bench_quart<const C3: bool>(seq: &[u8], queries: &[usize]) {
+fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", format!("QuartBlock {C3}"));
     let bits = 4.0;
     eprint!("{bits:>6.2}b |");
@@ -574,9 +571,11 @@ fn main() {
         // for n in [100_000] {
         eprintln!("n = {}", n);
         let seq = b"ACTG".repeat(n / 4);
-        let queries = (0..q)
-            .map(|_| rand::random_range(0..seq.len()))
-            .collect::<Vec<_>>();
+        let queries = [(); 5].map(|_| {
+            (0..q)
+                .map(|_| rand::random_range(0..seq.len()))
+                .collect::<Vec<_>>()
+        });
 
         bench_quart::<true>(&seq, &queries);
         bench_quart::<false>(&seq, &queries);
