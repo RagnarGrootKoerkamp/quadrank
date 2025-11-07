@@ -1665,6 +1665,18 @@ impl BwaRank4 {
                     ranks[c] += sum64[2 * c] as u8 as u32;
                 }
             }
+
+            for c in 0..4 {
+                ranks[c] += chunk.ranks[c];
+            }
+            for c in 0..4 {
+                ranks[c] += (chunk.part_ranks[c] >> (quart * 8)) & 0xff;
+            }
+
+            // Fix count for 0.
+            let extra_counted = 32 - quart_pos;
+            ranks[0] -= extra_counted as u32;
+
             ranks
         }
     }

@@ -37,14 +37,36 @@ impl<const B: usize> CountFn<B> for Naive {
     }
 }
 
-pub struct U64Popcnt;
-impl<const B: usize> CountFn<B> for U64Popcnt {
+pub struct U64PopcntSlice;
+impl<const B: usize> CountFn<B> for U64PopcntSlice {
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
         for idx in (0..pos.div_ceil(4)).step_by(8) {
             let chunk = u64::from_le_bytes(data[idx..idx + 8].try_into().unwrap());
             let low_bits = (pos - idx * 4).min(32) * 2;
+            let mask = if low_bits == 64 {
+                u64::MAX
+            } else {
+                (1u64 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            for c in 0..4 {
+                ranks[c as usize] += count_u64(chunk, c);
+            }
+        }
+        ranks
+    }
+}
+
+pub struct U64Popcnt;
+impl CountFn<8> for U64Popcnt {
+    #[inline(always)]
+    fn count(data: &[u8; 8], pos: usize) -> Ranks {
+        let mut ranks = [0; 4];
+        {
+            let chunk = u64::from_le_bytes((*data).try_into().unwrap());
+            let low_bits = pos * 2;
             let mask = if low_bits == 64 {
                 u64::MAX
             } else {
@@ -176,8 +198,8 @@ impl<const B: usize> CountFn<B> for ByteLookup4 {
     }
 }
 
-pub struct ByteLookup8;
-impl<const B: usize> CountFn<B> for ByteLookup8 {
+pub struct ByteLookup8Slice;
+impl<const B: usize> CountFn<B> for ByteLookup8Slice {
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -185,6 +207,35 @@ impl<const B: usize> CountFn<B> for ByteLookup8 {
         for idx in (0..pos.div_ceil(4)).step_by(8) {
             let chunk = u64::from_le_bytes(data[idx..idx + 8].try_into().unwrap());
             let low_bits = (pos - idx * 4).min(32) * 2;
+            let mask = if low_bits == 64 {
+                u64::MAX
+            } else {
+                (1u64 << low_bits) - 1
+            };
+            let chunk = chunk & mask;
+            counts += BYTE_COUNTS[(chunk >> 0) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 8) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 16) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 24) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 32) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 40) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 48) as u8 as usize];
+            counts += BYTE_COUNTS[(chunk >> 56) as u8 as usize];
+        }
+
+        std::array::from_fn(|i| (counts >> (8 * i)) & 0xff)
+    }
+}
+
+pub struct ByteLookup8;
+impl CountFn<8> for ByteLookup8 {
+    #[inline(always)]
+    fn count(data: &[u8; 8], pos: usize) -> Ranks {
+        let mut counts: u32 = 0;
+
+        {
+            let chunk = u64::from_le_bytes((*data).try_into().unwrap());
+            let low_bits = pos * 2;
             let mask = if low_bits == 64 {
                 u64::MAX
             } else {

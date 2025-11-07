@@ -168,18 +168,19 @@ impl Block for HalfBlock2 {
 
         let idx = half * 16;
         let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
+
+        if C3 {
+            ranks[0] = half_pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            let extra_counted = (4usize.wrapping_sub(pos)) % 4;
+            ranks[0] -= extra_counted as u32;
+        }
+
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
         for c in 0..4 {
             ranks[c] += self.ranks[half][c];
-        }
-
-        if C3 {
-            ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
-        } else {
-            let extra_counted = (4usize.wrapping_sub(pos)) % 4;
-            ranks[0] -= extra_counted as u32;
         }
 
         ranks
@@ -236,18 +237,19 @@ impl Block for QuartBlock {
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
+
+        if C3 {
+            ranks[0] = quart_pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            let extra_counted = 32 - quart_pos % 32;
+            ranks[0] -= extra_counted as u32;
+        }
+
         for c in 0..4 {
             ranks[c] += self.ranks[c];
         }
         for c in 0..4 {
             ranks[c] += (self.part_ranks[c] >> (quart * 8)) & 0xff;
-        }
-
-        if C3 {
-            ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
-        } else {
-            let extra_counted = (4usize.wrapping_sub(pos)) % 4;
-            ranks[0] -= extra_counted as u32;
         }
 
         ranks
