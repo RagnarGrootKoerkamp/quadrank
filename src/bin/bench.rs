@@ -61,10 +61,12 @@ fn time_stream(
     f: impl Fn(usize) -> Ranks,
 ) {
     let start = std::time::Instant::now();
+
     for (&q, &ahead) in queries.iter().zip(&queries[lookahead..]) {
         prefetch(ahead);
         check(q, f(q));
     }
+
     let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
     eprint!(" {ns:>5.1}",);
 }
@@ -270,16 +272,12 @@ where
         let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
 
         for f in &mut futures {
-            match pin!(f).resume(()) {
-                Yielded(_) => {}
-                Complete(_) => panic!(),
-            };
+            pin!(f).resume(());
         }
 
-        for (q, f) in batch.iter().zip(&mut futures) {
-            let fq = match pin!(f).resume(()) {
-                Yielded(_) => panic!(),
-                Complete(fq) => fq,
+        for (q, func) in batch.iter().zip(&mut futures) {
+            let Complete(fq) = pin!(func).resume(()) else {
+                panic!()
             };
             check(*q, fq);
         }
@@ -294,35 +292,24 @@ where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
-    let mut futures: [(usize, F); 32] = from_fn(|i| {
+    let mut funcs: [(usize, F); 32] = from_fn(|i| {
         let mut qf = (queries[i], f(queries[i]));
-        match pin!(&mut qf.1).resume(()) {
-            Yielded(_) => {}
-            Complete(_) => panic!(),
-        };
+        pin!(&mut qf.1).resume(());
         qf
     });
 
     for (i, &q) in queries.iter().enumerate() {
-        // finish the old state
-        {
-            let (q, future) = &mut futures[i % 32];
-            let fq = match pin!(future).resume(()) {
-                Yielded(_) => panic!(),
-                Complete(fq) => fq,
-            };
-            check(*q, fq);
-        }
+        // Finish the old fn.
+        let (prev_q, func) = &mut funcs[i % 32];
+        let Complete(fq) = pin!(func).resume(()) else {
+            panic!()
+        };
+        check(*prev_q, fq);
 
-        // new future
-        {
-            futures[i % 32] = (q, f(q));
-            let future = &mut futures[i % 32].1;
-            match pin!(future).resume(()) {
-                Yielded(_) => {}
-                Complete(_) => panic!(),
-            };
-        }
+        // Start a new fn.
+        funcs[i % 32] = (q, f(q));
+        let func = &mut funcs[i % 32].1;
+        pin!(func).resume(());
     }
     let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
     eprint!(" {ns:>5.1}",);
@@ -335,12 +322,11 @@ where
 {
     let start = std::time::Instant::now();
     for batch in queries.as_chunks::<32>().0 {
-        let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
+        let mut funcs: [_; 32] = from_fn(|i| f(batch[i]));
 
-        for (q, f) in batch.iter().zip(&mut futures) {
-            let fq = match pin!(f).resume(()) {
-                Yielded(_) => panic!(),
-                Complete(fq) => fq,
+        for (q, func) in batch.iter().zip(&mut funcs) {
+            let Complete(fq) = pin!(func).resume(()) else {
+                panic!()
             };
             check(*q, fq);
         }
@@ -355,23 +341,18 @@ where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
-    let mut futures: [(usize, F); 32] = from_fn(|i| (queries[i], f(queries[i])));
+    let mut funcs: [(usize, F); 32] = from_fn(|i| (queries[i], f(queries[i])));
 
     for (i, &q) in queries.iter().enumerate() {
         // finish the old state
-        {
-            let (q, future) = &mut futures[i % 32];
-            let fq = match pin!(future).resume(()) {
-                Yielded(_) => panic!(),
-                Complete(fq) => fq,
-            };
-            check(*q, fq);
-        }
+        let (prev_q, func) = &mut funcs[i % 32];
+        let Complete(fq) = pin!(func).resume(()) else {
+            panic!()
+        };
+        check(*prev_q, fq);
 
         // new future
-        {
-            futures[i % 32] = (q, f(q));
-        }
+        funcs[i % 32] = (q, f(q));
     }
     let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
     eprint!(" {ns:>5.1}",);
