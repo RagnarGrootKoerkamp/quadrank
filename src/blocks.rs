@@ -232,6 +232,9 @@ impl Block for QuartBlock {
             ranks[c] += inner_counts[c];
         }
         for c in 0..4 {
+            ranks[c] += self.ranks[c];
+        }
+        for c in 0..4 {
             ranks[c] += (self.part_ranks[c] >> (quart * 8)) & 0xff;
         }
 
