@@ -8,10 +8,7 @@ use std::{
     task::Context,
 };
 
-use dna_rank::{
-    BwaRank, BwaRank2, BwaRank3, BwaRank4, DnaRank, Ranks, blocks::QuartBlock, count4,
-    ranker::Ranker,
-};
+use dna_rank::{DnaRank, Ranks, blocks::QuartBlock, count4, ranker::Ranker};
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
 use mem_dbg::MemSize;
 use smol::{LocalExecutor, future::poll_once, stream::StreamExt};
@@ -380,147 +377,6 @@ where
 }
 
 #[inline(never)]
-fn bench_bwa_rank(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", "BwaRank");
-    let rank = BwaRank::new(&seq);
-
-    let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    // time(&queries, |p| rank.ranks_u64(p));
-    // time(&queries, |p| rank.ranks_u64_all(p));
-    time(&queries, |p| rank.ranks_u64_3(p)); // best
-
-    // time(&queries, |p| rank.ranks_u128(p));
-    // time(&queries, |p| rank.ranks_u128_3(p)); // 2nd best
-    // time(&queries, |p| rank.ranks_u128_all(p));
-    // time(&queries, |p| rank.ranks_bytecount(p));
-    time(&queries, |p| rank.ranks_bytecount_4(p)); // original
-    // time(&queries, |p| rank.ranks_bytecount_8(p));
-    time(&queries, |p| rank.ranks_bytecount_16(p));
-    time(&queries, |p| rank.ranks_bytecount_16_all(p)); // bad codegen?
-    eprintln!();
-}
-
-#[inline(never)]
-fn bench_bwa2_rank(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", "BwaRank2");
-    let rank = BwaRank2::new(&seq);
-
-    // let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    let bits = 4.0;
-    eprint!("{bits:>6.2}b |");
-
-    time(&queries, |p| rank.ranks_u128_3(p)); // overall fastest
-    time(&queries, |p| rank.ranks_bytecount_16_all(p));
-    time(&queries, |p| rank.ranks_simd_popcount(p));
-    eprintln!();
-}
-
-#[inline(never)]
-fn bench_bwa3_rank(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", "BwaRank3");
-    let rank = BwaRank3::new(&seq);
-
-    // let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    let bits = 4.0;
-    eprint!("{bits:>6.2}b |");
-
-    time(&queries, |p| rank.ranks_u128_3(p)); // overall fastest
-    time(&queries, |p| rank.ranks_bytecount_16_all(p));
-    time(&queries, |p| rank.ranks_simd_popcount(p));
-    eprintln!();
-}
-
-#[inline(never)]
-fn bench_bwa4_rank(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", "BwaRank4");
-    let rank = BwaRank4::new(&seq);
-
-    // let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    let bits = 4.0;
-    eprint!("{bits:>6.2}b |");
-
-    time(&queries, |p| rank.ranks_u64_popcnt(p));
-    time(&queries, |p| rank.ranks_bytecount_16_all(p));
-    time(&queries, |p| rank.ranks_simd_popcount(p));
-    eprint!(" |");
-    time_batch::<32>(&queries, |p| rank.prefetch(p), |p| rank.ranks_u64_popcnt(p));
-    time_stream(
-        &queries,
-        32,
-        |p| rank.prefetch(p),
-        |p| rank.ranks_u64_popcnt(p),
-    );
-
-    // // eprint!(" |");
-    // // time_async_one_task(
-    // //     &queries,
-    // //     32,
-    // //     |p| rank.ranks_u64_popcnt_async(p),
-    // // );
-    // // eprint!(" |");
-    // // time_async_futures_ordered(
-    // //     &queries,
-    // //     32,
-    // //     |p| rank.ranks_u64_popcnt_async(p),
-    // // );
-    // eprint!(" |");
-    // // time_async_join_all_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    // // time_async_smol_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    // // time_async_smol_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
-    // // time_async_cassette_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    // time_async_cassette_batch(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
-    // // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p)); // SLOW
-    // // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p)); // HANGS
-    // // time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
-    time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
-    eprint!(" |");
-    // time_coro2_batch(&queries, 32, |p| rank.ranks_u64_popcnt_coro2(p));
-    time_coro2_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro2(p));
-    eprint!(" |");
-    // time_coro_batch(&queries, 32, |p| rank.ranks_u64_popcnt_coro(p));
-    time_coro_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro(p));
-    eprintln!();
-}
-
-#[inline(never)]
-fn bench_best(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", "BwaRank4");
-    let rank = BwaRank4::new(&seq);
-    let bits = 4.0;
-    eprint!("{bits:>6.2}b |");
-    time(&queries, |p| rank.ranks_u64_popcnt(p));
-
-    eprint!(" |");
-    time_stream(
-        &queries,
-        B,
-        |p| rank.prefetch(p),
-        |p| rank.ranks_u64_popcnt(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| rank.prefetch(p),
-        |p| rank.ranks_bytecount_16_all(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| rank.prefetch(p),
-        |p| rank.ranks_simd_popcount(p),
-    );
-
-    eprint!(" |");
-
-    time_coro_stream(&queries, B, |p| rank.ranks_u64_popcnt_coro(p));
-    time_coro_stream(&queries, B, |p| rank.ranks_bytecount_16_all_coro(p));
-    time_coro_stream(&queries, B, |p| rank.ranks_simd_popcount_coro(p));
-    eprintln!();
-}
-
-#[inline(never)]
 fn bench_rank9(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", "rank9");
 
@@ -559,30 +415,30 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
         |p| ranker.prefetch(p),
         |p| ranker.count::<count4::U64Popcnt, C3>(p),
     );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::ByteLookup8, C3>(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount, false>(p),
-    );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::ByteLookup8, C3>(p),
+    // );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount, false>(p),
+    // );
 
-    eprint!(" |");
+    // eprint!(" |");
 
-    time_coro_stream(&queries, B, |p| {
-        ranker.count_coro::<count4::U64Popcnt, C3>(p)
-    });
-    time_coro_stream(&queries, B, |p| {
-        ranker.count_coro::<count4::ByteLookup8, C3>(p)
-    });
-    time_coro_stream(&queries, B, |p| {
-        ranker.count_coro::<count4::SimdCount, false>(p)
-    });
+    // time_coro_stream(&queries, B, |p| {
+    //     ranker.count_coro::<count4::U64Popcnt, C3>(p)
+    // });
+    // time_coro_stream(&queries, B, |p| {
+    //     ranker.count_coro::<count4::ByteLookup8, C3>(p)
+    // });
+    // time_coro_stream(&queries, B, |p| {
+    //     ranker.count_coro::<count4::SimdCount, false>(p)
+    // });
     eprintln!();
 }
 
@@ -606,15 +462,11 @@ fn main() {
                 .collect::<Vec<_>>()
         });
 
-        bench_quart::<true>(&seq, &queries);
+        // bench_quart::<true>(&seq, &queries);
         bench_quart::<false>(&seq, &queries);
-        bench_best(&seq, &queries);
+        // bench_best(&seq, &queries);
         // bench_rank9(&seq, &queries);
 
-        // bench_bwa4_rank(&seq, &queries);
-        // bench_bwa3_rank(&seq, &queries);
-        // bench_bwa2_rank(&seq, &queries);
-        // bench_bwa_rank(&seq, &queries);
         // bench_dna_rank::<64>(&seq, &queries);
         // bench_dna_rank::<128>(&seq, &queries);
     }
