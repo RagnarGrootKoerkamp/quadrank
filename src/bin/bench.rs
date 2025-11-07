@@ -1,6 +1,6 @@
 #![allow(incomplete_features, dead_code)]
-#![feature(generic_const_exprs)]
-use std::{array::from_fn, mem::MaybeUninit, pin::Pin, task::Context};
+#![feature(generic_const_exprs, coroutines, coroutine_trait, stmt_expr_attributes)]
+use std::{array::from_fn, mem::MaybeUninit, ops::Coroutine, pin::Pin, task::Context};
 
 use dna_rank::{BwaRank, BwaRank2, BwaRank3, BwaRank4, DnaRank, Ranks};
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
@@ -251,6 +251,51 @@ where
     eprint!(" {ns:>5.1}",);
 }
 
+#[inline(always)]
+fn coro_stream<F>(queries: &[usize], f: impl Fn(usize) -> F)
+where
+    F: Coroutine<Return = Ranks>,
+{
+    let mut futures: [MaybeUninit<(usize, F)>; 32] = from_fn(|_| MaybeUninit::uninit());
+    for i in 0..32 {
+        futures[i] = MaybeUninit::new((queries[i], f(queries[i])));
+        // let pin = unsafe { Pin::new_unchecked(&mut futures[i].assume_init_mut().1) };
+        // assert!(poll_once(pin).await.is_none());
+    }
+
+    for (i, &q) in queries.iter().enumerate() {
+        // finish the old state
+        {
+            let (q, future) = unsafe { futures[i % 32].assume_init_mut() };
+            let pin = unsafe { Pin::new_unchecked(future) };
+            // let fq = poll_once(pin).await.unwrap();
+            let fq = match pin.resume(()) {
+                std::ops::CoroutineState::Yielded(_) => panic!(),
+                std::ops::CoroutineState::Complete(fq) => fq,
+            };
+            check(*q, fq);
+        }
+
+        // new future
+        {
+            futures[i % 32] = MaybeUninit::new((q, f(q)));
+            // let pin = unsafe { Pin::new_unchecked(&mut futures[i % 32].assume_init_mut().1) };
+            // assert!(poll_once(pin).await.is_none());
+        }
+    }
+}
+
+#[inline(always)]
+fn time_coro_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
+where
+    F: Coroutine<Return = Ranks>,
+{
+    let start = std::time::Instant::now();
+    coro_stream(queries, f);
+    let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
+    eprint!(" {ns:>5.1}",);
+}
+
 #[inline(never)]
 fn bench_dna_rank<const STRIDE: usize>(seq: &[u8], queries: &[usize])
 where
@@ -370,6 +415,8 @@ fn bench_bwa4_rank(seq: &[u8], queries: &[usize]) {
     // time_async_smol_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p)); // HANGS
     // time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async(p));
     time_async_cassette_stream(&queries, 32, |p| rank.ranks_u64_popcnt_async_nowake(p));
+    eprint!(" |");
+    time_coro_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro(p));
     eprintln!();
 }
 

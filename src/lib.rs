@@ -1,9 +1,16 @@
 #![allow(incomplete_features, unused)]
-#![feature(generic_const_exprs, portable_simd)]
+#![feature(
+    generic_const_exprs,
+    portable_simd,
+    coroutines,
+    coroutine_trait,
+    stmt_expr_attributes
+)]
 use std::{
     arch::x86_64::{_mm256_shuffle_pd, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64},
     hint::black_box,
     mem::transmute,
+    ops::Coroutine,
     simd::{u8x32, u16x16, u32x8, u64x4},
 };
 
@@ -1516,6 +1523,50 @@ impl BwaRank4 {
         prefetch_index(&self.blocks, chunk_idx);
         #[inline(always)]
         async move {
+            // Yield::new().await;
+
+            // Recomputed to reduce the state across the await point.
+            let chunk_idx = pos / 128;
+            let chunk = &self.blocks[chunk_idx];
+            let chunk_pos = pos % 128;
+            let quart_pos = pos % 32;
+
+            let quart = chunk_pos / 32;
+            let mut ranks = [0; 4];
+
+            // Count chosen quart.
+            {
+                let idx = quart * 8;
+                let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
+                let mask = self.masks[quart_pos];
+                let chunk = chunk & mask;
+                for c in 0..4 {
+                    ranks[c as usize] += count_u64(chunk, c);
+                }
+            }
+
+            for c in 0..4 {
+                ranks[c] += chunk.ranks[c];
+            }
+            for c in 0..4 {
+                ranks[c] += (chunk.part_ranks[c] >> (quart * 8)) & 0xff;
+            }
+
+            // Fix count for 0.
+            let extra_counted = 32 - quart_pos;
+            ranks[0] -= extra_counted as u32;
+
+            ranks
+        }
+    }
+
+    #[inline(always)]
+    pub fn ranks_u64_popcnt_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+        #[inline(always)]
+        #[coroutine]
+        move || {
             // Yield::new().await;
 
             // Recomputed to reduce the state across the await point.
