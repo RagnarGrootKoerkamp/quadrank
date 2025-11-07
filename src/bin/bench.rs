@@ -3,10 +3,7 @@
 use std::{
     array::from_fn,
     mem::MaybeUninit,
-    ops::{
-        Coroutine,
-        CoroutineState::{Complete, Yielded},
-    },
+    ops::{Coroutine, CoroutineState::Complete},
     pin::{Pin, pin},
     task::Context,
 };
@@ -320,8 +317,8 @@ where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
-    for batch in queries.as_chunks::<32>().0 {
-        let mut funcs: [_; 32] = from_fn(|i| f(batch[i]));
+    for batch in queries.as_chunks::<B>().0 {
+        let mut funcs: [_; B] = from_fn(|i| f(batch[i]));
 
         for (q, func) in batch.iter().zip(&mut funcs) {
             let Complete(fq) = pin!(func).resume(()) else {
@@ -334,24 +331,26 @@ where
     eprint!(" {ns:>5.1}",);
 }
 
+const B: usize = 32;
+
 #[inline(always)]
 fn time_coro_stream<F>(queries: &[usize], _lookahead: usize, f: impl Fn(usize) -> F)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     let start = std::time::Instant::now();
-    let mut funcs: [F; 32] = from_fn(|i| f(queries[i]));
+    let mut funcs: [F; B] = from_fn(|i| f(queries[i]));
 
-    for i in 0..queries.len() - 32 {
+    for i in 0..queries.len() - B {
         // finish the old state
-        let func = &mut funcs[i % 32];
+        let func = &mut funcs[i % B];
         let Complete(fq) = pin!(func).resume(()) else {
             panic!()
         };
         check(queries[i], fq);
 
         // new future
-        funcs[i % 32] = f(queries[i + 32]);
+        funcs[i % B] = f(queries[i + B]);
     }
     let ns = start.elapsed().as_nanos() as f64 / queries.len() as f64;
     eprint!(" {ns:>5.1}",);
@@ -490,7 +489,30 @@ fn bench_best(seq: &[u8], queries: &[usize]) {
     let rank = BwaRank4::new(&seq);
     let bits = 4.0;
     eprint!("{bits:>6.2}b |");
-    time_coro_stream(&queries, 32, |p| rank.ranks_u64_popcnt_coro(p));
+    time_stream(
+        &queries,
+        B,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_u64_popcnt(p),
+    );
+    time_stream(
+        &queries,
+        B,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_bytecount_16_all(p),
+    );
+    time_stream(
+        &queries,
+        B,
+        |p| rank.prefetch(p),
+        |p| rank.ranks_simd_popcount(p),
+    );
+
+    eprint!(" |");
+
+    time_coro_stream(&queries, B, |p| rank.ranks_u64_popcnt_coro(p));
+    time_coro_stream(&queries, B, |p| rank.ranks_bytecount_16_all_coro(p));
+    time_coro_stream(&queries, B, |p| rank.ranks_simd_popcount_coro(p));
     eprintln!();
 }
 
@@ -512,9 +534,9 @@ fn main() {
             .map(|_| rand::random_range(0..seq.len()))
             .collect::<Vec<_>>();
 
-        // bench_best(&seq, &queries);
+        bench_best(&seq, &queries);
 
-        bench_bwa4_rank(&seq, &queries);
+        // bench_bwa4_rank(&seq, &queries);
         // bench_bwa3_rank(&seq, &queries);
         // bench_bwa2_rank(&seq, &queries);
         // bench_bwa_rank(&seq, &queries);

@@ -1651,6 +1651,125 @@ impl BwaRank4 {
             ranks
         }
     }
+
+    #[inline(always)]
+    pub fn ranks_bytecount_16_all_coro(
+        &self,
+        pos: usize,
+    ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+        #[inline(always)]
+        #[coroutine]
+        move || {
+            let chunk_idx = pos / 128;
+            let chunk = &self.blocks[chunk_idx];
+            let chunk_pos = pos % 128;
+            let quart_pos = pos % 32;
+
+            let quart = chunk_pos / 32;
+            let mut ranks = [0; 4];
+
+            let mut counts = 0;
+
+            // Count chosen quart.
+            {
+                let idx = quart * 8;
+                let chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
+                let mask = self.masks[quart_pos];
+                let chunk = chunk & mask;
+                counts += self.counts[(chunk >> 0) as u8 as usize];
+                counts += self.counts[(chunk >> 8) as u8 as usize];
+                counts += self.counts[(chunk >> 16) as u8 as usize];
+                counts += self.counts[(chunk >> 24) as u8 as usize];
+                counts += self.counts[(chunk >> 32) as u8 as usize];
+                counts += self.counts[(chunk >> 40) as u8 as usize];
+                counts += self.counts[(chunk >> 48) as u8 as usize];
+                counts += self.counts[(chunk >> 56) as u8 as usize];
+            }
+
+            for c in 0..4 {
+                ranks[c] += (counts >> (8 * c)) as u8 as u32;
+            }
+            for c in 0..4 {
+                ranks[c] += chunk.ranks[c];
+            }
+            for c in 0..4 {
+                ranks[c] += (chunk.part_ranks[c] >> (quart * 8)) & 0xff;
+            }
+
+            // Fix count for 0.
+            let extra_counted = 32 - quart_pos;
+            ranks[0] -= extra_counted as u32;
+
+            ranks
+        }
+    }
+
+    pub fn ranks_simd_popcount_coro(
+        &self,
+        pos: usize,
+    ) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
+        let chunk_idx = pos / 128;
+        prefetch_index(&self.blocks, chunk_idx);
+        #[inline(always)]
+        #[coroutine]
+        move || {
+            let chunk = &self.blocks[chunk_idx];
+            let chunk_pos = pos % 128;
+            let quart_pos = pos % 32;
+
+            let quart = chunk_pos / 32;
+            let mut ranks = [0; 4];
+
+            // Count chosen quart.
+            {
+                use std::mem::transmute as t;
+
+                // Count the upper or lower half 128 bits.
+                let idx = quart * 8;
+                let mut chunk = u64::from_le_bytes(chunk.seq[idx..idx + 8].try_into().unwrap());
+                let mask = self.masks[quart_pos];
+                chunk &= mask;
+
+                // count AC in first half, GT in second half.
+                let simd = u64x4::splat(chunk);
+                let mask5: u64x4 = unsafe { t(u8x32::splat(0x55)) };
+                let mask3: u64x4 = unsafe { t(u8x32::splat(0x33)) };
+                let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
+                // bits of the 4 chars
+                // 00 | 01 | 10 | 11  (0, 1, 2, 3)
+                const C: u64x4 = u64x4::from_array(unsafe {
+                    t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
+                });
+
+                let x = simd ^ C;
+                let y = (x & (x >> 1)) & mask5;
+
+                // Go from
+                // c0 c0 | c1 c1
+                // c2 c2 | c3 c3
+                // to: (shuffle)
+                // c0 c2 | c1 c3
+                // c0 c2 | c1 c3
+                // where each value is a u64
+
+                // Now reduce.
+                let sum2 = y;
+                let sum4 = (sum2 & mask3) + ((sum2 >> 2) & mask3);
+                let sum8 = (sum4 & mask_f) + ((sum4 >> 4) & mask_f);
+                let sum16 = sum8 + (sum8 >> 32);
+                // Accumulate the 4 bytes in each u32 using multiplication.
+                let sum64: u32x8 =
+                    (unsafe { t::<_, u32x8>(sum16) } * u32x8::splat(0x0101_0101)) >> 24;
+                for c in 0..4 {
+                    // ranks[c] += sum64[c] as u8 as u32;
+                    ranks[c] += sum64[2 * c] as u8 as u32;
+                }
+            }
+            ranks
+        }
+    }
 }
 
 struct Yield(bool);
