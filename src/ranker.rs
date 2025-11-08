@@ -21,6 +21,7 @@ pub trait Block {
     }
 }
 
+#[derive(mem_dbg::MemSize)]
 pub struct Ranker<B: Block> {
     /// Cacheline-sized counts.
     blocks: Vec<B>,

@@ -227,10 +227,11 @@ fn bench_rank9(seq: &[u8], queries: &QS) {
 #[inline(never)]
 fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", format!("QuartBlock {C3}"));
-    let bits = 4.0;
-    eprint!("{bits:>6.2}b |");
 
     let bwa_ranker = Ranker::<FullBlock>::new(&seq);
+    let bits = (bwa_ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+    eprint!("{bits:>6.2}b |");
+
     time(&queries, |p| {
         bwa_ranker.count::<count4::U64PopcntSlice, false>(p)
     });
@@ -244,6 +245,8 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     eprint!(" |");
 
     let ranker = Ranker::<QuartBlock>::new(&seq);
+    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+    eprint!("{bits:>6.2}b |");
 
     // time_fn(queries, |queries| {
     //     for &q in queries {
