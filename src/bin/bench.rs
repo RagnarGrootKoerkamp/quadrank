@@ -8,7 +8,12 @@ use std::{
     task::Context,
 };
 
-use dna_rank::{DnaRank, Ranks, blocks::QuartBlock, count4, ranker::Ranker};
+use dna_rank::{
+    DnaRank, Ranks,
+    blocks::{FullBlock, QuartBlock},
+    count4,
+    ranker::Ranker,
+};
 use futures::{future::join_all, stream::FuturesOrdered, task::noop_waker_ref};
 use mem_dbg::MemSize;
 use smol::{LocalExecutor, future::poll_once, stream::StreamExt};
@@ -23,23 +28,37 @@ fn check(pos: usize, ranks: Ranks) {
     );
 }
 
-type QS = [Vec<usize>; 5];
+type QS = [Vec<usize>; 6];
 
-fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
-    let mut times: Vec<_> = queries
-        .iter()
-        .map(|queries| {
-            let start = std::time::Instant::now();
-            f(&queries);
-            start.elapsed().as_nanos()
-        })
-        .collect();
-    times.sort();
-    let ns2 = times[2] as f64 / queries[0].len() as f64;
-    eprint!(" {ns2:>5.2}",);
+// fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
+//     let mut times: Vec<_> = queries
+//         .iter()
+//         .map(|queries| {
+//             let start = std::time::Instant::now();
+//             f(&queries);
+//             start.elapsed().as_nanos()
+//         })
+//         .collect();
+//     times.sort();
+//     let ns2 = times[2] as f64 / queries[0].len() as f64;
+//     eprint!(" {ns2:>4.1}",);
+// }
+
+fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync) {
+    let start = std::time::Instant::now();
+    std::thread::scope(|scope| {
+        queries.iter().for_each(|queries| {
+            let f = &f;
+            scope.spawn(move || {
+                f(queries);
+            });
+        });
+    });
+    let ns = start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64;
+    eprint!(" {ns:>5.2}",);
 }
 
-fn time(queries: &QS, f: impl Fn(usize) -> Ranks) {
+fn time(queries: &QS, f: impl Fn(usize) -> Ranks + Sync) {
     time_fn(queries, |queries| {
         for &q in queries {
             check(q, f(q));
@@ -49,8 +68,8 @@ fn time(queries: &QS, f: impl Fn(usize) -> Ranks) {
 
 fn time_batch<const BATCH: usize>(
     queries: &QS,
-    prefetch: impl Fn(usize),
-    f: impl Fn(usize) -> Ranks,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> Ranks + Sync,
 ) {
     time_fn(queries, |queries| {
         let qs = queries.as_chunks::<BATCH>().0;
@@ -68,8 +87,8 @@ fn time_batch<const BATCH: usize>(
 fn time_stream(
     queries: &QS,
     lookahead: usize,
-    prefetch: impl Fn(usize),
-    f: impl Fn(usize) -> Ranks,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> Ranks + Sync,
 ) {
     time_fn(queries, |queries| {
         for (&q, &ahead) in queries.iter().zip(&queries[lookahead..]) {
@@ -79,7 +98,7 @@ fn time_stream(
     });
 }
 
-fn time_async_one_task<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_one_task<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -106,7 +125,7 @@ where
     });
 }
 
-fn time_async_futures_ordered<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_futures_ordered<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -132,7 +151,7 @@ where
     });
 }
 
-fn time_async_join_all_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_join_all_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -165,7 +184,7 @@ fn pin_index<T>(slice: Pin<&mut [T]>, index: usize) -> Pin<&mut T> {
 }
 
 #[inline(always)]
-async fn async_batches<F>(queries: &[usize], f: impl Fn(usize) -> F)
+async fn async_batches<F>(queries: &[usize], f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -183,7 +202,7 @@ where
 }
 
 #[inline(always)]
-async fn async_stream<F>(queries: &[usize], f: impl Fn(usize) -> F)
+async fn async_stream<F>(queries: &[usize], f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -214,7 +233,7 @@ where
 }
 
 #[inline(always)]
-fn time_async_smol_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_smol_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -226,7 +245,7 @@ where
 }
 
 #[inline(always)]
-fn time_async_cassette_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_cassette_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -238,7 +257,7 @@ where
 }
 
 #[inline(always)]
-fn time_async_smol_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_smol_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -250,7 +269,7 @@ where
 }
 
 #[inline(always)]
-fn time_async_cassette_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_async_cassette_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Future<Output = Ranks>,
 {
@@ -262,7 +281,7 @@ where
 }
 
 #[inline(always)]
-fn time_coro2_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_coro2_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
@@ -285,7 +304,7 @@ where
 }
 
 #[inline(always)]
-fn time_coro2_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_coro2_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
@@ -312,7 +331,7 @@ where
 }
 
 #[inline(always)]
-fn time_coro_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_coro_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
@@ -333,7 +352,7 @@ where
 const B: usize = 32;
 
 #[inline(always)]
-fn time_coro_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F)
+fn time_coro_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
@@ -397,6 +416,19 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     let bits = 4.0;
     eprint!("{bits:>6.2}b |");
 
+    let bwa_ranker = Ranker::<FullBlock>::new(&seq);
+    time(&queries, |p| {
+        bwa_ranker.count::<count4::U64PopcntSlice, false>(p)
+    });
+    time_stream(
+        &queries,
+        B,
+        |p| bwa_ranker.prefetch(p),
+        |p| bwa_ranker.count::<count4::U64PopcntSlice, false>(p),
+    );
+
+    eprint!(" |");
+
     let ranker = Ranker::<QuartBlock>::new(&seq);
 
     // time_fn(queries, |queries| {
@@ -404,59 +436,64 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     //         std::hint::black_box(ranker.count1(q, q as u8 & 3));
     //     }
     // });
+    // time_fn(queries, |queries| {
+    //     for (&q, &ahead) in queries.iter().zip(&queries[32..]) {
+    //         ranker.prefetch(ahead);
+    //         std::hint::black_box(ranker.count1(q, q as u8 & 3));
+    //     }
+    // });
 
     // time(&queries, |p| ranker.count::<count4::U64Popcnt, C3>(p));
+    time(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
 
-    eprint!(" |");
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::U64Popcnt, C3>(p),
-    );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::U64Popcnt, C3>(p),
+    // );
     // time_stream(
     //     &queries,
     //     B,
     //     |p| ranker.prefetch(p),
     //     |p| ranker.count::<count4::ByteLookup8, C3>(p),
     // );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount, false>(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount2, false>(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount3, false>(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount4, false>(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount5, false>(p),
-    );
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount6, false>(p),
-    );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount, false>(p),
+    // );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount2, false>(p),
+    // );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount3, false>(p),
+    // );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount4, false>(p),
+    // );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount5, false>(p),
+    // );
+    // time_stream(
+    //     &queries,
+    //     B,
+    //     |p| ranker.prefetch(p),
+    //     |p| ranker.count::<count4::SimdCount6, false>(p),
+    // );
     time_stream(
         &queries,
         B,
@@ -464,17 +501,15 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
         |p| ranker.count::<count4::SimdCount7, false>(p),
     );
 
-    eprint!(" |");
-
     // time_coro_stream(&queries, B, |p| {
     //     ranker.count_coro::<count4::U64Popcnt, C3>(p)
     // });
     // time_coro_stream(&queries, B, |p| {
     //     ranker.count_coro::<count4::ByteLookup8, C3>(p)
     // });
-    time_coro_stream(&queries, B, |p| {
-        ranker.count_coro::<count4::SimdCount7, false>(p)
-    });
+    // time_coro_stream(&queries, B, |p| {
+    //     ranker.count_coro::<count4::SimdCount7, false>(p)
+    // });
     eprintln!();
 }
 
@@ -492,7 +527,7 @@ fn main() {
         // for n in [100_000] {
         eprintln!("n = {}", n);
         let seq = b"ACTG".repeat(n / 4);
-        let queries = [(); 5].map(|_| {
+        let queries = QS::default().map(|_| {
             (0..q)
                 .map(|_| rand::random_range(0..seq.len()))
                 .collect::<Vec<_>>()
