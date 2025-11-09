@@ -56,7 +56,7 @@ fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
 //     eprint!(" {ns:>5.2}",);
 // }
 
-fn time(queries: &QS, f: impl Fn(usize) -> Ranks + Sync) {
+fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync) {
     time_fn(queries, |queries| {
         for &q in queries {
             check(q, f(q));
@@ -204,7 +204,7 @@ where
     // time(&queries, |p| rank.ranks_u64(p));
     // time(&queries, |p| rank.ranks_u64_prefetch(p));
     // time(&queries, |p| rank.ranks_u64_prefetch_all(p));
-    time(&queries, |p| rank.ranks_u64_3(p)); // best
+    time_loop(&queries, |p| rank.ranks_u64_3(p)); // best
 
     // time(&queries, |p| rank.ranks_u128(p));
     // time(&queries, |p| rank.ranks_u128_3(p));
@@ -222,7 +222,7 @@ fn bench_rank9(seq: &[u8], queries: &QS) {
     let bits = rank9.mem_size(Default::default()) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
-    time(&queries, |p| [rank9.rank(p) as u32, 0, 0, 0]);
+    time_loop(&queries, |p| [rank9.rank(p) as u32, 0, 0, 0]);
     eprintln!();
 }
 
@@ -267,7 +267,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     let bits = (bwa_ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
-    time(&queries, |p| {
+    time_loop(&queries, |p| {
         bwa_ranker.count::<count4::U64PopcntSlice, false>(p)
     });
     time_stream(
@@ -296,7 +296,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     // });
 
     // time(&queries, |p| ranker.count::<count4::U64Popcnt, C3>(p));
-    time(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
+    time_loop(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
 
     time_stream(
         &queries,
@@ -327,7 +327,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
-    time(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
+    time_loop(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
 
     time_stream(
         &queries,
@@ -342,7 +342,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
-    time(&queries, |p| {
+    time_loop(&queries, |p| {
         ranker.count::<count4::WideSimdCount2, false>(p)
     });
 
