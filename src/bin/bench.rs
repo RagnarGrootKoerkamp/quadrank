@@ -14,6 +14,7 @@ use dna_rank::{
     ranker::Ranker,
 };
 use mem_dbg::MemSize;
+use qwt::{RankQuad, RankUnsigned, SpaceUsage, WTSupport};
 use sux::{bits::BitVec, traits::Rank};
 
 fn check(pos: usize, ranks: Ranks) {
@@ -226,6 +227,39 @@ fn bench_rank9(seq: &[u8], queries: &QS) {
 }
 
 #[inline(never)]
+fn bench_qwt(seq: &[u8], queries: &QS) {
+    let seq = seq
+        .iter()
+        .map(|&b| match b {
+            b'A' => 0u8,
+            b'C' => 1,
+            b'G' => 2,
+            b'T' => 3,
+            _ => 0,
+        })
+        .collect::<Vec<_>>();
+
+    eprint!("{:<20}:", "RSQ256");
+    let rsq = qwt::RSQVector256::new(&seq);
+    let bits = (rsq.space_usage_byte() * 8) as f64 / seq.len() as f64;
+    eprint!("{bits:>6.2}b |");
+    unsafe {
+        time_loop(&queries, |p| [rsq.rank_unchecked(0, p) as u32, 0, 0, 0]);
+
+        time_stream(
+            &queries,
+            B,
+            |p| {
+                rsq.prefetch_data(p);
+                rsq.prefetch_info(p)
+            },
+            |p| [rsq.rank_unchecked(0, p) as u32, 0, 0, 0],
+        );
+    }
+    eprintln!();
+}
+
+#[inline(never)]
 fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", format!("QuartBlock {C3}"));
 
@@ -356,6 +390,7 @@ fn main() {
         bench_quart::<false>(&seq, &queries);
         // bench_best(&seq, &queries);
         // bench_rank9(&seq, &queries);
+        bench_qwt(&seq, &queries);
 
         // bench_dna_rank::<64>(&seq, &queries);
         // bench_dna_rank::<128>(&seq, &queries);
