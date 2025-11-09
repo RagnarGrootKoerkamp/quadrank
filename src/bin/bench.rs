@@ -26,11 +26,14 @@ fn check(pos: usize, ranks: Ranks) {
     );
 }
 
-type QS = [Vec<usize>; 5];
+type QS = [Vec<usize>; 6];
 
-fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
+const MULTITHREAD: bool = false;
+
+fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
     let mut times: Vec<_> = queries
         .iter()
+        .take(5)
         .map(|queries| {
             let start = std::time::Instant::now();
             f(&queries);
@@ -42,19 +45,27 @@ fn time_fn(queries: &QS, f: impl Fn(&[usize])) {
     eprint!(" {ns2:>4.1}",);
 }
 
-// fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync) {
-//     let start = std::time::Instant::now();
-//     std::thread::scope(|scope| {
-//         queries.iter().for_each(|queries| {
-//             let f = &f;
-//             scope.spawn(move || {
-//                 f(queries);
-//             });
-//         });
-//     });
-//     let ns = start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64;
-//     eprint!(" {ns:>5.2}",);
-// }
+fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync) {
+    let start = std::time::Instant::now();
+    std::thread::scope(|scope| {
+        queries.iter().for_each(|queries| {
+            let f = &f;
+            scope.spawn(move || {
+                f(queries);
+            });
+        });
+    });
+    let ns = start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64;
+    eprint!(" {ns:>5.2}",);
+}
+
+fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync) {
+    if MULTITHREAD {
+        time_fn_mt(queries, f);
+    } else {
+        time_fn_median(queries, f);
+    }
+}
 
 fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync) {
     time_fn(queries, |queries| {
