@@ -17,7 +17,6 @@ use packed_seq::{PackedSeqVec, SeqVec};
 use ranker::prefetch_index;
 
 pub type Ranks = [u32; 4];
-pub type LongRanks = [u64; 4];
 
 #[derive(mem_dbg::MemSize)]
 pub struct DnaRank<const STRIDE: usize> {

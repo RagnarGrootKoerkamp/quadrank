@@ -1,4 +1,3 @@
-use crate::LongRanks;
 use crate::count::count_u8x8;
 use crate::{Ranks, count4::CountFn};
 use packed_seq::{PackedSeqVec, SeqVec};
@@ -29,8 +28,6 @@ pub struct Ranker<B: Block> {
     blocks: Vec<B>,
     /// Additional counts every 2^31 cachelines.
     long_ranks: Vec<Ranks>,
-    /// Additional counts every 2^31 cachelines.
-    long_ranks2: Vec<LongRanks>,
 }
 
 impl<B: Block> Ranker<B> {
@@ -58,7 +55,6 @@ impl<B: Block> Ranker<B> {
         let num_chunks = chunks.len();
         let num_long_chunks = num_chunks.div_ceil(Self::LONG_STRIDE);
         let mut long_ranks = Vec::with_capacity(num_long_chunks);
-        let mut long_ranks2 = Vec::with_capacity(num_long_chunks);
         let mut blocks = Vec::with_capacity(num_chunks);
         for (i, chunk) in chunks.iter().enumerate() {
             if i % Self::LONG_STRIDE == 0 {
@@ -66,7 +62,6 @@ impl<B: Block> Ranker<B> {
                     l_ranks[i] += ranks[i] as u64;
                 }
                 long_ranks.push(l_ranks.map(|x| x as u32));
-                long_ranks2.push(l_ranks);
                 ranks = [0; 4];
             }
             blocks.push(B::new(ranks, chunk));
@@ -77,12 +72,7 @@ impl<B: Block> Ranker<B> {
                 }
             }
         }
-        long_ranks2.clear();
-        Self {
-            blocks,
-            long_ranks,
-            long_ranks2,
-        }
+        Self { blocks, long_ranks }
     }
     /// Prefetch the cacheline for the given position.
     #[inline(always)]
@@ -115,16 +105,6 @@ impl<B: Block> Ranker<B> {
         let block_idx = pos / B::N;
         let block_pos = pos % B::N;
         self.blocks[block_idx].count1(block_pos, c)
-    }
-    /// Return 64-bit counts instead.
-    #[inline(always)]
-    pub fn count_long<CF: CountFn<{ B::C }>, const C3: bool>(&self, pos: usize) -> LongRanks {
-        let block_idx = pos / B::N;
-        let block_pos = pos % B::N;
-        let ranks = self.blocks[block_idx].count::<CF, C3>(block_pos);
-        let long_pos = block_idx / Self::LONG_STRIDE;
-        let long_ranks = self.long_ranks2[long_pos];
-        std::array::from_fn(|i| long_ranks[i] + ranks[i] as u64)
     }
 
     #[inline(always)]

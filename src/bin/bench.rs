@@ -323,23 +323,6 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     );
     eprint!(" |");
 
-    time(&queries, |p| {
-        let ranks = black_box(ranker.count_long::<count4::SimdCount7, false>(p));
-        ranks.map(|r| r as u32)
-    });
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| {
-            let ranks = black_box(ranker.count_long::<count4::SimdCount7, false>(p));
-            ranks.map(|r| r as u32)
-        },
-    );
-
-    eprint!(" |");
-
     let ranker = Ranker::<PentaBlock>::new(&seq);
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
