@@ -35,7 +35,11 @@ fn check(pos: usize, ranks: Ranks) {
 
 type QS = [Vec<usize>; 6];
 
-const MULTITHREAD: bool = false;
+#[derive(Clone, Copy)]
+enum Threading {
+    Single,
+    Multi,
+}
 
 fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
     let mut times: Vec<_> = queries
@@ -66,20 +70,20 @@ fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
     eprint!(" {ns:>5.2}",);
 }
 
-fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
-    if MULTITHREAD {
-        time_fn_mt(queries, f);
-    } else {
-        time_fn_median(queries, f);
+fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
+    match t {
+        Threading::Multi => time_fn_mt(queries, f),
+        Threading::Single => time_fn_median(queries, f),
     }
 }
 
 fn time_latency(
     queries: &QS,
+    t: Threading,
     prefetch: impl Fn(usize) + Sync,
     f: impl Fn(usize) -> Ranks + Sync + Copy,
 ) {
-    time_fn(queries, |queries| {
+    time_fn(queries, t, |queries| {
         let mut acc = 0;
         for &q in queries {
             // Make query depend on previous result.
@@ -92,8 +96,8 @@ fn time_latency(
     });
 }
 
-fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync + Copy) {
-    time_fn(queries, |queries| {
+fn time_loop(queries: &QS, t: Threading, f: impl Fn(usize) -> Ranks + Sync + Copy) {
+    time_fn(queries, t, |queries| {
         for &q in queries {
             check(q, f(q));
         }
@@ -102,8 +106,13 @@ fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync + Copy) {
 
 const BATCH: usize = 32;
 
-fn time_batch(queries: &QS, prefetch: impl Fn(usize) + Sync, f: impl Fn(usize) -> Ranks + Sync) {
-    time_fn(queries, |queries| {
+fn time_batch(
+    queries: &QS,
+    t: Threading,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> Ranks + Sync,
+) {
+    time_fn(queries, t, |queries| {
         let qs = queries.as_chunks::<BATCH>().0;
         for batch in qs {
             for &q in batch {
@@ -116,8 +125,13 @@ fn time_batch(queries: &QS, prefetch: impl Fn(usize) + Sync, f: impl Fn(usize) -
     })
 }
 
-fn time_stream(queries: &QS, prefetch: impl Fn(usize) + Sync, f: impl Fn(usize) -> Ranks + Sync) {
-    time_fn(queries, |queries| {
+fn time_stream(
+    queries: &QS,
+    t: Threading,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> Ranks + Sync,
+) {
+    time_fn(queries, t, |queries| {
         for (&q, &ahead) in queries.iter().zip(&queries[BATCH..]) {
             prefetch(ahead);
             check(q, f(q));
@@ -127,12 +141,13 @@ fn time_stream(queries: &QS, prefetch: impl Fn(usize) + Sync, f: impl Fn(usize) 
 
 fn time_trip(
     queries: &QS,
+    t: Threading,
     prefetch: impl Fn(usize) + Sync + Copy,
     f: impl Fn(usize) -> Ranks + Sync + Copy,
 ) {
-    time_latency(queries, prefetch, f);
-    time_loop(queries, f);
-    time_stream(queries, prefetch, f);
+    time_latency(queries, t, prefetch, f);
+    time_loop(queries, t, f);
+    time_stream(queries, t, prefetch, f);
 }
 
 fn bench<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool>(
@@ -156,6 +171,14 @@ fn bench<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool>
 
     time_trip(
         &queries,
+        Threading::Single,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<CF, false>(p),
+    );
+    eprint!(" |");
+    time_trip(
+        &queries,
+        Threading::Multi,
         |p| ranker.prefetch(p),
         |p| ranker.count::<CF, false>(p),
     );
@@ -167,7 +190,7 @@ fn time_coro2_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
-    time_fn(queries, |queries| {
+    time_fn(queries, Threading::Single, |queries| {
         for batch in queries.as_chunks::<32>().0 {
             let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
 
@@ -190,7 +213,7 @@ fn time_coro2_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
-    time_fn(queries, |queries| {
+    time_fn(queries, Threading::Single, |queries| {
         let mut funcs: [F; 32] = from_fn(|i| {
             let mut func = f(queries[i]);
             pin!(&mut func).resume(());
@@ -217,7 +240,7 @@ fn time_coro_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
-    time_fn(queries, |queries| {
+    time_fn(queries, Threading::Single, |queries| {
         for batch in queries.as_chunks::<BATCH>().0 {
             let mut funcs: [_; BATCH] = from_fn(|i| f(batch[i]));
 
@@ -236,7 +259,7 @@ fn time_coro_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
-    time_fn(queries, |queries| {
+    time_fn(queries, Threading::Single, |queries| {
         let mut funcs: [F; BATCH] = from_fn(|i| f(queries[i]));
 
         for i in 0..queries.len() - BATCH {
@@ -268,7 +291,7 @@ where
     // time(&queries, |p| rank.ranks_u64(p));
     // time(&queries, |p| rank.ranks_u64_prefetch(p));
     // time(&queries, |p| rank.ranks_u64_prefetch_all(p));
-    time_loop(&queries, |p| rank.ranks_u64_3(p)); // best
+    time_loop(&queries, Threading::Single, |p| rank.ranks_u64_3(p)); // best
 
     // time(&queries, |p| rank.ranks_u128(p));
     // time(&queries, |p| rank.ranks_u128_3(p));
@@ -286,7 +309,9 @@ fn bench_rank9(seq: &[u8], queries: &QS) {
     let bits = rank9.mem_size(Default::default()) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
-    time_loop(&queries, |p| [rank9.rank(p) as u32, 0, 0, 0]);
+    time_loop(&queries, Threading::Single, |p| {
+        [rank9.rank(p) as u32, 0, 0, 0]
+    });
     eprintln!();
 }
 
@@ -308,10 +333,13 @@ fn bench_qwt(seq: &[u8], queries: &QS) {
     let bits = (rsq.space_usage_byte() * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
     unsafe {
-        time_loop(&queries, |p| [rsq.rank_unchecked(0, p) as u32, 0, 0, 0]);
+        time_loop(&queries, Threading::Single, |p| {
+            [rsq.rank_unchecked(0, p) as u32, 0, 0, 0]
+        });
 
         time_stream(
             &queries,
+            Threading::Single,
             |p| {
                 rsq.prefetch_data(p);
                 rsq.prefetch_info(p)
@@ -360,7 +388,7 @@ fn main() {
     #[cfg(not(debug_assertions))]
     let q = 10_000_000;
     #[cfg(not(debug_assertions))]
-    let ns = [100_000, 10_000_000, 1_000_000_000, 10_000_000_000usize];
+    let ns = [100_000, 1_000_000_000];
 
     for n in ns {
         // for n in [100_000] {
