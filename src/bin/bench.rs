@@ -278,13 +278,13 @@ fn bench_coro<R: RankerT>(seq: &[u8], queries: &QS) {
 fn bench_all(seq: &[u8], queries: &QS) {
     bench_header();
     // plain external vec
-    bench::<Ranker<Plain128, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    bench::<Ranker<Plain256, TrivialSB, SimdCountSlice, false>>(seq, queries);
-    bench::<Ranker<Plain512, TrivialSB, SimdCountSlice, false>>(seq, queries);
+    // bench::<Ranker<Plain128, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    // bench::<Ranker<Plain256, TrivialSB, SimdCountSlice, false>>(seq, queries);
+    // bench::<Ranker<Plain512, TrivialSB, SimdCountSlice, false>>(seq, queries);
 
-    // like qwt
-    bench::<Ranker<Plain512, SB8, U128Popcnt3, true>>(seq, queries);
-    bench::<Ranker<Plain512, SB8, SimdCountSlice, false>>(seq, queries);
+    // // like qwt
+    // bench::<Ranker<Plain512, SB8, U128Popcnt3, true>>(seq, queries);
+    // bench::<Ranker<Plain512, SB8, SimdCountSlice, false>>(seq, queries);
 
     // fast
     bench::<Ranker<FullBlock, NoSB, U64PopcntSlice, false>>(seq, queries);
@@ -293,8 +293,8 @@ fn bench_all(seq: &[u8], queries: &QS) {
     bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
 
     // external
-    #[cfg(not(debug_assertions))]
-    bench::<sux::prelude::Rank9>(seq, queries);
+    // #[cfg(not(debug_assertions))]
+    // bench::<sux::prelude::Rank9>(seq, queries);
     bench::<qwt::RSQVector256>(seq, queries);
 
     // broken
