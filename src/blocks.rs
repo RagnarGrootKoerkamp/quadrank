@@ -18,7 +18,6 @@ fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
 }
 
 /// A full 512bit cacheline block that does not store any counts itself.
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct DumbBlock {
@@ -53,7 +52,6 @@ impl BasicBlock for DumbBlock {
 /// In total, exactly covers a 512bit cache line.
 ///
 /// Based on BWA: https://github.com/lh3/bwa/blob/master/bwtindex.c#L150
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct FullBlock {
@@ -104,7 +102,6 @@ impl BasicBlock for FullBlock {
 /// In total, exactly covers a 512bit cache line.
 ///
 /// This only has to count chars in 64bp=128bits, which becomes a single popcount.
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct HalfBlock {
@@ -170,7 +167,6 @@ impl BasicBlock for HalfBlock {
 /// In total, exactly covers a 512bit cache line.
 ///
 /// This only has to count chars in 64bp=128bits, which becomes a single popcount.
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct HalfBlock2 {
@@ -229,7 +225,6 @@ impl BasicBlock for HalfBlock2 {
 }
 
 /// u32 global ranks, and 8bit ranks for each u64 quart.
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct QuartBlock {
@@ -315,7 +310,6 @@ impl BasicBlock for QuartBlock {
 }
 
 /// u16 global ranks, and 8bit ranks for 4 of the 5 u64 parts.
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct PentaBlock {
@@ -385,7 +379,6 @@ impl BasicBlock for PentaBlock {
 }
 
 /// As PentaBlock, but part_ranks are 'inlined' with ranks
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct PentaBlock20bit {
@@ -466,7 +459,6 @@ impl BasicBlock for PentaBlock20bit {
 }
 
 /// u16 global ranks, and a u16 encoding offsets for 2 of the 3 u128 parts.
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct HexaBlock {
@@ -536,7 +528,6 @@ impl BasicBlock for HexaBlock {
 }
 
 /// As HexaBlock, but part_ranks are 'inlined' with ranks
-#[repr(C)]
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct HexaBlock18bit {
