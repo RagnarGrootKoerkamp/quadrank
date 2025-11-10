@@ -22,10 +22,14 @@ use sux::{bits::BitVec, traits::Rank};
 fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
     let pos = pos as u32;
-    debug_assert_eq!(
-        ranks,
-        [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
-    );
+    if ranks[1] == 0 {
+        debug_assert_eq!(ranks, [(pos + 3) / 4, 0, 0, 0]);
+    } else {
+        debug_assert_eq!(
+            ranks,
+            [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
+        );
+    }
 }
 
 type QS = [Vec<usize>; 6];
