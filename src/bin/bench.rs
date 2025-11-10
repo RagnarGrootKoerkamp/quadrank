@@ -16,9 +16,6 @@ use dna_rank::{
     ranker::{Ranker, RankerT},
     super_block::{NoSB, SB8, TrivialSB},
 };
-use mem_dbg::MemSize;
-use qwt::RSQVector256;
-use sux::{bits::BitVec, prelude::Rank9, traits::Rank};
 
 fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
@@ -53,7 +50,7 @@ fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
         .collect();
     times.sort();
     let ns2 = times[2] as f64 / queries[0].len() as f64;
-    eprint!(" {ns2:>4.1}",);
+    eprint!(" {ns2:>6.1}",);
 }
 
 fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
@@ -67,7 +64,7 @@ fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
         });
     });
     let ns = start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64;
-    eprint!(" {ns:>5.2}",);
+    eprint!(" {ns:>6.1}",);
 }
 
 fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
@@ -148,25 +145,6 @@ fn time_trip(
     time_latency(queries, t, prefetch, f);
     time_loop(queries, t, f);
     time_stream(queries, t, prefetch, f);
-}
-
-fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
-    let name = type_name::<R>();
-    let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
-        .unwrap()
-        .replace_all(name, |_: &regex::Captures| "".to_string());
-
-    eprint!("{name:<60}");
-
-    let ranker = R::new(&seq);
-    let bits = (ranker.size() * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    for t in [Threading::Single, Threading::Multi] {
-        time_trip(&queries, t, |p| ranker.prefetch(p), |p| ranker.count(p));
-        eprint!(" |");
-    }
-    eprintln!();
 }
 
 #[inline(always)]
@@ -260,25 +238,33 @@ where
     });
 }
 
-#[inline(never)]
-fn bench_dna_rank<const STRIDE: usize>(seq: &[u8], queries: &QS)
-where
-    [(); STRIDE / 4]:,
-{
-    eprint!("{:<20}:", format!("DnaRank<{STRIDE:>4}>"));
-    let rank = DnaRank::<STRIDE>::new(&seq);
+fn bench_header() {
+    eprintln!(
+        "{:<60} {:>6} | {:>6} {:>6} {:>6} | {:>6} {:>6} {:>6} |",
+        "Ranker", "bits", "1t", "", "", "6t", "", ""
+    );
+    eprintln!(
+        "{:<60} {:>6} | {:>6} {:>6} {:>6} | {:>6} {:>6} {:>6} |",
+        "", "", "latncy", "loop", "stream", "latncy", "loop", "stream"
+    );
+}
 
-    let bits = (rank.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
+    let name = type_name::<R>();
+    let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
+        .unwrap()
+        .replace_all(name, |_: &regex::Captures| "".to_string());
+
+    eprint!("{name:<60}");
+
+    let ranker = R::new(&seq);
+    let bits = (ranker.size() * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
-    // time(&queries, |p| rank.ranks_naive(p));
-    // time(&queries, |p| rank.ranks_u64(p));
-    // time(&queries, |p| rank.ranks_u64_prefetch(p));
-    // time(&queries, |p| rank.ranks_u64_prefetch_all(p));
-    time_loop(&queries, Threading::Single, |p| rank.ranks_u64_3(p)); // best
-
-    // time(&queries, |p| rank.ranks_u128(p));
-    // time(&queries, |p| rank.ranks_u128_3(p));
+    for t in [Threading::Single, Threading::Multi] {
+        time_trip(&queries, t, |p| ranker.prefetch(p), |p| ranker.count(p));
+        eprint!(" |");
+    }
     eprintln!();
 }
 
@@ -304,8 +290,9 @@ fn bench_all(seq: &[u8], queries: &QS) {
     bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
 
     // external
-    bench::<Rank9<BitVec<Vec<usize>>>>(seq, queries);
-    bench::<RSQVector256>(seq, queries);
+    #[cfg(not(debug_assertions))]
+    bench::<sux::prelude::Rank9>(seq, queries);
+    bench::<qwt::RSQVector256>(seq, queries);
 
     // broken
     // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
@@ -333,9 +320,6 @@ fn main() {
         });
 
         bench_all(&seq, &queries);
-
-        // bench_dna_rank::<64>(&seq, &queries);
-        // bench_dna_rank::<128>(&seq, &queries);
     }
 }
 
