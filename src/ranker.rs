@@ -37,8 +37,11 @@ impl<B: Block> Ranker<B> {
     /// Store a new long block every this-many blocks.
     // Each long block should span N*x characters where N*x + N < 2^32, and x is fast to compute.
     // => x < 2^32 / N - 1
-    const LONG_STRIDE: usize =
-        (((1u128 << B::W) / B::N as u128) as usize - 1).next_power_of_two() / 2;
+    const LONG_STRIDE: usize = if B::W == 0 {
+        1
+    } else {
+        (((1u128 << B::W) / B::N as u128) as usize - 1).next_power_of_two() / 2
+    };
 
     pub fn new(seq: &[u8]) -> Self
     where
@@ -74,6 +77,7 @@ impl<B: Block> Ranker<B> {
                 }
             }
         }
+        long_ranks2.clear();
         Self {
             blocks,
             long_ranks,

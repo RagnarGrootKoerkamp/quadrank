@@ -887,3 +887,26 @@ impl CountFn<16> for WideSimdCount2 {
         ranks
     }
 }
+
+/// Counts a slice a u128 at a time.
+pub struct SimdCountSlice;
+impl<const B: usize> CountFn<B> for SimdCountSlice {
+    const S: usize = 16;
+    const FIXED: bool = false;
+    #[inline(always)]
+    fn count(data: &[u8; B], pos: usize) -> Ranks {
+        assert!(B % 16 == 0);
+        let mut ranks = [0; 4];
+        for idx in (0..pos.div_ceil(4)).step_by(16) {
+            let chunk = &data[idx..idx + 16];
+            let chunk_ranks = <WideSimdCount as CountFn<16>>::count(
+                chunk.try_into().unwrap(),
+                (pos - idx * 4).min(64),
+            );
+            for c in 0..4 {
+                ranks[c] += chunk_ranks[c];
+            }
+        }
+        ranks
+    }
+}

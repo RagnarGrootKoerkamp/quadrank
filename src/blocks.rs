@@ -7,6 +7,46 @@ use crate::{
     ranker::Block,
 };
 
+#[inline(always)]
+fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
+    let ans = (if C::FIXED {
+        (C::S * 4) - pos % (C::S * 4)
+    } else {
+        -(pos as isize) as usize % (C::S * 4)
+    }) as u32;
+    ans
+}
+
+/// A full 512bit cacheline block that does not store any counts itself.
+#[repr(C)]
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct DumbBlock {
+    seq: [u8; 64],
+}
+
+impl Block for DumbBlock {
+    const B: usize = 64; // Bytes of characters in block.
+    const N: usize = 256; // Number of characters in block.
+    const C: usize = 64; // Bytes of the underlying count function.
+    const W: usize = 0;
+
+    fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        DumbBlock { seq: *data }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<{ Self::C }>, const C3: bool>(&self, pos: usize) -> Ranks {
+        let mut ranks = C::count(&self.seq, pos);
+        if C3 {
+            ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            ranks[0] -= extra_counted::<_, C>(pos);
+        }
+        ranks
+    }
+}
+
 /// For each 128bp, store:
 /// - 4 u64 counts, for 256bits total
 /// - 256 bits of packed sequence.
@@ -21,16 +61,6 @@ pub struct FullBlock {
     ranks: [u64; 4],
     // 4*64 = 32*8 = 256 bit packed sequence
     seq: [u8; 32],
-}
-
-#[inline(always)]
-fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
-    let ans = (if C::FIXED {
-        (C::S * 4) - pos % (C::S * 4)
-    } else {
-        -(pos as isize) as usize % (C::S * 4)
-    }) as u32;
-    ans
 }
 
 impl Block for FullBlock {
