@@ -4,7 +4,7 @@ use crate::{
     Ranks,
     count::{count_u8x8, count_u8x16, count_u64},
     count4::{CountFn, MASKS},
-    ranker::Block,
+    ranker::BasicBlock,
 };
 
 #[inline(always)]
@@ -25,7 +25,7 @@ pub struct DumbBlock {
     seq: [u8; 64],
 }
 
-impl Block for DumbBlock {
+impl BasicBlock for DumbBlock {
     const B: usize = 64; // Bytes of characters in block.
     const N: usize = 256; // Number of characters in block.
     const C: usize = 64; // Bytes of the underlying count function.
@@ -63,7 +63,7 @@ pub struct FullBlock {
     seq: [u8; 32],
 }
 
-impl Block for FullBlock {
+impl BasicBlock for FullBlock {
     const B: usize = 32; // Bytes of characters in block.
     const N: usize = 128; // Number of characters in block.
     const C: usize = 32; // Bytes of the underlying count function.
@@ -117,7 +117,7 @@ pub struct HalfBlock {
     seq: [u8; 32],
 }
 
-impl Block for HalfBlock {
+impl BasicBlock for HalfBlock {
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 16;
@@ -180,7 +180,7 @@ pub struct HalfBlock2 {
     seq: [u8; 32],
 }
 
-impl Block for HalfBlock2 {
+impl BasicBlock for HalfBlock2 {
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 16;
@@ -241,7 +241,7 @@ pub struct QuartBlock {
     seq: [u8; 32],
 }
 
-impl Block for QuartBlock {
+impl BasicBlock for QuartBlock {
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 8;
@@ -327,7 +327,7 @@ pub struct PentaBlock {
     seq: [u8; 40],
 }
 
-impl Block for PentaBlock {
+impl BasicBlock for PentaBlock {
     const B: usize = 40;
     const N: usize = 160;
     const C: usize = 8;
@@ -397,7 +397,7 @@ pub struct PentaBlock20bit {
     seq: [u8; 40],
 }
 
-impl Block for PentaBlock20bit {
+impl BasicBlock for PentaBlock20bit {
     const B: usize = 40;
     const N: usize = 160;
     const C: usize = 8;
@@ -478,7 +478,7 @@ pub struct HexaBlock {
     seq: [u8; 48],
 }
 
-impl Block for HexaBlock {
+impl BasicBlock for HexaBlock {
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
@@ -548,7 +548,7 @@ pub struct HexaBlock18bit {
     seq: [u8; 48],
 }
 
-impl Block for HexaBlock18bit {
+impl BasicBlock for HexaBlock18bit {
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
