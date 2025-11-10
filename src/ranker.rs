@@ -3,7 +3,7 @@ use crate::{Ranks, count4::CountFn};
 use packed_seq::{PackedSeqVec, SeqVec};
 use std::ops::Coroutine;
 
-pub trait BasicBlock {
+pub trait BasicBlock: Sync {
     /// Number of bytes per block.
     const B: usize;
     /// Number of characters per block.
@@ -22,7 +22,7 @@ pub trait BasicBlock {
     }
 }
 
-pub trait SuperBlock {
+pub trait SuperBlock: Sync {
     /// Number of basic blocks.
     const BB: usize;
     /// Bit-width of the basic block ranks.

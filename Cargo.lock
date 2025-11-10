@@ -426,6 +426,7 @@ dependencies = [
  "packed-seq",
  "qwt",
  "rand 0.9.2",
+ "regex",
  "sux",
 ]
 

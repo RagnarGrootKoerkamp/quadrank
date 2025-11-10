@@ -1,6 +1,7 @@
 #![allow(incomplete_features, dead_code)]
 #![feature(generic_const_exprs, coroutines, coroutine_trait, stmt_expr_attributes)]
 use std::{
+    any::type_name_of_val,
     array::from_fn,
     ops::{Coroutine, CoroutineState::Complete},
     pin::pin,
@@ -11,8 +12,8 @@ use dna_rank::{
     blocks::{
         DumbBlock, FullBlock, HexaBlock, HexaBlock18bit, PentaBlock, PentaBlock20bit, QuartBlock,
     },
-    count4,
-    ranker::Ranker,
+    count4::{self, CountFn, SimdCount7, WideSimdCount2},
+    ranker::{BasicBlock, Ranker, SuperBlock},
     super_block::{NoSB, SB8, TrivialSB},
 };
 use mem_dbg::MemSize;
@@ -51,7 +52,7 @@ fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
     eprint!(" {ns2:>4.1}",);
 }
 
-fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync) {
+fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
     let start = std::time::Instant::now();
     std::thread::scope(|scope| {
         queries.iter().for_each(|queries| {
@@ -65,7 +66,7 @@ fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync) {
     eprint!(" {ns:>5.2}",);
 }
 
-fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync) {
+fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
     if MULTITHREAD {
         time_fn_mt(queries, f);
     } else {
@@ -73,7 +74,25 @@ fn time_fn(queries: &QS, f: impl Fn(&[usize]) + Sync) {
     }
 }
 
-fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync) {
+fn time_latency(
+    queries: &QS,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> Ranks + Sync + Copy,
+) {
+    time_fn(queries, |queries| {
+        let mut acc = 0;
+        for &q in queries {
+            // Make query depend on previous result.
+            let q = q ^ acc;
+            prefetch(q);
+            let ranks = f(q);
+            acc ^= (ranks[0] & 1) as usize;
+            check(q, ranks);
+        }
+    });
+}
+
+fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync + Copy) {
     time_fn(queries, |queries| {
         for &q in queries {
             check(q, f(q));
@@ -111,6 +130,45 @@ fn time_stream(
             check(q, f(q));
         }
     });
+}
+
+fn time_trip(
+    queries: &QS,
+    lookahead: usize,
+    prefetch: impl Fn(usize) + Sync + Copy,
+    f: impl Fn(usize) -> Ranks + Sync + Copy,
+) {
+    time_latency(queries, prefetch, f);
+    time_loop(queries, f);
+    time_stream(queries, lookahead, prefetch, f);
+}
+
+fn bench<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool>(
+    seq: &[u8],
+    queries: &QS,
+) where
+    [(); BB::B]:,
+    [(); SB::BB]:,
+    Ranker<BB, SB>: MemSize,
+{
+    let name = type_name_of_val(&Ranker::<BB, SB>::count::<CF, C3>);
+    let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
+        .unwrap()
+        .replace_all(name, |_: &regex::Captures| "".to_string());
+
+    eprint!("{name:<60}");
+
+    let ranker = Ranker::<BB, SB>::new(&seq);
+    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+    eprint!("{bits:>6.2}b |");
+
+    time_trip(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<CF, false>(p),
+    );
+    eprintln!();
 }
 
 #[inline(always)]
@@ -276,39 +334,6 @@ fn bench_qwt(seq: &[u8], queries: &QS) {
     eprintln!();
 }
 
-#[inline(never)]
-fn bench_broken<const C3: bool>(seq: &[u8], queries: &QS) {
-    let ranker = Ranker::<PentaBlock20bit, TrivialSB>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount7, false>(p),
-    );
-
-    eprint!(" |");
-
-    let ranker = Ranker::<HexaBlock18bit, TrivialSB>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| {
-        ranker.count::<count4::WideSimdCount2, false>(p)
-    });
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::WideSimdCount2, false>(p),
-    );
-}
-
 fn bench_coro<const C3: bool>(seq: &[u8], queries: &QS) {
     let ranker = Ranker::<QuartBlock, NoSB>::new(&seq);
     time_coro_stream(&queries, B, |p| {
@@ -323,132 +348,22 @@ fn bench_coro<const C3: bool>(seq: &[u8], queries: &QS) {
 }
 
 #[inline(never)]
-fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", format!("QuartBlock {C3}"));
-
-    let bwa_ranker = Ranker::<FullBlock, NoSB>::new(&seq);
-    let bits = (bwa_ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| {
-        bwa_ranker.count::<count4::U64PopcntSlice, false>(p)
-    });
-    time_stream(
-        &queries,
-        B,
-        |p| bwa_ranker.prefetch(p),
-        |p| bwa_ranker.count::<count4::U64PopcntSlice, false>(p),
-    );
-
-    eprint!(" |");
-
-    let ranker = Ranker::<QuartBlock, NoSB>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount7, false>(p),
-    );
-    eprint!(" |");
-
-    let ranker = Ranker::<PentaBlock, TrivialSB>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| ranker.count::<count4::SimdCount7, false>(p));
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCount7, false>(p),
-    );
-
-    eprint!(" |");
-
-    let ranker = Ranker::<HexaBlock, TrivialSB>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| {
-        ranker.count::<count4::WideSimdCount2, false>(p)
-    });
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::WideSimdCount2, false>(p),
-    );
-
-    eprintln!();
+fn bench_broken(seq: &[u8], queries: &QS) {
+    bench::<PentaBlock20bit, TrivialSB, SimdCount7, false>(seq, queries);
+    bench::<HexaBlock18bit, TrivialSB, WideSimdCount2, false>(seq, queries);
 }
 
 #[inline(never)]
-fn bench_dumb<const C3: bool>(seq: &[u8], queries: &QS) {
-    eprint!("{:<20}:", format!("DumbBlock {C3}"));
+fn bench_new(seq: &[u8], queries: &QS) {
+    bench::<DumbBlock, TrivialSB, count4::U128Popcnt3, true>(seq, queries);
+    bench::<DumbBlock, TrivialSB, count4::SimdCountSlice, false>(seq, queries);
+    bench::<DumbBlock, SB8, count4::U128Popcnt3, true>(seq, queries);
+    bench::<DumbBlock, SB8, count4::SimdCountSlice, false>(seq, queries);
 
-    let ranker = Ranker::<DumbBlock, TrivialSB>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| ranker.count::<count4::U128Popcnt3, true>(p));
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::U128Popcnt3, true>(p),
-    );
-    eprint!(" |");
-
-    time_loop(&queries, |p| {
-        ranker.count::<count4::SimdCountSlice, false>(p)
-    });
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCountSlice, false>(p),
-    );
-    eprint!(" |");
-
-    eprintln!();
-
-    eprint!("{:<20}:", format!("DumbBlock SB8"));
-    let ranker = Ranker::<DumbBlock, SB8>::new(&seq);
-    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
-    eprint!("{bits:>6.2}b |");
-
-    time_loop(&queries, |p| ranker.count::<count4::U128Popcnt3, true>(p));
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::U128Popcnt3, true>(p),
-    );
-    eprint!(" |");
-
-    time_loop(&queries, |p| {
-        ranker.count::<count4::SimdCountSlice, false>(p)
-    });
-
-    time_stream(
-        &queries,
-        B,
-        |p| ranker.prefetch(p),
-        |p| ranker.count::<count4::SimdCountSlice, false>(p),
-    );
-    eprint!(" |");
-
-    eprintln!();
+    bench::<FullBlock, NoSB, count4::U64PopcntSlice, false>(seq, queries);
+    bench::<QuartBlock, NoSB, count4::SimdCount7, false>(seq, queries);
+    bench::<PentaBlock, TrivialSB, count4::SimdCount7, false>(seq, queries);
+    bench::<HexaBlock, TrivialSB, count4::WideSimdCount2, false>(seq, queries);
 }
 
 fn main() {
@@ -471,12 +386,11 @@ fn main() {
                 .collect::<Vec<_>>()
         });
 
-        bench_dumb::<false>(&seq, &queries);
-        // bench_quart::<true>(&seq, &queries);
-        bench_quart::<false>(&seq, &queries);
-        // bench_best(&seq, &queries);
-        // bench_rank9(&seq, &queries);
+        bench_new(&seq, &queries);
+
         bench_qwt(&seq, &queries);
+
+        // bench_rank9(&seq, &queries);
 
         // bench_dna_rank::<64>(&seq, &queries);
         // bench_dna_rank::<128>(&seq, &queries);

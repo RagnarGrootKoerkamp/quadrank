@@ -8,6 +8,7 @@ mem_dbg = "0.3.2"
 packed-seq = "4.2.0"
 qwt = "0.3.1"
 rand = "0.9.2"
+regex = "1.12.2"
 sux = "0.9.1"
 
 [profile.release]
