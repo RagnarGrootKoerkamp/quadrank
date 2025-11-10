@@ -100,11 +100,9 @@ fn time_loop(queries: &QS, f: impl Fn(usize) -> Ranks + Sync + Copy) {
     });
 }
 
-fn time_batch<const BATCH: usize>(
-    queries: &QS,
-    prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> Ranks + Sync,
-) {
+const BATCH: usize = 32;
+
+fn time_batch(queries: &QS, prefetch: impl Fn(usize) + Sync, f: impl Fn(usize) -> Ranks + Sync) {
     time_fn(queries, |queries| {
         let qs = queries.as_chunks::<BATCH>().0;
         for batch in qs {
@@ -118,14 +116,9 @@ fn time_batch<const BATCH: usize>(
     })
 }
 
-fn time_stream(
-    queries: &QS,
-    lookahead: usize,
-    prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> Ranks + Sync,
-) {
+fn time_stream(queries: &QS, prefetch: impl Fn(usize) + Sync, f: impl Fn(usize) -> Ranks + Sync) {
     time_fn(queries, |queries| {
-        for (&q, &ahead) in queries.iter().zip(&queries[lookahead..]) {
+        for (&q, &ahead) in queries.iter().zip(&queries[BATCH..]) {
             prefetch(ahead);
             check(q, f(q));
         }
@@ -134,13 +127,12 @@ fn time_stream(
 
 fn time_trip(
     queries: &QS,
-    lookahead: usize,
     prefetch: impl Fn(usize) + Sync + Copy,
     f: impl Fn(usize) -> Ranks + Sync + Copy,
 ) {
     time_latency(queries, prefetch, f);
     time_loop(queries, f);
-    time_stream(queries, lookahead, prefetch, f);
+    time_stream(queries, prefetch, f);
 }
 
 fn bench<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool>(
@@ -164,7 +156,6 @@ fn bench<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool>
 
     time_trip(
         &queries,
-        B,
         |p| ranker.prefetch(p),
         |p| ranker.count::<CF, false>(p),
     );
@@ -172,7 +163,7 @@ fn bench<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool>
 }
 
 #[inline(always)]
-fn time_coro2_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
+fn time_coro2_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
@@ -195,7 +186,7 @@ where
 }
 
 #[inline(always)]
-fn time_coro2_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
+fn time_coro2_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
@@ -222,13 +213,13 @@ where
 }
 
 #[inline(always)]
-fn time_coro_batch<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
+fn time_coro_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     time_fn(queries, |queries| {
-        for batch in queries.as_chunks::<B>().0 {
-            let mut funcs: [_; B] = from_fn(|i| f(batch[i]));
+        for batch in queries.as_chunks::<BATCH>().0 {
+            let mut funcs: [_; BATCH] = from_fn(|i| f(batch[i]));
 
             for (q, func) in batch.iter().zip(&mut funcs) {
                 let Complete(fq) = pin!(func).resume(()) else {
@@ -240,26 +231,24 @@ where
     });
 }
 
-const B: usize = 32;
-
 #[inline(always)]
-fn time_coro_stream<F>(queries: &QS, _lookahead: usize, f: impl Fn(usize) -> F + Sync)
+fn time_coro_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = Ranks> + Unpin,
 {
     time_fn(queries, |queries| {
-        let mut funcs: [F; B] = from_fn(|i| f(queries[i]));
+        let mut funcs: [F; BATCH] = from_fn(|i| f(queries[i]));
 
-        for i in 0..queries.len() - B {
+        for i in 0..queries.len() - BATCH {
             // finish the old state
-            let func = &mut funcs[i % B];
+            let func = &mut funcs[i % BATCH];
             let Complete(fq) = pin!(func).resume(()) else {
                 panic!()
             };
             check(queries[i], fq);
 
             // new future
-            funcs[i % B] = f(queries[i + B]);
+            funcs[i % BATCH] = f(queries[i + BATCH]);
         }
     });
 }
@@ -323,7 +312,6 @@ fn bench_qwt(seq: &[u8], queries: &QS) {
 
         time_stream(
             &queries,
-            B,
             |p| {
                 rsq.prefetch_data(p);
                 rsq.prefetch_info(p)
@@ -336,13 +324,11 @@ fn bench_qwt(seq: &[u8], queries: &QS) {
 
 fn bench_coro<const C3: bool>(seq: &[u8], queries: &QS) {
     let ranker = Ranker::<QuartBlock, NoSB>::new(&seq);
-    time_coro_stream(&queries, B, |p| {
-        ranker.count_coro::<count4::U64Popcnt, C3>(p)
-    });
-    time_coro_stream(&queries, B, |p| {
+    time_coro_stream(&queries, |p| ranker.count_coro::<count4::U64Popcnt, C3>(p));
+    time_coro_stream(&queries, |p| {
         ranker.count_coro::<count4::ByteLookup8, C3>(p)
     });
-    time_coro_stream(&queries, B, |p| {
+    time_coro_stream(&queries, |p| {
         ranker.count_coro::<count4::SimdCount7, false>(p)
     });
 }
