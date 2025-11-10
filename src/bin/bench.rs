@@ -14,6 +14,7 @@ use dna_rank::{
     },
     count4,
     ranker::Ranker,
+    super_block::{NoSB, SB8, TrivialSB},
 };
 use mem_dbg::MemSize;
 use qwt::{RankQuad, RankUnsigned, SpaceUsage, WTSupport};
@@ -280,7 +281,7 @@ fn bench_qwt(seq: &[u8], queries: &QS) {
 fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", format!("QuartBlock {C3}"));
 
-    let bwa_ranker = Ranker::<FullBlock>::new(&seq);
+    let bwa_ranker = Ranker::<FullBlock, NoSB>::new(&seq);
     let bits = (bwa_ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
@@ -296,7 +297,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
 
     eprint!(" |");
 
-    let ranker = Ranker::<QuartBlock>::new(&seq);
+    let ranker = Ranker::<QuartBlock, NoSB>::new(&seq);
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
@@ -323,7 +324,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
     );
     eprint!(" |");
 
-    let ranker = Ranker::<PentaBlock>::new(&seq);
+    let ranker = Ranker::<PentaBlock, TrivialSB>::new(&seq);
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
@@ -353,7 +354,7 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
 
     // eprint!(" |");
 
-    let ranker = Ranker::<HexaBlock>::new(&seq);
+    let ranker = Ranker::<HexaBlock, TrivialSB>::new(&seq);
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
@@ -401,7 +402,36 @@ fn bench_quart<const C3: bool>(seq: &[u8], queries: &QS) {
 fn bench_dumb<const C3: bool>(seq: &[u8], queries: &QS) {
     eprint!("{:<20}:", format!("DumbBlock {C3}"));
 
-    let ranker = Ranker::<DumbBlock>::new(&seq);
+    let ranker = Ranker::<DumbBlock, TrivialSB>::new(&seq);
+    let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
+    eprint!("{bits:>6.2}b |");
+
+    time_loop(&queries, |p| ranker.count::<count4::U128Popcnt3, true>(p));
+
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::U128Popcnt3, true>(p),
+    );
+    eprint!(" |");
+
+    time_loop(&queries, |p| {
+        ranker.count::<count4::SimdCountSlice, false>(p)
+    });
+
+    time_stream(
+        &queries,
+        B,
+        |p| ranker.prefetch(p),
+        |p| ranker.count::<count4::SimdCountSlice, false>(p),
+    );
+    eprint!(" |");
+
+    eprintln!();
+
+    eprint!("{:<20}:", format!("DumbBlock SB8"));
+    let ranker = Ranker::<DumbBlock, SB8>::new(&seq);
     let bits = (ranker.mem_size(Default::default()) * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
