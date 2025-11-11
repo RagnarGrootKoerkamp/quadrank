@@ -11,7 +11,8 @@ use clap::Parser;
 use dna_rank::{
     Ranks,
     blocks::{
-        FullBlock, FullBlockMid, HexaBlock, PentaBlock, Plain128, Plain256, Plain512, QuartBlock,
+        FullBlock, FullBlockMid, HexaBlock, HexaBlockMid, PentaBlock, Plain128, Plain256, Plain512,
+        QuartBlock,
     },
     count4::{SimdCount7, SimdCountSlice, U64PopcntSlice, U128Popcnt3, WideSimdCount2},
     ranker::{Ranker, RankerT},
@@ -302,6 +303,7 @@ fn bench_all(seq: &[u8], queries: &QS) {
     bench::<Ranker<QuartBlock, NoSB, SimdCount7, false>>(seq, queries);
     bench::<Ranker<PentaBlock, TrivialSB, SimdCount7, false>>(seq, queries);
     bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount7, false>>(seq, queries);
 
     // external
     // #[cfg(not(debug_assertions))]
