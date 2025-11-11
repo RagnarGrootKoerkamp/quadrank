@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use std::array::from_fn;
+use std::{array::from_fn, hint::assert_unchecked};
 
 use crate::{
     Ranks, add,
@@ -590,7 +590,7 @@ impl BasicBlock for PentaBlock20bit {
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct HexaBlock {
-    /// 16it counts for the global offset
+    /// 16bit counts for the global offset
     ranks: [u16; 4],
     /// Each u16 is equivalent to [u8; 2] with counts from start to 2 of 3 128 parts.
     part_ranks: [u16; 4],
@@ -649,6 +649,75 @@ impl BasicBlock for HexaBlock {
         }
         for c in 0..4 {
             ranks[c] += (self.part_ranks[c].unbounded_shr(16 - 8 * hex as u32)) as u32 & 0xff;
+        }
+
+        ranks
+    }
+}
+
+/// u16 global ranks, and a u16 encoding offsets for 2 of the 3 u128 parts.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct HexaBlock2 {
+    /// high half: 16bit counts for the global offset
+    /// low half: 2x u8 offset
+    ranks: [u32; 4],
+    // u128x3 = u8x48 = 384 bit packed sequence
+    seq: [u8; 48],
+}
+
+impl BasicBlock for HexaBlock2 {
+    const B: usize = 48;
+    const N: usize = 192;
+    const C: usize = 16;
+    const W: usize = 16;
+
+    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        let mut part_ranks = [0u16; 4];
+        let mut block_ranks = [0u16; 4];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<16>().0.iter().enumerate() {
+            for c in 0..4 {
+                block_ranks[c as usize] += count_u8x16(chunk, c) as u16;
+            }
+            for c in 0..4 {
+                if i < 2 {
+                    part_ranks[c] |= block_ranks[c].unbounded_shl(8 - 8 * i as u32);
+                }
+            }
+        }
+        HexaBlock2 {
+            ranks: from_fn(|c| (ranks[c] << 16) | part_ranks[c] as u32),
+            seq: *data,
+        }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
+        let mut ranks = [0; 4];
+
+        let hex = pos / 64;
+        let hex_pos = pos % 64;
+
+        let idx = hex * 16;
+        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), hex_pos);
+        for c in 0..4 {
+            ranks[c] += inner_counts[c];
+        }
+
+        if C3 {
+            ranks[0] = hex_pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            ranks[0] -= extra_counted::<_, C>(pos);
+        }
+
+        for c in 0..4 {
+            ranks[c] += self.ranks[c] >> 16;
+        }
+        for c in 0..4 {
+            ranks[c] += (self.ranks[c] & 0xffff) >> (16 - 8 * hex as u32) & 0xff;
+            // ranks[c] += (self.part_ranks[c].unbounded_shr(16 - 8 * hex as u32)) as u32 & 0xff;
+            // ranks[c] += (self.part_ranks[c].unbounded_shr(16 - 8 * (hex / 2) as u32)) as u32 & 0xff;
         }
 
         ranks
@@ -734,10 +803,9 @@ impl BasicBlock for HexaBlock18bit {
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct HexaBlockMid {
-    /// 16it counts for the global offset to position 32 (middle of first u128).
-    ranks: [u16; 4],
-    /// Each u16 is equivalent to [u8; 2] with deltas to middle of 2nd and 3rd 128 parts.
-    part_ranks: [u16; 4],
+    /// high half: 16bit counts for the global offset to position 32 (middle of first u128).
+    /// low half: 2x 8bit counts for the first half of 2nd and 3rd 128 parts.
+    ranks: [u32; 4],
     // u128x3 = u8x48 = 384 bit packed sequence
     seq: [u8; 48],
 }
@@ -759,10 +827,9 @@ impl BasicBlock for HexaBlockMid {
         ranks = add(ranks, bs[0]);
         let p1 = add(bs[1], bs[2]);
         let p2 = add(add(bs[1], bs[2]), add(bs[3], bs[4]));
-        let part_ranks = from_fn(|c| ((p1[c] << 8) | p2[c]) as u16);
+        let part_ranks: Ranks = from_fn(|c| (p1[c] << 8) | p2[c]);
         Self {
-            ranks: ranks.map(|x| x as u16),
-            part_ranks,
+            ranks: from_fn(|c| (ranks[c] << 16) | part_ranks[c]),
             seq: *data,
         }
     }
@@ -777,35 +844,32 @@ impl BasicBlock for HexaBlockMid {
         let idx = hex * 8;
 
         for c in 0..4 {
-            ranks[c] += self.ranks[c] as u32;
+            ranks[c] += self.ranks[c] >> 16;
         }
 
+        let inner_counts = C::count_mid(&self.seq[idx..idx + 8].try_into().unwrap(), pos % 64);
         if (pos & 32) == 0 {
-            let inner_counts = C::count_right(&self.seq[idx..idx + 8].try_into().unwrap(), hex_pos);
-            if !C3 {
-                let e = extra_counted::<_, C>(pos);
-                let f = (C::S as u32 * 4 - e) % (C::S as u32 * 4);
-                ranks[0] += f;
-            }
             for c in 0..4 {
-                ranks[c] -= inner_counts[c];
+                ranks[c] = ranks[c].wrapping_sub(inner_counts[c]);
             }
         } else {
-            let inner_counts = C::count(&self.seq[idx..idx + 8].try_into().unwrap(), hex_pos);
             for c in 0..4 {
                 ranks[c] += inner_counts[c];
             }
-            if !C3 {
-                ranks[0] -= extra_counted::<_, C>(pos);
-            }
+            // if !C3 {
+            //     ranks[0] = ranks[0].wrapping_sub(32);
+            // }
         }
 
         if C3 {
             ranks[0] = hex_pos as u32 - ranks[1] - ranks[2] - ranks[3];
+        } else {
+            ranks[0] = ranks[0].wrapping_add(((pos as u32 + 32) % 64).wrapping_sub(32));
         }
 
         for c in 0..4 {
-            ranks[c] += (self.part_ranks[c].unbounded_shr(16 - 8 * (hex / 2) as u32)) as u32 & 0xff;
+            ranks[c] += (self.ranks[c] & 0xffff) >> (16 - 8 * (hex / 2) as u32) & 0xff;
+            // ranks[c] += (self.part_ranks[c].unbounded_shr(16 - 8 * (hex / 2) as u32)) as u32 & 0xff;
         }
 
         ranks
