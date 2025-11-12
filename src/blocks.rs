@@ -4,7 +4,7 @@ use std::{arch::x86_64::_mm_sign_epi32, array::from_fn, simd::u32x4};
 
 use crate::{
     Ranks, add,
-    count::{count_u8x8, count_u8x16, count_u64},
+    count::{count_u8x8, count_u8x16, count_u64, count_u64_2, count_u64_2_mask},
     count4::{CountFn, MASKS, count4_u8x8},
     ranker::BasicBlock,
 };
@@ -1080,5 +1080,32 @@ impl BasicBlock for HexaBlockMid4 {
             ))
         };
         ranks.to_array()
+    }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, c: u8) -> u32 {
+        let hex = pos / 32;
+
+        let idx = hex * 8;
+
+        let word = u64::from_le_bytes(self.seq[idx..idx + 8].try_into().unwrap());
+        let inner = count_u64_2_mask(word, c, pos % 64);
+
+        let mut rank = if (pos & 32) > 0 {
+            inner
+        } else {
+            inner.wrapping_neg()
+        };
+
+        let self_ranks = self.ranks[c as usize];
+
+        rank += self_ranks >> 14;
+
+        let shuffle = 0x770000u32;
+        let shift = (shuffle >> hex as u32) & 7;
+        let parts = self_ranks & 0x3fff;
+        let sign2 = (hex / 2).wrapping_sub(1);
+        rank += (((parts) >> shift) & 0x7f) * sign2 as u32;
+        rank
     }
 }

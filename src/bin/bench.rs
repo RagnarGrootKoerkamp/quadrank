@@ -280,6 +280,30 @@ fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
     eprintln!();
 }
 
+fn bench1<R: RankerT>(seq: &[u8], queries: &QS) {
+    let name = type_name::<R>();
+    let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
+        .unwrap()
+        .replace_all(name, |_: &regex::Captures| "".to_string());
+
+    eprint!("{name:<60}");
+
+    let ranker = R::new(&seq);
+    let bits = (ranker.size() * 8) as f64 / (4 * seq.len()) as f64;
+    eprint!("{bits:>6.2}b |");
+
+    for t in [Threading::Single, Threading::Multi] {
+        time_trip(
+            &queries,
+            t,
+            |p| ranker.prefetch(p),
+            |p| [ranker.count1(p, p as u8 & 3), 0, 0, 0],
+        );
+        eprint!(" |");
+    }
+    eprintln!();
+}
+
 fn bench_coro<R: RankerT>(seq: &[u8], queries: &QS) {
     let ranker = R::new(&seq);
     time_coro_stream(&queries, |p| ranker.count_coro(p));
@@ -318,6 +342,7 @@ fn bench_all(seq: &[u8], queries: &QS) {
     bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>(seq, queries);
     bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount9, false>>(seq, queries);
     bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
+    bench1::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
 
     // external
     // #[cfg(not(debug_assertions))]
