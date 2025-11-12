@@ -4,7 +4,10 @@ use crate::ranker::RankerT;
 
 impl RankerT for RSQVector256 {
     fn new(seq: &[u8]) -> Self {
-        let seq = seq.iter().map(|x| (x >> 1) & 3).collect::<Vec<_>>();
+        let seq = seq
+            .iter()
+            .flat_map(|x| (0..4).map(move |i| (x >> (2 * i)) & 3))
+            .collect::<Vec<_>>();
         RSQVector256::new(&seq)
     }
 
