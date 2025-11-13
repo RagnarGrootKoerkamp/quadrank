@@ -20,12 +20,11 @@ pub mod super_block;
 
 pub type Ranks = [u32; 4];
 
-// pub type QuadRank =
-//     ranker::Ranker<blocks::QuartBlock, super_block::NoSB, count4::SimdCount10, false>;
-// pub type QuadRank =
-//     ranker::Ranker<blocks::HexaBlock2, super_block::TrivialSB, count4::WideSimdCount2, false>;
-pub type QuadRank =
+pub type QuartRank =
+    ranker::Ranker<blocks::QuartBlock, super_block::NoSB, count4::SimdCount10, false>;
+pub type HexRank =
     ranker::Ranker<blocks::HexaBlockMid4, super_block::TrivialSB, count4::SimdCount10, false>;
+pub type QwtRank = ::qwt::RSQVector256;
 
 fn add(a: Ranks, b: Ranks) -> Ranks {
     from_fn(|c| a[c] + b[c])
@@ -38,7 +37,7 @@ fn test() {
     use ranker::RankerT;
 
     let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    let ranker = QuadRank::new(text);
+    let ranker = HexRank::new(text);
 
     assert_eq!(ranker.count(0), [0, 0, 0, 0]);
 

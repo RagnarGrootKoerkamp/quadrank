@@ -1,14 +1,14 @@
 use std::arch::x86_64::{_pext_u32, _pext_u64};
 
-use quadrank::ranker::RankerT;
+use quadrank::{HexRank, ranker::RankerT};
 use qwt::{RankQuad, WTSupport};
 
 use crate::bwt::BWT;
 
-type Rank = quadrank::QuadRank;
-// type Rank = qwt::RSQVector256;
+// type Rank = quadrank::QuadRank;
+type Rank = qwt::RSQVector256;
 
-pub struct FM {
+pub struct FM<Rank: RankerT = HexRank> {
     n: usize,
     rank: Rank,
     sentinel: usize,
@@ -17,7 +17,7 @@ pub struct FM {
     prefix_lookup: Vec<(u32, u32)>,
 }
 
-impl FM {
+impl<Rank: RankerT> FM<Rank> {
     pub fn size(&self) -> usize {
         self.rank.size()
             + std::mem::size_of_val(self.occ.as_slice())

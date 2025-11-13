@@ -15,7 +15,7 @@ use genedex::text_with_rank_support::{
     Block64, Block512, CondensedTextWithRankSupport, FlatTextWithRankSupport, TextWithRankSupport,
 };
 use mem_dbg::MemSize;
-use quadrank::ranker::RankerT;
+use quadrank::{HexRank, QuartRank, QwtRank, ranker::RankerT};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::{Path, PathBuf},
@@ -93,14 +93,14 @@ fn bwt(input: &Path, output: &Path) {
     .unwrap();
 }
 
-fn map(bwt_path: &Path, reads_path: &Path) {
+fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
     eprintln!("Reading BWT from {}", bwt_path.display());
     let bwt = std::fs::read(bwt_path).unwrap();
     let bwt = bincode::decode_from_slice(&bwt, bincode::config::legacy())
         .unwrap()
         .0;
     eprintln!("Building FM index & rank structure");
-    let fm = time("FM build", || fm::FM::new_with_prefix(&bwt, 8));
+    let fm = time("FM build", || fm::FM::<Rank>::new_with_prefix(&bwt, 8));
 
     let bytes = fm.size();
     eprintln!(
@@ -284,7 +284,7 @@ fn map_fm_crate(input_path: &Path, reads_path: &Path) {
     println!("{:<15} {}", "#matches:", total_matches);
 }
 
-fn map_genedex<T: TextWithRankSupport<i32> + Sync>(input_path: &Path, reads_path: &Path) {
+fn map_genedex<T: TextWithRankSupport<u32> + Sync>(input_path: &Path, reads_path: &Path) {
     eprintln!("Reading text from {}", input_path.display());
     let mut text = vec![];
     let mut reader = needletail::parse_fastx_file(input_path).unwrap();
@@ -298,7 +298,7 @@ fn map_genedex<T: TextWithRankSupport<i32> + Sync>(input_path: &Path, reads_path
     eprintln!("Building FM index & rank structure on len {}", text.len());
 
     let fm = time("FM build", || {
-        genedex::FmIndexConfig::<i32, T>::new()
+        genedex::FmIndexConfig::<u32, T>::new()
             .suffix_array_sampling_rate(1024)
             .construct_index(&[&text], genedex::alphabet::ascii_dna())
     });
@@ -483,7 +483,7 @@ fn test() {
     println!("build bwt");
     let bwt = build_bwt_ascii(text.to_vec());
     println!("build fm");
-    let fm = fm::FM::new(&bwt);
+    let fm = <fm::FM>::new(&bwt);
     println!("query");
     let query = b"TACGAA";
     let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
@@ -505,7 +505,9 @@ fn main() {
         bwt(&args.reference, bwt_path);
     }
 
-    map(bwt_path, &args.reads);
+    map::<QuartRank>(bwt_path, &args.reads);
+    map::<HexRank>(bwt_path, &args.reads);
+    map::<QwtRank>(bwt_path, &args.reads);
     // map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
     // map_genedex::<FlatTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
