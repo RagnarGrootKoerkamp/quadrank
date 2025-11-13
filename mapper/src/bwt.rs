@@ -29,17 +29,17 @@ fn sa_to_bwt(text: &[u8], sa: impl IntoIterator<Item = usize>) -> BWT {
     bwt.insert(0, *text.last().unwrap());
     let sentinel = sentinel.into_inner();
 
-    for idx in 0..=text.len() {
-        let i = if idx == 0 { n } else { sa[idx - 1] };
-        let c = if idx < sentinel {
-            bwt[idx]
-        } else if idx == sentinel {
-            99
-        } else {
-            bwt[idx - 1]
-        };
-        eprintln!("{idx:>2}: {c} | {i:>3} -> {:?}", &text[i..]);
-    }
+    // for idx in 0..=text.len() {
+    //     let i = if idx == 0 { n } else { sa[idx - 1] };
+    //     let c = if idx < sentinel {
+    //         bwt[idx]
+    //     } else if idx == sentinel {
+    //         99
+    //     } else {
+    //         bwt[idx - 1]
+    //     };
+    //     eprintln!("{idx:>2}: {c} | {i:>3} -> {:?}", &text[i..]);
+    // }
 
     BWT { bwt, sentinel }
 }
