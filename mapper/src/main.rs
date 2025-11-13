@@ -46,7 +46,8 @@ fn build_bwt_ascii(mut text: Vec<u8>) -> bwt::BWT {
 
 #[allow(unused)]
 fn build_bwt_packed(text: &mut Vec<u8>) -> bwt::BWT {
-    return time("caps-sa", || bwt::caps_sa(text, false));
+    return time("libsais", || bwt::libsais(text));
+    // return time("caps-sa", || bwt::caps_sa(text, text.len() > 800_000_000));
     if text.len() > 1000 {
         // time("simple-saca", || bwt::simple_saca(&text))
         // time("small-bwt", || bwt::small_bwt(&text))

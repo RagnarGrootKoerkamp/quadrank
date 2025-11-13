@@ -11,12 +11,11 @@ pub struct BWT {
 
 fn sa_to_bwt(text: &[u8], sa: impl IntoIterator<Item = usize>) -> BWT {
     let n = text.len();
-    let sa: Vec<_> = sa.into_iter().collect();
     let mut sentinel = AtomicUsize::new(0);
     let mut bwt: Vec<_> = sa
-        .iter()
+        .into_iter()
         .enumerate()
-        .flat_map(|(idx, &i)| {
+        .flat_map(|(idx, i)| {
             if i == 0 {
                 // +1 to correct for the insert we do below.
                 sentinel.store(idx + 1, std::sync::atomic::Ordering::Relaxed);
@@ -44,6 +43,16 @@ fn sa_to_bwt(text: &[u8], sa: impl IntoIterator<Item = usize>) -> BWT {
     BWT { bwt, sentinel }
 }
 
+pub fn libsais(text: &[u8]) -> BWT {
+    let sa = libsais::suffix_array::SuffixArrayConstruction::for_text(text)
+        .in_owned_buffer64()
+        .multi_threaded(libsais::ThreadCount::fixed(12))
+        .run()
+        .unwrap();
+
+    sa_to_bwt(text, sa.into_vec().iter().map(|&x| x as usize))
+}
+
 /// BWT for context 100kbp.
 pub fn simple_saca(text: &[u8]) -> BWT {
     let sa = simple_saca::suffix_array::SuffixArray::<5>::new_packed::<3000000>(text, 10, 6);
@@ -68,7 +77,7 @@ pub fn caps_sa(text: &mut Vec<u8>, ext: bool) -> BWT {
 
     // drop the sentinel index.
     let n = text.len();
-    sa = sa.into_iter().filter(|&i| i != n as u32).collect();
+    sa = sa.into_iter().filter(|&i| i as usize != n).collect();
     sa_to_bwt(text, sa.iter().map(|&i| i as usize))
 }
 

@@ -1169,6 +1169,7 @@ dependencies = [
  "clap",
  "fm-index",
  "genedex",
+ "libsais",
  "mem_dbg 0.3.2",
  "needletail",
  "quadrank",
