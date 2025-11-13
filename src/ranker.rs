@@ -94,7 +94,7 @@ where
         let mut block_ranks = Vec::with_capacity(num_long_chunks);
         let mut blocks = Vec::with_capacity(num_chunks);
         for (i, chunk) in chunks.iter().enumerate() {
-            if i % Self::LONG_STRIDE == 0 {
+            if (BB::W < 32) && i % Self::LONG_STRIDE == 0 {
                 for i in 0..4 {
                     l_ranks[i] += ranks[i];
                 }
@@ -149,7 +149,7 @@ where
         let block_idx = pos / BB::N;
         let block_pos = pos % BB::N;
         let mut ranks = self.blocks[block_idx].count::<CF, C3>(block_pos);
-        if BB::W < 32 {
+        if (BB::W) < 32 {
             let long_pos = block_idx / Self::LONG_STRIDE;
             let long_ranks = self.super_blocks[long_pos / SB::BB].get(long_pos % SB::BB);
             for c in 0..4 {
@@ -164,7 +164,7 @@ where
         let block_idx = pos / BB::N;
         let block_pos = pos % BB::N;
         let mut rank = self.blocks[block_idx].count1(block_pos, c);
-        if BB::W < 32 {
+        if (BB::W) < 32 {
             let long_pos = block_idx / Self::LONG_STRIDE;
             let long_ranks = self.super_blocks[long_pos / SB::BB].get(long_pos % SB::BB);
             rank += long_ranks[c as usize];
@@ -182,6 +182,8 @@ where
     // => x < 2^32 / N - 1
     const LONG_STRIDE: usize = if BB::W == 0 {
         1
+    } else if BB::W >= 32 {
+        usize::MAX
     } else {
         (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2
     };

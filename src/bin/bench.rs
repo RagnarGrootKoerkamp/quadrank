@@ -381,8 +381,8 @@ fn main() {
     for n in ns {
         // for n in [100_000] {
         eprintln!("n = {}", n);
-        // let seq = b"ACTG".repeat(n / 4);
-        let seq = [0b11100100].repeat(n / 4);
+        let seq = b"ACTG".repeat(n / 4);
+        // let seq = [0b11100100].repeat(n / 4);
         let queries = (0..threads.max(5))
             .map(|_| {
                 (0..q)
