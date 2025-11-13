@@ -282,15 +282,14 @@ fn map_genedex<T: TextWithRankSupport<i32> + Sync>(input_path: &Path, reads_path
         text.extend_from_slice(&record.seq());
     }
     for x in &mut text {
-        *x = (*x >> 1) & 3;
+        *x = b"ACTG"[((*x >> 1) & 3) as usize];
     }
-    text.push(0);
     eprintln!("Building FM index & rank structure on len {}", text.len());
 
     let fm = time("FM build", || {
         genedex::FmIndexConfig::<i32, T>::new()
             .suffix_array_sampling_rate(1024)
-            .construct_index(&[&text], genedex::alphabet::u8_until(3))
+            .construct_index(&[&text], genedex::alphabet::ascii_dna())
     });
     let bytes = fm.mem_size(Default::default());
     eprintln!(
@@ -304,12 +303,15 @@ fn map_genedex<T: TextWithRankSupport<i32> + Sync>(input_path: &Path, reads_path
     let mut reads = vec![];
     while let Some(r) = reader.next() {
         let r = r.unwrap();
-        let seq = r.seq();
+        let seq = r.seq().into_owned();
         // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
-        let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-        let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
-        reads.push(packed);
-        reads.push(packed_rc);
+        let rc = seq
+            .iter()
+            .rev()
+            .map(|&x| b"TGAC"[(x as usize >> 1) & 3])
+            .collect::<Vec<_>>();
+        reads.push(seq);
+        reads.push(rc);
     }
 
     let total = AtomicUsize::new(0);
