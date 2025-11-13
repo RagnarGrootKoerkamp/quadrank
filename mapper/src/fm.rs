@@ -71,6 +71,7 @@ impl FM {
         (steps, (t - s) as usize)
     }
 
+    #[inline(always)]
     pub fn query_batch<const B: usize>(&self, text: &[Vec<u8>; B]) -> [(usize, usize); B] {
         if B == 1 {
             return [self.query(&text[0]); B];
@@ -126,6 +127,70 @@ impl FM {
                 t[i] = occ + ranks_t as usize;
             }
             text_idx += 1;
+        }
+        std::array::from_fn(|i| (steps[i], (t[i] - s[i]) as usize))
+    }
+
+    /// Process a total of T queries, constantly keeping B active.
+    #[inline(always)]
+    pub fn query_all<const B: usize, const T: usize>(
+        &self,
+        text: &[Vec<u8>; T],
+    ) -> [(usize, usize); T] {
+        let mut s = [0; T];
+        let mut t = [self.n + 1; T];
+        let mut steps = [0; T];
+
+        let mut active: [usize; B] = std::array::from_fn(|i| i);
+        let mut next = B;
+        let mut text_idx = [0; T];
+
+        let mut done = 0;
+
+        while done < T {
+            for idx in 0..B {
+                let mut i = active[idx] as usize;
+                if i >= T {
+                    continue;
+                }
+
+                if s[i] == t[i] || text_idx[i] >= text[i].len() {
+                    if i < T {
+                        done += 1;
+                        active[idx] = next;
+                        i = next;
+                        next += 1;
+                    }
+                    if i >= T {
+                        continue;
+                    }
+                }
+                self.rank
+                    .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                self.rank
+                    .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+            }
+
+            for idx in 0..B {
+                let i = active[idx] as usize;
+                if i >= T {
+                    continue;
+                }
+
+                let c = text[i][text[i].len() - 1 - text_idx[i]];
+
+                steps[i] += 1;
+                let occ = self.occ[c as usize];
+                let ranks_s = self
+                    .rank
+                    .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                s[i] = occ + ranks_s as usize;
+                let ranks_t = self
+                    .rank
+                    .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                t[i] = occ + ranks_t as usize;
+                text_idx[i] += 1;
+            }
         }
         std::array::from_fn(|i| (steps[i], (t[i] - s[i]) as usize))
     }
