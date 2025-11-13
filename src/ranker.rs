@@ -1,3 +1,5 @@
+use packed_seq::{PackedSeqVec, SeqVec};
+
 use crate::count::count_u8x8;
 use crate::{Ranks, count4::CountFn};
 // use packed_seq::{PackedSeqVec, SeqVec};
@@ -77,8 +79,9 @@ where
     [(); SB::BB]:,
 {
     fn new(seq: &[u8]) -> Self {
-        let mut packed_seq = seq.to_vec();
-        // let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
+        // let mut packed_seq = seq.to_vec();
+        let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
+        // eprintln!("packed_seq: {:?}", packed_seq);
         // Add one block of padding.
         packed_seq.resize(packed_seq.len() + 2 * BB::B, 0);
 

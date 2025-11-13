@@ -840,7 +840,10 @@ dependencies = [
  "clap",
  "needletail",
  "quadrank",
+ "qwt",
  "rayon",
+ "serde",
+ "serde_json",
  "simple-saca",
  "small-bwt",
 ]
