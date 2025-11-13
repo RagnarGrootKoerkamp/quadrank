@@ -16,3 +16,4 @@ fm-index = "0.3.0"
 bincode = "2.0.1"
 # genedex = "0.2.2"
 genedex = { path = "../../forks/genedex" }
+rand = "0.9.2"

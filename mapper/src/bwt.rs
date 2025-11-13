@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicUsize;
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-#[derive(bincode::Encode, bincode::Decode)]
+#[derive(bincode::Encode, bincode::Decode, PartialEq)]
 pub struct BWT {
     pub bwt: Vec<u8>,
     pub sentinel: usize,

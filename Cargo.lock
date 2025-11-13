@@ -1091,6 +1091,7 @@ dependencies = [
  "needletail",
  "quadrank",
  "qwt",
+ "rand 0.9.2",
  "rayon",
  "simple-saca",
  "small-bwt",
