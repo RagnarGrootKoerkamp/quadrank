@@ -1,4 +1,5 @@
 use quadrank::ranker::RankerT;
+use qwt::{RankQuad, WTSupport};
 
 use crate::bwt::BWT;
 
@@ -13,6 +14,10 @@ pub struct FM {
 }
 
 impl FM {
+    pub fn size(&self) -> usize {
+        self.rank.size() + self.occ.len() * size_of::<usize>()
+    }
+
     pub fn new(bwt: &BWT) -> Self {
         let n = bwt.bwt.len();
 
@@ -31,11 +36,9 @@ impl FM {
         }
         // for sentinel
         occ[0] += 1;
-        eprintln!("occ: {occ:?}");
         for i in 1..5 {
             occ[i] += occ[i - 1];
         }
-        eprintln!("occ: {occ:?}");
         eprintln!("sentinel: {}", bwt.sentinel);
 
         Self {

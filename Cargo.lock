@@ -747,6 +747,7 @@ version = "0.2.2"
 dependencies = [
  "bytemuck",
  "libsais",
+ "mem_dbg",
  "memchr",
  "num-traits",
  "psacak",
@@ -1088,6 +1089,7 @@ dependencies = [
  "clap",
  "fm-index",
  "genedex",
+ "mem_dbg",
  "needletail",
  "quadrank",
  "qwt",

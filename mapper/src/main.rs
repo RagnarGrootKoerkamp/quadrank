@@ -1,12 +1,19 @@
+// #![allow(unused)]
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
 mod bwt;
+#[cfg(test)]
 mod caps_sa_test;
 mod fm;
 
 use clap::Parser;
-use fm_index::Text;
+use fm_index::SearchIndex;
+use genedex::text_with_rank_support::{
+    Block64, Block512, CondensedTextWithRankSupport, FlatTextWithRankSupport, TextWithRankSupport,
+};
+use mem_dbg::MemSize;
+use quadrank::ranker::RankerT;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::{Path, PathBuf},
@@ -37,7 +44,9 @@ fn build_bwt_ascii(mut text: Vec<u8>) -> bwt::BWT {
     build_bwt_packed(&mut text)
 }
 
+#[allow(unused)]
 fn build_bwt_packed(text: &mut Vec<u8>) -> bwt::BWT {
+    return time("caps-sa", || bwt::caps_sa(text, false));
     if text.len() > 1000 {
         // time("simple-saca", || bwt::simple_saca(&text))
         // time("small-bwt", || bwt::small_bwt(&text))
@@ -89,6 +98,13 @@ fn map(bwt_path: &Path, reads_path: &Path) {
         .0;
     eprintln!("Building FM index & rank structure");
     let fm = time("FM build", || fm::FM::new(&bwt));
+
+    let bytes = fm.size();
+    eprintln!(
+        "SIZE: {} MB = {} bit/bp",
+        bytes / 1024 / 1024,
+        (8 * bytes) as f64 / bwt.bwt.len() as f64
+    );
 
     eprintln!("Reading queries");
     let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
@@ -174,8 +190,14 @@ fn map_fm_crate(input_path: &Path, reads_path: &Path) {
     eprintln!("Building FM index & rank structure");
 
     let fm = time("FM build", || {
-        fm_index::FMIndex::<u8>::new(&fm_index::Text::with_max_character(text, 4)).unwrap()
+        fm_index::FMIndex::<u8>::new(&fm_index::Text::with_max_character(&text, 4)).unwrap()
     });
+    let bytes = fm.heap_size();
+    eprintln!(
+        "SIZE: {} MB = {} bit/bp",
+        bytes / 1024 / 1024,
+        (8 * bytes) as f64 / text.len() as f64
+    );
 
     eprintln!("Reading queries");
     let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
@@ -251,7 +273,7 @@ fn map_fm_crate(input_path: &Path, reads_path: &Path) {
     println!("{:<15} {}", "#matches:", total_matches);
 }
 
-fn map_genedex(input_path: &Path, reads_path: &Path) {
+fn map_genedex<T: TextWithRankSupport<i32> + Sync>(input_path: &Path, reads_path: &Path) {
     eprintln!("Reading text from {}", input_path.display());
     let mut text = vec![];
     let mut reader = needletail::parse_fastx_file(input_path).unwrap();
@@ -266,10 +288,16 @@ fn map_genedex(input_path: &Path, reads_path: &Path) {
     eprintln!("Building FM index & rank structure on len {}", text.len());
 
     let fm = time("FM build", || {
-        genedex::FmIndexConfig::<i32>::new()
-            .suffix_array_sampling_rate(16)
-            .construct_index(&[text], genedex::alphabet::u8_until(3))
+        genedex::FmIndexConfig::<i32, T>::new()
+            .suffix_array_sampling_rate(1024)
+            .construct_index(&[&text], genedex::alphabet::u8_until(3))
     });
+    let bytes = fm.mem_size(Default::default());
+    eprintln!(
+        "SIZE: {} MB = {} bit/bp",
+        bytes / 1024 / 1024,
+        (8 * bytes) as f64 / text.len() as f64
+    );
 
     eprintln!("Reading queries");
     let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
@@ -371,7 +399,10 @@ fn main() {
 
     // map(bwt_path, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
-    map_genedex(&args.reference, &args.reads);
+    // map_genedex::<FlatTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
+    // map_genedex::<CondensedTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
+    // map_genedex::<FlatTextWithRankSupport<i32, Block512>>(&args.reference, &args.reads);
+    // map_genedex::<CondensedTextWithRankSupport<i32, Block512>>(&args.reference, &args.reads);
 }
 
 #[test]
@@ -401,7 +432,7 @@ fn broken2() {
         .map(|&x| ((x >> 1) & 3) + 1)
         .collect::<Vec<_>>();
 
-    let fm = fm_index::FMIndex::new(&Text::with_max_character(text, 4)).unwrap();
+    let fm = fm_index::FMIndex::new(&fm_index::Text::with_max_character(text, 4)).unwrap();
     let count = fm.search(&query).count();
     eprintln!("matches: {count}");
     assert!(count > 0);
