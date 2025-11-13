@@ -232,6 +232,95 @@ fn map_fm_crate(input_path: &Path, reads_path: &Path) {
     println!("{:<15} {}", "#matches:", total_matches);
 }
 
+fn map_genedex(input_path: &Path, reads_path: &Path) {
+    eprintln!("Reading text from {}", input_path.display());
+    let mut text = vec![];
+    let mut reader = needletail::parse_fastx_file(input_path).unwrap();
+    while let Some(record) = reader.next() {
+        let record = record.unwrap();
+        text.extend_from_slice(&record.seq());
+    }
+    for x in &mut text {
+        *x = (*x >> 1) & 3;
+    }
+    text.push(0);
+    eprintln!("Building FM index & rank structure on len {}", text.len());
+
+    let fm = time("FM build", || {
+        genedex::FmIndexConfig::<i32>::new()
+            .suffix_array_sampling_rate(16)
+            .construct_index(&[text], genedex::alphabet::u8_until(3))
+    });
+
+    eprintln!("Reading queries");
+    let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
+    let mut reads = vec![];
+    while let Some(r) = reader.next() {
+        let r = r.unwrap();
+        let seq = r.seq();
+        // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
+        let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
+        let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
+        reads.push(packed);
+        reads.push(packed_rc);
+    }
+
+    let total = AtomicUsize::new(0);
+    let mapped = AtomicUsize::new(0);
+    let total_matches = AtomicUsize::new(0);
+    let total_steps = AtomicUsize::new(0);
+    let start = std::time::Instant::now();
+    const B: usize = 32;
+    reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
+        let s = 0;
+        let mut m = 0;
+        let mut mp = 0;
+        for matches in  fm.count_many(batch) {
+            // s += steps;
+            m += matches;
+            if matches > 0 {
+                mp += 1;
+            }
+        }
+        let ts = total_steps.fetch_add(s, std::sync::atomic::Ordering::Relaxed);
+        let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
+        let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
+        let m = total_matches.fetch_add(
+            m,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+
+        if t % (1024 * 1024) == 0 {
+            let duration = start.elapsed();
+            eprint!(
+                "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+                t,
+                ts as f64 / t as f64,
+                mp,
+                m,
+                duration,
+                t as f64 / duration.as_secs_f64() / 1e3,
+                ts as f64 / duration.as_secs_f64() / 1e6
+            );
+        }
+    });
+
+    let total = total.into_inner();
+    let mapped = mapped.into_inner();
+    let total_matches = total_matches.into_inner();
+    let total_steps = total_steps.into_inner();
+
+    eprintln!();
+    println!("{:<15} {}", "#reads:", total);
+    println!(
+        "{:<15} {:.2}",
+        "#steps/read:",
+        total_steps as f64 / total as f64
+    );
+    println!("{:<15} {}", "#mapped:", mapped);
+    println!("{:<15} {}", "#matches:", total_matches);
+}
+
 #[allow(unused)]
 fn test() {
     let text = b"GCATACGTACGAAAAAAGCTTG";
@@ -261,7 +350,8 @@ fn main() {
     }
 
     // map(bwt_path, &args.reads);
-    map_fm_crate(&args.reference, &args.reads);
+    // map_fm_crate(&args.reference, &args.reads);
+    map_genedex(&args.reference, &args.reads);
 }
 
 #[test]
