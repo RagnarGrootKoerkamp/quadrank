@@ -1,0 +1,9 @@
+name,bit/bp,k reads/s,color
+fm_index,3.14,575,black
+genedex<Flat<64>>,8.67,3174,red
+genedex<Condensed<64>>,6.25,2061,red
+genedex<Flat<512>>,7.16,2129,red
+genedex<Condensed<512>>,5.15,933,red
+quad<RSQVector256>,2.25,3059,brown
+quad<QuartBlock>,4.0,7078,#ffc107
+quad<HexBlockMid>,2.67,4963,#ffc107
