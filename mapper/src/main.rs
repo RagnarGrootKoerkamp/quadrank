@@ -510,8 +510,8 @@ fn main() {
     map::<QwtRank>(bwt_path, &args.reads);
     // map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
-    // map_genedex::<FlatTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
-    // map_genedex::<CondensedTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
-    // map_genedex::<FlatTextWithRankSupport<i32, Block512>>(&args.reference, &args.reads);
-    // map_genedex::<CondensedTextWithRankSupport<i32, Block512>>(&args.reference, &args.reads);
+    // map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
+    // map_genedex::<CondensedTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
+    // map_genedex::<FlatTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
+    // map_genedex::<CondensedTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
 }
