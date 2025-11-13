@@ -5,9 +5,11 @@ mod bwt;
 mod fm;
 
 use clap::Parser;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::{Path, PathBuf},
     process::exit,
+    sync::atomic::AtomicUsize,
 };
 
 fn time<T>(name: &str, f: impl FnOnce() -> T) -> T {
@@ -63,64 +65,62 @@ fn map(bwt_path: &Path, reads_path: &Path) {
     let fm = time("FM build", || fm::FM::new(&bwt));
 
     let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
-    let mut total = 0;
-    let mut mapped = 0;
-    let mut total_matches = 0;
-    let mut total_steps = 0;
+    let mut reads = vec![];
+    while let Some(r) = reader.next() {
+        let r = r.unwrap();
+        let seq = r.seq();
+        // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
+        let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
+        let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
+        reads.push(packed);
+        reads.push(packed_rc);
+    }
+
+    let total = AtomicUsize::new(0);
+    let mapped = AtomicUsize::new(0);
+    let total_matches = AtomicUsize::new(0);
+    let total_steps = AtomicUsize::new(0);
     let start = std::time::Instant::now();
-    'l: loop {
-        let mut batch = vec![];
-        while batch.len() < 32 {
-            let Some(record) = reader.next() else {
-                break 'l;
-            };
-            let record = record.unwrap();
-            let seq = record.seq();
-            // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
-            let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-            let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
-
-            // for q in [packed, packed_rc] {
-            //     let (steps, matches) = fm.query(&q);
-            //     // eprintln!("  steps: {}, matches: {}", steps, matches);
-            //     total += 1;
-            //     total_steps += steps;
-            //     total_matches += matches;
-            //     if matches > 0 {
-            //         mapped += 1;
-            //     }
-            // }
-            batch.push(packed);
-            batch.push(packed_rc);
-        }
-
-        for (steps, matches) in fm.query_batch::<32>(&batch.try_into().unwrap()) {
-            // eprintln!("  steps: {}, matches: {}", steps, matches);
-            total += 1;
-            total_steps += steps;
-            total_matches += matches;
+    const B: usize = 32;
+    reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
+        let mut s = 0;
+        let mut m = 0;
+        let mut mp = 0;
+        for (steps, matches) in fm.query_batch(batch) {
+            s += steps;
+            m += matches;
             if matches > 0 {
-                mapped += 1;
+                mp += 1;
             }
         }
+        let ts = total_steps.fetch_add(s, std::sync::atomic::Ordering::Relaxed);
+        let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
+        let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
+        let m = total_matches.fetch_add(
+            m,
+            std::sync::atomic::Ordering::Relaxed,
+        );
 
-        if total % 1024 == 0 {
+        if t % (1024 * 1024) == 0 {
             let duration = start.elapsed();
             eprint!(
-                "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} reads/s, {:>6.2} steps/s)\r",
-                total,
-                total_steps as f64 / total as f64,
-                mapped,
-                total_matches,
+                "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+                t,
+                ts as f64 / t as f64,
+                mp,
+                m,
                 duration,
-                total as f64 / duration.as_secs_f64(),
-                total_steps as f64 / duration.as_secs_f64()
+                t as f64 / duration.as_secs_f64() / 1e3,
+                ts as f64 / duration.as_secs_f64() / 1e6
             );
         }
-        if total % (1024 * 1024) == 0 {
-            eprintln!();
-        }
-    }
+    });
+
+    let total = total.into_inner();
+    let mapped = mapped.into_inner();
+    let total_matches = total_matches.into_inner();
+    let total_steps = total_steps.into_inner();
+
     eprintln!();
     println!("{:<15} {}", "#reads:", total);
     println!(

@@ -65,6 +65,10 @@ impl FM {
     }
 
     pub fn query_batch<const B: usize>(&self, text: &[Vec<u8>; B]) -> [(usize, usize); B] {
+        if B == 1 {
+            return [self.query(&text[0]); B];
+        }
+
         let mut s = [0; B];
         let mut t = [self.n + 1; B];
         let mut steps = [0; B];
