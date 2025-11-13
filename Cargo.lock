@@ -18,6 +18,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aligned"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "377e4c0ba83e4431b10df45c1d4666f178ea9c552cac93e60c3a88bf32785923"
+dependencies = [
+ "as-slice",
+]
+
+[[package]]
 name = "ambassador"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -113,10 +122,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
+name = "as-slice"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "516b6b4f0e40d50dcda9365d53964ec74560ad4284da2e7fc97122cd83174516"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
+
+[[package]]
+name = "awry"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7360ed642ce68a647d015de5df4ef7022938eccdd023d028c02594313ef49353"
+dependencies = [
+ "aligned",
+ "anyhow",
+ "libsufr",
+ "mem_dbg 0.2.5",
+ "rand 0.8.5",
+ "rayon",
+ "serde",
+]
 
 [[package]]
 name = "bincode"
@@ -736,6 +769,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "format_num"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14ac05eb8d2eb4ed1eeff847911deae077b0b53332465de9d6a26b0ea9961bc8"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "fsum"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -747,7 +789,7 @@ version = "0.2.2"
 dependencies = [
  "bytemuck",
  "libsais",
- "mem_dbg",
+ "mem_dbg 0.3.2",
  "memchr",
  "num-traits",
  "psacak",
@@ -823,6 +865,15 @@ name = "hermit-abi"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
+
+[[package]]
+name = "home"
+version = "0.5.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc627f471c528ff0c4a49e1d5e60450c8f6461dd6d10ba9dcd3a61d3dff7728d"
+dependencies = [
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "iana-time-zone"
@@ -1060,6 +1111,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsufr"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e3c0cb8f9e8f68ef0cd2c6c4189f23da3d253b42f7074cf47c71c3352192314"
+dependencies = [
+ "anyhow",
+ "bincode 1.3.3",
+ "env_logger",
+ "format_num",
+ "home",
+ "log",
+ "needletail",
+ "num_cpus",
+ "rand 0.8.5",
+ "rayon",
+ "regex",
+ "serde",
+ "tempfile",
+ "thread_local",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1084,12 +1157,13 @@ checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 name = "mapper"
 version = "0.1.0"
 dependencies = [
+ "awry",
  "bincode 2.0.1",
  "caps-sa-rs",
  "clap",
  "fm-index",
  "genedex",
- "mem_dbg",
+ "mem_dbg 0.3.2",
  "needletail",
  "quadrank",
  "qwt",
@@ -1107,12 +1181,33 @@ checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 
 [[package]]
 name = "mem_dbg"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83623b4167d3fbfb0f60eaa0cfd0f303a44e50f35a41b8d6bce87ad9d3e81410"
+dependencies = [
+ "bitflags",
+ "mem_dbg-derive 0.1.7",
+]
+
+[[package]]
+name = "mem_dbg"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "256baafaaed96f2358e588047add018b8e5f1fc58e1cb58deb026528dd42488e"
 dependencies = [
  "bitflags",
- "mem_dbg-derive",
+ "mem_dbg-derive 0.2.0",
+]
+
+[[package]]
+name = "mem_dbg-derive"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1ac4642a5a1615ce3cdd3479f8d03c05068aab5a285a0722a24d5080d3f3e22"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.108",
 ]
 
 [[package]]
@@ -1231,6 +1326,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num_cpus"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91df4bbde75afed763b708b7eee1e8e7651e02d97f6d5dd763e89367e957b23b"
+dependencies = [
+ "hermit-abi",
+ "libc",
+]
+
+[[package]]
 name = "objc2-core-foundation"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1283,7 +1388,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "534d46109326ee0a3f0e157c305cf51b7ec73d1757f783a378e5821648f0357a"
 dependencies = [
  "cfg-if 1.0.4",
- "mem_dbg",
+ "mem_dbg 0.3.2",
  "rand 0.9.2",
  "wide",
 ]
@@ -1439,7 +1544,7 @@ name = "quadrank"
 version = "0.1.0"
 dependencies = [
  "clap",
- "mem_dbg",
+ "mem_dbg 0.3.2",
  "packed-seq",
  "qwt",
  "rand 0.9.2",
@@ -1813,6 +1918,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
+name = "stable_deref_trait"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
 name = "stable_try_trait_v2"
 version = "1.75.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1848,7 +1959,7 @@ dependencies = [
  "lender",
  "libc",
  "log",
- "mem_dbg",
+ "mem_dbg 0.3.2",
  "rand 0.9.2",
  "rayon",
  "rdst",
@@ -1957,6 +2068,15 @@ dependencies = [
  "log",
  "rustversion",
  "windows",
+]
+
+[[package]]
+name = "thread_local"
+version = "1.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
+dependencies = [
+ "cfg-if 1.0.4",
 ]
 
 [[package]]

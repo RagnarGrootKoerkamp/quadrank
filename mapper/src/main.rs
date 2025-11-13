@@ -369,6 +369,101 @@ fn map_genedex<T: TextWithRankSupport<i32> + Sync>(input_path: &Path, reads_path
     println!("{:<15} {}", "#matches:", total_matches);
 }
 
+fn map_awry(input_path: &Path, reads_path: &Path) {
+    let fm = time("AWRY FM build", || {
+        let build_args = awry::fm_index::FmBuildArgs {
+            input_file_src: input_path.to_path_buf(),
+            suffix_array_output_src: None,
+            suffix_array_compression_ratio: Some(1024 * 1024),
+            lookup_table_kmer_len: Some(8),
+            alphabet: awry::alphabet::SymbolAlphabet::Nucleotide,
+            max_query_len: None,
+            remove_intermediate_suffix_array_file: true,
+        };
+        awry::fm_index::FmIndex::new(&build_args).unwrap()
+    });
+    // let bytes = fm.mem_size(Default::default());
+    // eprintln!(
+    //     "SIZE: {} MB = {} bit/bp",
+    //     bytes / 1024 / 1024,
+    //     (8 * bytes) as f64 / text.len() as f64
+    // );
+
+    eprintln!("Reading queries");
+    let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
+    let mut reads = vec![];
+    while let Some(r) = reader.next() {
+        let r = r.unwrap();
+        let seq = r.seq();
+        // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
+        // let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
+        let rc = seq
+            .iter()
+            .rev()
+            .map(|&x| b"TGAC"[(x as usize >> 1) & 3])
+            .collect::<Vec<_>>();
+        reads.push(seq.into_owned());
+        reads.push(rc);
+    }
+
+    let total = AtomicUsize::new(0);
+    let mapped = AtomicUsize::new(0);
+    let total_matches = AtomicUsize::new(0);
+    let total_steps = AtomicUsize::new(0);
+    let start = std::time::Instant::now();
+    const B: usize = 32;
+    reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
+        let s = 0;
+        let mut m = 0;
+        let mut mp = 0;
+
+        for q in batch {
+            let matches = fm.count_string(unsafe {str::from_utf8_unchecked(q)}) as usize;
+            // s += steps;
+            m += matches;
+            if matches > 0 {
+                mp += 1;
+            }
+        }
+        let ts = total_steps.fetch_add(s, std::sync::atomic::Ordering::Relaxed);
+        let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
+        let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
+        let m = total_matches.fetch_add(
+            m,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+
+        if t % (1024 * 1024) == 0 {
+            let duration = start.elapsed();
+            eprint!(
+                "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+                t,
+                ts as f64 / t as f64,
+                mp,
+                m,
+                duration,
+                t as f64 / duration.as_secs_f64() / 1e3,
+                ts as f64 / duration.as_secs_f64() / 1e6
+            );
+        }
+    });
+
+    let total = total.into_inner();
+    let mapped = mapped.into_inner();
+    let total_matches = total_matches.into_inner();
+    let total_steps = total_steps.into_inner();
+
+    eprintln!();
+    println!("{:<15} {}", "#reads:", total);
+    println!(
+        "{:<15} {:.2}",
+        "#steps/read:",
+        total_steps as f64 / total as f64
+    );
+    println!("{:<15} {}", "#mapped:", mapped);
+    println!("{:<15} {}", "#matches:", total_matches);
+}
+
 #[allow(unused)]
 fn test() {
     let text = b"GCATACGTACGAAAAAAGCTTG";
@@ -398,6 +493,7 @@ fn main() {
     }
 
     // map(bwt_path, &args.reads);
+    map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
     // map_genedex::<FlatTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
     // map_genedex::<CondensedTextWithRankSupport<i32, Block64>>(&args.reference, &args.reads);
