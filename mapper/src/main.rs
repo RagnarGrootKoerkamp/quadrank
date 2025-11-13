@@ -124,26 +124,26 @@ fn map(bwt_path: &Path, reads_path: &Path) {
     let total_matches = AtomicUsize::new(0);
     let total_steps = AtomicUsize::new(0);
     let start = std::time::Instant::now();
-    const B: usize = 1024 * 16;
-    // const B: usize = 32;
+    // const B: usize = 1024 * 16;
+    const B: usize = 32;
     reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
         let mut s = 0;
         let mut m = 0;
         let mut mp = 0;
-        for (steps, matches) in fm.query_all::<32, B>(batch) {
-            s += steps;
-            m += matches;
-            if matches > 0 {
-                mp += 1;
-            }
-        }
-        // for (steps, matches) in fm.query_batch(batch) {
+        // for (steps, matches) in fm.query_all::<32, B>(batch) {
         //     s += steps;
         //     m += matches;
         //     if matches > 0 {
         //         mp += 1;
         //     }
         // }
+        for (steps, matches) in fm.query_batch(batch) {
+            s += steps;
+            m += matches;
+            if matches > 0 {
+                mp += 1;
+            }
+        }
         let ts = total_steps.fetch_add(s, std::sync::atomic::Ordering::Relaxed);
         let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
         let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
@@ -152,7 +152,7 @@ fn map(bwt_path: &Path, reads_path: &Path) {
             std::sync::atomic::Ordering::Relaxed,
         );
 
-        if t % (1024 * 1024) == 0 {
+        if t % (2*1024 * 1024) == 0 {
             let duration = start.elapsed();
             eprint!(
                 "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",

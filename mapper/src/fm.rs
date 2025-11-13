@@ -131,6 +131,61 @@ impl FM {
         std::array::from_fn(|i| (steps[i], (t[i] - s[i]) as usize))
     }
 
+    #[inline(always)]
+    pub fn query_batch_interleaved<const B: usize>(
+        &self,
+        text: &[Vec<u8>; B],
+    ) -> [(usize, usize); B] {
+        if B == 1 {
+            return [self.query(&text[0]); B];
+        }
+
+        let mut s = [0; B];
+        let mut t = [self.n + 1; B];
+        let mut steps = [0; B];
+
+        let mut num_alive = B;
+        let mut active: [u8; B] = std::array::from_fn(|i| i as u8);
+
+        let mut text_idx = 0;
+        while num_alive > 0 {
+            let mut idx = 0;
+
+            while idx < num_alive {
+                let i = active[idx] as usize;
+
+                let c = text[i][text[i].len() - 1 - text_idx];
+
+                steps[i] += 1;
+                let occ = self.occ[c as usize];
+                let ranks_s = self
+                    .rank
+                    .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                s[i] = occ + ranks_s as usize;
+                let ranks_t = self
+                    .rank
+                    .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                t[i] = occ + ranks_t as usize;
+
+                if s[i] == t[i] || text_idx + 1 >= text[i].len() {
+                    // swappop index i
+                    active[idx] = active[num_alive - 1];
+                    num_alive -= 1;
+
+                    // Note: idx is not incremented here.
+                    continue;
+                }
+                self.rank
+                    .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                self.rank
+                    .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                idx += 1;
+            }
+            text_idx += 1;
+        }
+        std::array::from_fn(|i| (steps[i], (t[i] - s[i]) as usize))
+    }
+
     /// Process a total of T queries, constantly keeping B active.
     #[inline(always)]
     pub fn query_all<const B: usize, const T: usize>(
