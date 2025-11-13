@@ -55,13 +55,12 @@ fn bwt(input: &Path, output: &Path) {
     std::fs::write(output, serde_json::to_string(&bwt).unwrap()).unwrap();
 }
 
-fn map(input_path: &Path, bwt_path: &Path, reads_path: &Path) {
+fn map(bwt_path: &Path, reads_path: &Path) {
     eprintln!("Reading BWT from {}", bwt_path.display());
-    let text = std::fs::read(input_path).unwrap();
     let bwt = std::fs::read(bwt_path).unwrap();
     let bwt = serde_json::from_slice(&bwt).unwrap();
     eprintln!("Building FM index & rank structure");
-    let fm = time("FM build", || fm::FM::new(&text, &bwt));
+    let fm = time("FM build", || fm::FM::new(&bwt));
 
     let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
     let mut total = 0;
@@ -118,7 +117,7 @@ fn test() {
     println!("build bwt");
     let bwt = build_bwt(text.to_vec());
     println!("build fm");
-    let fm = fm::FM::new(text, &bwt);
+    let fm = fm::FM::new(&bwt);
     println!("query");
     let query = b"TACGAA";
     let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
@@ -140,16 +139,18 @@ fn main() {
         bwt(&args.reference, bwt_path);
     }
 
-    map(&args.reference, bwt_path, &args.reads);
+    map(bwt_path, &args.reads);
 }
 
 #[test]
 fn broken() {
+    // let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
+    // let query = b"TGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCC";
     let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    let query = b"TGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCC";
+    let query = b"GGA";
     let bwt = build_bwt(text.to_vec());
     let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-    let fm = fm::FM::new(&packed, &bwt);
+    let fm = fm::FM::new(&bwt);
     let (steps, count) = fm.query(&packed);
     eprintln!("steps: {steps}, matches: {count}");
     assert!(count > 0);

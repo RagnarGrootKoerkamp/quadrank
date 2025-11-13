@@ -2,8 +2,8 @@ use quadrank::ranker::RankerT;
 
 use crate::bwt::BWT;
 
-// type Rank = quadrank::QuadRank;
-type Rank = qwt::RSQVector256;
+type Rank = quadrank::QuadRank;
+// type Rank = qwt::RSQVector256;
 
 pub struct FM {
     n: usize,
@@ -13,7 +13,7 @@ pub struct FM {
 }
 
 impl FM {
-    pub fn new(text: &[u8], bwt: &BWT) -> Self {
+    pub fn new(bwt: &BWT) -> Self {
         let n = bwt.bwt.len();
 
         let dna_bwt = bwt
