@@ -1107,8 +1107,8 @@ impl BasicBlock for HexaBlockMid4 {
 
         rank = rank.wrapping_add(self_ranks >> 14);
 
-        let shuffle = 0x000077u32;
-        let shift = (shuffle >> (4 * hex) as u32) & 7;
+        let shuffle = 0x000707u64;
+        let shift = (shuffle >> (8 * hex)) & 7;
         let parts = self_ranks & 0x3fff;
         let sign2 = (hex / 2).wrapping_sub(1);
         rank = rank.wrapping_add((((parts) >> shift) & 0x7f).wrapping_mul(sign2 as u32));

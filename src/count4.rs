@@ -473,6 +473,24 @@ pub static MASKS: [u64; 64] = {
     }
     masks
 };
+pub static MASKS_SCATTER: [u64; 64] = {
+    let scatter = 0x5555555555555555u64;
+    let mut masks = [0u64; 64];
+    let mut i = 0;
+    while i < 32 {
+        let low_bits = i * 2;
+        let mask = if low_bits == 64 {
+            u64::MAX
+        } else {
+            (1u64 << low_bits) - 1
+        };
+        masks[i] = mask & scatter;
+        masks[i + 32] = (!mask) & scatter;
+        i += 1;
+    }
+    masks
+};
+
 pub static MID_MASKS: [u64; 64] = {
     let mut masks = [0u64; 64];
     let mut i = 0;
@@ -485,6 +503,24 @@ pub static MID_MASKS: [u64; 64] = {
         };
         masks[i] = !mask;
         masks[i + 32] = mask;
+        i += 1;
+    }
+    masks
+};
+
+pub static MID_MASKS_SCATTER: [u64; 64] = {
+    let scatter = 0x5555555555555555u64;
+    let mut masks = [0u64; 64];
+    let mut i = 0;
+    while i < 32 {
+        let low_bits = i * 2;
+        let mask = if low_bits == 64 {
+            u64::MAX
+        } else {
+            (1u64 << low_bits) - 1
+        };
+        masks[i] = (!mask) & scatter;
+        masks[i + 32] = mask & scatter;
         i += 1;
     }
     masks
