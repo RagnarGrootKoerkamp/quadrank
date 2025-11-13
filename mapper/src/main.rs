@@ -97,7 +97,7 @@ fn map(bwt_path: &Path, reads_path: &Path) {
         .unwrap()
         .0;
     eprintln!("Building FM index & rank structure");
-    let fm = time("FM build", || fm::FM::new(&bwt));
+    let fm = time("FM build", || fm::FM::new_with_prefix(&bwt, 8));
 
     let bytes = fm.size();
     eprintln!(

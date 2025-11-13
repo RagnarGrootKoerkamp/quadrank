@@ -5,5 +5,7 @@ genedex<Condensed<64>>,4.25,2061,red,0
 genedex<Flat<512>>,5.19,2080,red,0
 genedex<Condensed<512>>,3.18,950,red,0
 RSQVector256,2.25,3059,brown,0
-quad<QuartBlock>,4.0,7078,#ffc107,0
-quad<HexBlockMid>,2.67,4963,#ffc107,0
+quad<QuartBlock>,4.0,7510,#ffc107,0
+quad<HexBlockMid>,2.67,5874,#ffc107,0
+quad<QuartBlock>,4.0,8052,#ffc107,8
+quad<HexBlockMid>,2.67,5874,#ffc107,8
