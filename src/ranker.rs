@@ -23,6 +23,11 @@ pub trait BasicBlock: Sync {
     fn count1(&self, _pos: usize, _c: u8) -> u32 {
         unimplemented!()
     }
+    /// count1 for two (usually closeby) positions in parallel.
+    /// Main benefit is to interleave code, rather than actually reusing computed values.
+    fn count1x2(&self, _other: &Self, _pos0: usize, _pos1: usize, _c: u8) -> (u32, u32) {
+        unimplemented!()
+    }
 }
 
 pub trait SuperBlock: Sync {
@@ -44,6 +49,10 @@ pub trait RankerT: Sync {
     fn count(&self, pos: usize) -> Ranks;
     /// Count the number of times character `c` occurs before position `pos`.
     fn count1(&self, pos: usize, c: u8) -> u32;
+    #[inline(always)]
+    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {
+        (self.count1(pos0, c), self.count1(pos1, c))
+    }
 
     #[inline(always)]
     fn count_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
@@ -170,6 +179,24 @@ where
             rank += long_ranks[c as usize];
         }
         rank
+    }
+    #[inline(always)]
+    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {
+        let block_idx0 = pos0 / BB::N;
+        let block_pos0 = pos0 % BB::N;
+        let block_idx1 = pos1 / BB::N;
+        let block_pos1 = pos1 % BB::N;
+        let (mut rank0, mut rank1) =
+            self.blocks[block_idx0].count1x2(&self.blocks[block_idx1], block_pos0, block_pos1, c);
+        if (BB::W) < 32 {
+            let long_pos0 = block_idx0 / Self::LONG_STRIDE;
+            let long_pos1 = block_idx1 / Self::LONG_STRIDE;
+            let long_ranks0 = self.super_blocks[long_pos0 / SB::BB].get(long_pos0 % SB::BB);
+            let long_ranks1 = self.super_blocks[long_pos1 / SB::BB].get(long_pos1 % SB::BB);
+            rank0 += long_ranks0[c as usize];
+            rank1 += long_ranks1[c as usize];
+        }
+        (rank0, rank1)
     }
 }
 impl<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool> Ranker<BB, SB, CF, C3>

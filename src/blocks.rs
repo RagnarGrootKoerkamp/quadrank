@@ -438,6 +438,28 @@ impl BasicBlock for QuartBlock {
 
         rank
     }
+    #[inline(always)]
+    fn count1x2(&self, other: &Self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {
+        let mut rank0 = 0;
+        let mut rank1 = 0;
+        let quart0 = pos0 / 32;
+        let quart_pos0 = pos0 % 32;
+        let quart1 = pos1 / 32;
+        let quart_pos1 = pos1 % 32;
+        let idx0 = quart0 * 8;
+        let idx1 = quart1 * 8;
+        let chunk0 = u64::from_le_bytes(self.seq[idx0..idx0 + 8].try_into().unwrap());
+        let chunk1 = u64::from_le_bytes(other.seq[idx1..idx1 + 8].try_into().unwrap());
+        let inner_count0 = count_u64_mask(chunk0, c, quart_pos0);
+        let inner_count1 = count_u64_mask(chunk1, c, quart_pos1);
+        rank0 += inner_count0;
+        rank1 += inner_count1;
+        rank0 += (self.part_ranks[c as usize] >> (quart0 * 8)) & 0xff;
+        rank1 += (other.part_ranks[c as usize] >> (quart1 * 8)) & 0xff;
+        rank0 += self.ranks[c as usize];
+        rank1 += other.ranks[c as usize];
+        (rank0, rank1)
+    }
 }
 
 /// u16 global ranks, and 8bit ranks for 4 of the 5 u64 parts.
@@ -1113,5 +1135,47 @@ impl BasicBlock for HexaBlockMid4 {
         let sign2 = (hex / 2).wrapping_sub(1);
         rank = rank.wrapping_add((((parts) >> shift) & 0x7f).wrapping_mul(sign2 as u32));
         rank
+    }
+
+    #[inline(always)]
+    fn count1x2(&self, other: &Self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {
+        let hex0 = pos0 / 32;
+        let hex1 = pos1 / 32;
+
+        let idx0 = hex0 * 8;
+        let idx1 = hex1 * 8;
+
+        let word0 = u64::from_le_bytes(self.seq[idx0..idx0 + 8].try_into().unwrap());
+        let inner0 = count_u64_mid_mask(word0, c, pos0 % 64);
+        let word1 = u64::from_le_bytes(other.seq[idx1..idx1 + 8].try_into().unwrap());
+        let inner1 = count_u64_mid_mask(word1, c, pos1 % 64);
+
+        let mut rank0 = if (pos0 & 32) > 0 {
+            inner0
+        } else {
+            inner0.wrapping_neg()
+        };
+        let mut rank1 = if (pos1 & 32) > 0 {
+            inner1
+        } else {
+            inner1.wrapping_neg()
+        };
+
+        let self_ranks0 = self.ranks[c as usize];
+        let self_ranks1 = other.ranks[c as usize];
+
+        rank0 = rank0.wrapping_add(self_ranks0 >> 14);
+        rank1 = rank1.wrapping_add(self_ranks1 >> 14);
+
+        let shuffle = 0x000077u32;
+        let shift0 = (shuffle >> (4 * hex0) as u32) & 7;
+        let shift1 = (shuffle >> (4 * hex1) as u32) & 7;
+        let parts0 = self_ranks0 & 0x3fff;
+        let parts1 = self_ranks1 & 0x3fff;
+        let sign20 = (hex0 / 2).wrapping_sub(1);
+        let sign21 = (hex1 / 2).wrapping_sub(1);
+        rank0 = rank0.wrapping_add((((parts0) >> shift0) & 0x7f).wrapping_mul(sign20 as u32));
+        rank1 = rank1.wrapping_add((((parts1) >> shift1) & 0x7f).wrapping_mul(sign21 as u32));
+        (rank0, rank1)
     }
 }

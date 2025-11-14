@@ -162,14 +162,24 @@ impl<Rank: RankerT> FM<Rank> {
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
-                let ranks_s = self
-                    .rank
-                    .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
-                s[i] = occ + ranks_s as usize;
-                let ranks_t = self
-                    .rank
-                    .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
-                t[i] = occ + ranks_t as usize;
+                if false {
+                    let ranks_s = self
+                        .rank
+                        .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                    s[i] = occ + ranks_s as usize;
+                    let ranks_t = self
+                        .rank
+                        .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                    t[i] = occ + ranks_t as usize;
+                } else {
+                    let (ranks_s, ranks_t) = self.rank.count1x2(
+                        s[i] as usize - (s[i] > self.sentinel) as usize,
+                        t[i] as usize - (t[i] > self.sentinel) as usize,
+                        c,
+                    );
+                    s[i] = occ + ranks_s as usize;
+                    t[i] = occ + ranks_t as usize;
+                }
             }
             text_idx += 1;
         }
