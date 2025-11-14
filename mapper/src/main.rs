@@ -141,6 +141,7 @@ fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
         //     }
         // }
         for (steps, matches) in fm.query_batch(batch) {
+        // for (steps, matches) in fm.query_batch_interleaved(batch) {
             s += steps;
             m += matches;
             if matches > 0 {

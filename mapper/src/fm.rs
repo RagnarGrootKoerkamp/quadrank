@@ -162,7 +162,7 @@ impl<Rank: RankerT> FM<Rank> {
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
-                if false {
+                if true {
                     let ranks_s = self
                         .rank
                         .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
@@ -195,30 +195,28 @@ impl<Rank: RankerT> FM<Rank> {
         let mut t = [self.n + 1; B];
         let mut steps = [0; B];
 
+        if self.prefix > 0 {
+            for i in 0..B {
+                let suffix = text[i].last_chunk().unwrap();
+                let val = u64::from_le_bytes(*suffix);
+                let index = unsafe { _pext_u64(val, 0x0303030303030303) };
+                let (ss, tt) = self.prefix_lookup[index as usize];
+                steps[i] += 1;
+                s[i] = ss as usize;
+                t[i] = tt as usize;
+            }
+        }
+
         let mut num_alive = B;
         let mut active: [u8; B] = std::array::from_fn(|i| i as u8);
 
-        let mut text_idx = 0;
-        while num_alive > 0 {
+        let mut text_idx = self.prefix;
+        loop {
             let mut idx = 0;
-
             while idx < num_alive {
                 let i = active[idx] as usize;
 
-                let c = text[i][text[i].len() - 1 - text_idx];
-
-                steps[i] += 1;
-                let occ = self.occ[c as usize];
-                let ranks_s = self
-                    .rank
-                    .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
-                s[i] = occ + ranks_s as usize;
-                let ranks_t = self
-                    .rank
-                    .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
-                t[i] = occ + ranks_t as usize;
-
-                if s[i] == t[i] || text_idx + 1 >= text[i].len() {
+                if s[i] == t[i] || text_idx >= text[i].len() {
                     // swappop index i
                     active[idx] = active[num_alive - 1];
                     num_alive -= 1;
@@ -226,11 +224,62 @@ impl<Rank: RankerT> FM<Rank> {
                     // Note: idx is not incremented here.
                     continue;
                 }
-                self.rank
-                    .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
-                self.rank
-                    .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                // self.rank
+                //     .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                // self.rank
+                //     .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+
                 idx += 1;
+            }
+
+            if num_alive == 0 {
+                break;
+            }
+
+            for idx in 0..num_alive {
+                let i = active[idx] as usize;
+
+                let c = text[i][text[i].len() - 1 - text_idx];
+
+                steps[i] += 1;
+                let occ = self.occ[c as usize];
+                if false {
+                    let ranks_s = self
+                        .rank
+                        .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                    s[i] = occ + ranks_s as usize;
+                    let ranks_t = self
+                        .rank
+                        .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                    t[i] = occ + ranks_t as usize;
+                } else {
+                    let (ranks_s, ranks_t) = self.rank.count1x2(
+                        s[i] as usize - (s[i] > self.sentinel) as usize,
+                        t[i] as usize - (t[i] > self.sentinel) as usize,
+                        c,
+                    );
+                    s[i] = occ + ranks_s as usize;
+                    t[i] = occ + ranks_t as usize;
+                }
+
+                if idx > 0 {
+                    let i = active[idx - 1] as usize;
+                    if s[i] < t[i] && text_idx + 1 < text[i].len() {
+                        self.rank
+                            .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                        self.rank
+                            .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                    }
+                }
+            }
+            {
+                let i = active[num_alive - 1] as usize;
+                if s[i] < t[i] && text_idx + 1 < text[i].len() {
+                    self.rank
+                        .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                    self.rank
+                        .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                }
             }
             text_idx += 1;
         }
