@@ -21,7 +21,7 @@ data["speed"] /= 1000
 
 plt.figure(figsize=(7, 4))
 for i, row in data.iterrows():
-    plt.semilogy(
+    plt.plot(
         row["size"],
         row["speed"],
         marker="o" if row["lookup"] == 0 else "*",
@@ -29,14 +29,14 @@ for i, row in data.iterrows():
         linestyle="None",
         # label=row["name"],
         color=row["color"],
-        base=2,
+        # base=2,
     )
 formatter = plt.ScalarFormatter()
 plt.gca().yaxis.set_major_formatter(formatter)
 
 # set y-ax labels
-plt.yticks([0.5, 1, 2, 4, 8])
-plt.ylim(0.4, 12)
+# plt.yticks([0.5, 1, 2, 4, 8])
+plt.ylim(0, 10)
 
 plt.xlim(left=0)
 plt.axvline(x=2.0, color="red", linestyle="-", linewidth=1)
