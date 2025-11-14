@@ -36,6 +36,8 @@ fn time<T>(name: &str, f: impl FnOnce() -> T) -> T {
 struct Args {
     reference: PathBuf,
     reads: PathBuf,
+    #[clap(short = 'j', long)]
+    threads: Option<usize>,
 }
 
 fn build_bwt_ascii(mut text: Vec<u8>) -> bwt::BWT {
@@ -492,6 +494,15 @@ fn main() {
     // test();
 
     let args = Args::parse();
+
+    // initialize rayon threads
+    if let Some(threads) = args.threads {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build_global()
+            .unwrap();
+    }
+
     let bwt_path = &args.reference.with_added_extension("bwt");
     if !bwt_path.exists() {
         eprintln!("Building BWT at {}", bwt_path.display());
