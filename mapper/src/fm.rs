@@ -48,7 +48,7 @@ impl<Rank: RankerT> FM<Rank> {
         for i in 1..5 {
             occ[i] += occ[i - 1];
         }
-        eprintln!("sentinel: {}", bwt.sentinel);
+        // eprintln!("sentinel: {}", bwt.sentinel);
 
         let mut fm = Self {
             n,
@@ -61,7 +61,7 @@ impl<Rank: RankerT> FM<Rank> {
 
         // query every prefix of length `prefix` and store the (s, t) ranges.
         if prefix > 0 {
-            eprintln!("Building prefix table for length {prefix}");
+            // eprintln!("Building prefix table for length {prefix}");
             assert!(prefix <= 8);
             let mut lookup = Vec::new();
             let mut done = false;
@@ -71,10 +71,10 @@ impl<Rank: RankerT> FM<Rank> {
                 let (_, (s, t)) = fm.query_range(&bases.to_le_bytes()[0..prefix]);
                 lookup.push((s, t));
             }
-            eprintln!(
-                "prefix lookup size: {} kB",
-                std::mem::size_of_val(lookup.as_slice()) / 1024
-            );
+            // eprintln!(
+            //     "prefix lookup size: {} kB",
+            //     std::mem::size_of_val(lookup.as_slice()) / 1024
+            // );
             fm.prefix_lookup = lookup;
             fm.prefix = prefix;
         }

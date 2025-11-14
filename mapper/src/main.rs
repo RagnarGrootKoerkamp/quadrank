@@ -94,12 +94,12 @@ fn bwt(input: &Path, output: &Path) {
 }
 
 fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
-    eprintln!("Reading BWT from {}", bwt_path.display());
+    // eprintln!("Reading BWT from {}", bwt_path.display());
     let bwt = std::fs::read(bwt_path).unwrap();
     let bwt = bincode::decode_from_slice(&bwt, bincode::config::legacy())
         .unwrap()
         .0;
-    eprintln!("Building FM index & rank structure");
+    // eprintln!("Building FM index & rank structure");
     let fm = time("FM build", || fm::FM::<Rank>::new_with_prefix(&bwt, 8));
 
     let bytes = fm.size();
@@ -109,7 +109,7 @@ fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
         (8 * bytes) as f64 / bwt.bwt.len() as f64
     );
 
-    eprintln!("Reading queries");
+    // eprintln!("Reading queries");
     let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
     let mut reads = vec![];
     while let Some(r) = reader.next() {
@@ -156,7 +156,7 @@ fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
             std::sync::atomic::Ordering::Relaxed,
         );
 
-        if t % (2*1024 * 1024) == 0 {
+        if t % (8*1024 * 1024) == 0 {
             let duration = start.elapsed();
             eprint!(
                 "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
@@ -171,20 +171,22 @@ fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
         }
     });
 
-    let total = total.into_inner();
-    let mapped = mapped.into_inner();
-    let total_matches = total_matches.into_inner();
-    let total_steps = total_steps.into_inner();
+    let duration = start.elapsed();
+    let t = total.into_inner();
+    let mp = mapped.into_inner();
+    let m = total_matches.into_inner();
+    let ts = total_steps.into_inner();
 
-    eprintln!();
-    println!("{:<15} {}", "#reads:", total);
-    println!(
-        "{:<15} {:.2}",
-        "#steps/read:",
-        total_steps as f64 / total as f64
+    eprint!(
+        "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+        t,
+        ts as f64 / t as f64,
+        mp,
+        m,
+        duration,
+        t as f64 / duration.as_secs_f64() / 1e3,
+        ts as f64 / duration.as_secs_f64() / 1e6
     );
-    println!("{:<15} {}", "#mapped:", mapped);
-    println!("{:<15} {}", "#matches:", total_matches);
 }
 
 fn map_fm_crate(input_path: &Path, reads_path: &Path) {
@@ -269,20 +271,22 @@ fn map_fm_crate(input_path: &Path, reads_path: &Path) {
         }
     });
 
-    let total = total.into_inner();
-    let mapped = mapped.into_inner();
-    let total_matches = total_matches.into_inner();
-    let total_steps = total_steps.into_inner();
+    let duration = start.elapsed();
+    let t = total.into_inner();
+    let mp = mapped.into_inner();
+    let m = total_matches.into_inner();
+    let ts = total_steps.into_inner();
 
-    eprintln!();
-    println!("{:<15} {}", "#reads:", total);
-    println!(
-        "{:<15} {:.2}",
-        "#steps/read:",
-        total_steps as f64 / total as f64
+    eprint!(
+        "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+        t,
+        ts as f64 / t as f64,
+        mp,
+        m,
+        duration,
+        t as f64 / duration.as_secs_f64() / 1e3,
+        ts as f64 / duration.as_secs_f64() / 1e6
     );
-    println!("{:<15} {}", "#mapped:", mapped);
-    println!("{:<15} {}", "#matches:", total_matches);
 }
 
 fn map_genedex<T: TextWithRankSupport<u32> + Sync>(input_path: &Path, reads_path: &Path) {
@@ -367,20 +371,22 @@ fn map_genedex<T: TextWithRankSupport<u32> + Sync>(input_path: &Path, reads_path
         }
     });
 
-    let total = total.into_inner();
-    let mapped = mapped.into_inner();
-    let total_matches = total_matches.into_inner();
-    let total_steps = total_steps.into_inner();
+    let duration = start.elapsed();
+    let t = total.into_inner();
+    let mp = mapped.into_inner();
+    let m = total_matches.into_inner();
+    let ts = total_steps.into_inner();
 
-    eprintln!();
-    println!("{:<15} {}", "#reads:", total);
-    println!(
-        "{:<15} {:.2}",
-        "#steps/read:",
-        total_steps as f64 / total as f64
+    eprint!(
+        "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+        t,
+        ts as f64 / t as f64,
+        mp,
+        m,
+        duration,
+        t as f64 / duration.as_secs_f64() / 1e3,
+        ts as f64 / duration.as_secs_f64() / 1e6
     );
-    println!("{:<15} {}", "#mapped:", mapped);
-    println!("{:<15} {}", "#matches:", total_matches);
 }
 
 fn map_awry(input_path: &Path, reads_path: &Path) {
@@ -462,20 +468,22 @@ fn map_awry(input_path: &Path, reads_path: &Path) {
         }
     });
 
-    let total = total.into_inner();
-    let mapped = mapped.into_inner();
-    let total_matches = total_matches.into_inner();
-    let total_steps = total_steps.into_inner();
+    let duration = start.elapsed();
+    let t = total.into_inner();
+    let mp = mapped.into_inner();
+    let m = total_matches.into_inner();
+    let ts = total_steps.into_inner();
 
-    eprintln!();
-    println!("{:<15} {}", "#reads:", total);
-    println!(
-        "{:<15} {:.2}",
-        "#steps/read:",
-        total_steps as f64 / total as f64
+    eprint!(
+        "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+        t,
+        ts as f64 / t as f64,
+        mp,
+        m,
+        duration,
+        t as f64 / duration.as_secs_f64() / 1e3,
+        ts as f64 / duration.as_secs_f64() / 1e6
     );
-    println!("{:<15} {}", "#mapped:", mapped);
-    println!("{:<15} {}", "#matches:", total_matches);
 }
 
 #[allow(unused)]
