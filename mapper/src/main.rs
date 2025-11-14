@@ -93,13 +93,7 @@ fn bwt(input: &Path, output: &Path) {
     .unwrap();
 }
 
-fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
-    // eprintln!("Reading BWT from {}", bwt_path.display());
-    let bwt = std::fs::read(bwt_path).unwrap();
-    let bwt = bincode::decode_from_slice(&bwt, bincode::config::legacy())
-        .unwrap()
-        .0;
-    // eprintln!("Building FM index & rank structure");
+fn map<Rank: RankerT>(bwt: &bwt::BWT, reads: &Vec<Vec<u8>>) {
     let fm = time("FM build", || fm::FM::<Rank>::new_with_prefix(&bwt, 8));
 
     let bytes = fm.size();
@@ -110,17 +104,6 @@ fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
     );
 
     // eprintln!("Reading queries");
-    let mut reader = needletail::parse_fastx_file(reads_path).unwrap();
-    let mut reads = vec![];
-    while let Some(r) = reader.next() {
-        let r = r.unwrap();
-        let seq = r.seq();
-        // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
-        let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-        let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
-        reads.push(packed);
-        reads.push(packed_rc);
-    }
 
     let total = AtomicUsize::new(0);
     let mapped = AtomicUsize::new(0);
@@ -140,8 +123,8 @@ fn map<Rank: RankerT>(bwt_path: &Path, reads_path: &Path) {
         //         mp += 1;
         //     }
         // }
-        for (steps, matches) in fm.query_batch(batch) {
-        // for (steps, matches) in fm.query_batch_interleaved(batch) {
+        // for (steps, matches) in fm.query_batch(batch) {
+        for (steps, matches) in fm.query_batch_interleaved(batch) {
             s += steps;
             m += matches;
             if matches > 0 {
@@ -513,10 +496,29 @@ fn main() {
         eprintln!("Building BWT at {}", bwt_path.display());
         bwt(&args.reference, bwt_path);
     }
+    let bwt = std::fs::read(bwt_path).unwrap();
+    let bwt = bincode::decode_from_slice(&bwt, bincode::config::legacy())
+        .unwrap()
+        .0;
 
-    map::<QuartRank>(bwt_path, &args.reads);
-    map::<HexRank>(bwt_path, &args.reads);
-    map::<QwtRank>(bwt_path, &args.reads);
+    // eprintln!("Reading queries");
+    let mut reader = needletail::parse_fastx_file(&args.reads).unwrap();
+    let mut reads = vec![];
+    while let Some(r) = reader.next() {
+        let r = r.unwrap();
+        let seq = r.seq();
+        // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
+        let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
+        let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
+        reads.push(packed);
+        reads.push(packed_rc);
+    }
+
+    map::<HexRank>(&bwt, &reads);
+    map::<QuartRank>(&bwt, &reads);
+    map::<HexRank>(&bwt, &reads);
+    map::<QuartRank>(&bwt, &reads);
+    // map::<QwtRank>(bwt_path, &args.reads);
     // map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
     // map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
