@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
+#![feature(generic_const_exprs, array_windows)]
 
 mod bwt;
 #[cfg(test)]
@@ -9,6 +9,7 @@ mod fm;
 #[cfg(test)]
 mod test;
 
+use bwt::BWT;
 use clap::Parser;
 use fm_index::SearchIndex;
 use genedex::text_with_rank_support::{
@@ -497,7 +498,7 @@ fn main() {
         bwt(&args.reference, bwt_path);
     }
     let bwt = std::fs::read(bwt_path).unwrap();
-    let bwt = bincode::decode_from_slice(&bwt, bincode::config::legacy())
+    let bwt: BWT = bincode::decode_from_slice(&bwt, bincode::config::legacy())
         .unwrap()
         .0;
 
@@ -514,11 +515,23 @@ fn main() {
         reads.push(packed_rc);
     }
 
-    map::<HexRank>(&bwt, &reads);
+    // Count number of runs (r) in the BWT.
+    {
+        let r = 1 + bwt
+            .bwt
+            .array_windows()
+            .map(|[x, y]| (x != y) as usize)
+            .sum::<usize>();
+        eprintln!("Text len (n): {}", bwt.bwt.len());
+        eprintln!(
+            "BWT runs (r): {r} = {:>5.2} %",
+            100. * r as f32 / bwt.bwt.len() as f32
+        );
+    }
+
     map::<QuartRank>(&bwt, &reads);
     map::<HexRank>(&bwt, &reads);
-    map::<QuartRank>(&bwt, &reads);
-    // map::<QwtRank>(bwt_path, &args.reads);
+    map::<QwtRank>(&bwt, &reads);
     // map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
     // map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
