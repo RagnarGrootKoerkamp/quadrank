@@ -119,15 +119,16 @@ fn map<Rank: RankerT>(bwt: &bwt::BWT, reads: &Vec<Vec<u8>>) {
         let mut s = 0;
         let mut m = 0;
         let mut mp = 0;
-        // for (steps, matches) in fm.query_all::<32, B>(batch) {
+        // fm.query_all::<32, B>(batch, |steps, start, end| {
+        //     let matches = end-start;
         //     s += steps;
         //     m += matches;
         //     if matches > 0 {
         //         mp += 1;
         //     }
-        // }
-        // for (steps, matches) in fm.query_batch(batch) {
-        for (steps, matches) in fm.query_batch_interleaved(batch) {
+        // });
+        for (steps, matches) in fm.query_batch(batch) {
+        // for (steps, matches) in fm.query_batch_interleaved(batch) {
             s += steps;
             m += matches;
             if matches > 0 {

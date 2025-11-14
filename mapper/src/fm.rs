@@ -290,35 +290,39 @@ impl<Rank: RankerT> FM<Rank> {
     #[inline(always)]
     pub fn query_all<const B: usize, const T: usize>(
         &self,
-        text: &[Vec<u8>; T],
-    ) -> [(usize, usize); T] {
-        let mut s = [0; T];
-        let mut t = [self.n + 1; T];
-        let mut steps = [0; T];
+        input_texts: &[Vec<u8>; T],
+        mut callback: impl FnMut(usize, usize, usize),
+    ) {
+        let mut s = [0; B];
+        let mut t = [self.n + 1; B];
+        let mut steps = [0; B];
+        let mut texts: [&[u8]; B] = std::array::from_fn(|i| input_texts[i].as_slice());
 
-        let mut active: [usize; B] = std::array::from_fn(|i| i);
+        let mut active = [true; B];
         let mut next = B;
         let mut text_idx = [0; T];
 
         let mut done = 0;
 
         while done < T {
-            for idx in 0..B {
-                let mut i = active[idx] as usize;
-                if i >= T {
+            for i in 0..B {
+                if !active[i] {
                     continue;
                 }
 
-                if s[i] == t[i] || text_idx[i] >= text[i].len() {
-                    if i < T {
-                        done += 1;
-                        active[idx] = next;
-                        i = next;
-                        next += 1;
-                    }
-                    if i >= T {
+                if (s[i] == t[i] || text_idx[i] >= texts[i].len()) {
+                    callback(steps[i], s[i], t[i]);
+                    done += 1;
+                    if next == T {
+                        active[i] = false;
                         continue;
                     }
+                    steps[i] = 0;
+                    s[i] = 0;
+                    t[i] = self.n + 1;
+                    text_idx[i] = 0;
+                    texts[i] = &input_texts[next];
+                    next += 1;
                 }
                 self.rank
                     .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
@@ -326,13 +330,12 @@ impl<Rank: RankerT> FM<Rank> {
                     .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
             }
 
-            for idx in 0..B {
-                let i = active[idx] as usize;
-                if i >= T {
+            for i in 0..B {
+                if !active[i] {
                     continue;
                 }
 
-                let c = text[i][text[i].len() - 1 - text_idx[i]];
+                let c = texts[i][texts[i].len() - 1 - text_idx[i]];
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
@@ -347,6 +350,5 @@ impl<Rank: RankerT> FM<Rank> {
                 text_idx[i] += 1;
             }
         }
-        std::array::from_fn(|i| (steps[i], (t[i] - s[i]) as usize))
     }
 }
