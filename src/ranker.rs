@@ -249,7 +249,7 @@ where
 }
 
 /// Prefetch the given cacheline into L1 cache.
-pub(crate) fn prefetch_index<T>(s: &[T], index: usize) {
+pub fn prefetch_index<T>(s: &[T], index: usize) {
     let ptr = s.as_ptr().wrapping_add(index) as *const u64;
     #[cfg(target_arch = "x86_64")]
     unsafe {

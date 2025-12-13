@@ -18,7 +18,7 @@ use quadrank::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCountSlice, U64PopcntSlice,
         U128Popcnt3, WideSimdCount2,
     },
-    ranker::{Ranker, RankerT},
+    ranker::{Ranker, RankerT, prefetch_index},
     super_block::{NoSB, SB8, TrivialSB},
 };
 
@@ -134,9 +134,15 @@ fn time_stream(
     f: impl Fn(usize) -> Ranks + Sync,
 ) {
     time_fn(queries, t, |queries| {
-        for (&q, &ahead) in queries.iter().zip(&queries[BATCH..]) {
-            prefetch(ahead);
-            check(q, f(q));
+        for i in 0..queries.len() - BATCH {
+            unsafe {
+                let q = *queries.get_unchecked(i);
+                let ahead = *queries.get_unchecked(i + BATCH);
+                // Prefetch next cacheline of queries.
+                prefetch_index(queries, i + 2 * BATCH);
+                prefetch(ahead);
+                check(q, f(q));
+            }
         }
     });
 }
