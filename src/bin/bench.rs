@@ -12,11 +12,11 @@ use quadrank::{
     Ranks,
     blocks::{
         FullBlock, FullBlockMid, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
-        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock,
+        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
     },
     count4::{
-        SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCountSlice, U64PopcntSlice,
-        U128Popcnt3, WideSimdCount2,
+        SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
+        U64PopcntSlice, U128Popcnt3, WideSimdCount2,
     },
     ranker::{Ranker, RankerT, prefetch_index},
     super_block::{NoSB, SB8, TrivialSB},
@@ -415,21 +415,23 @@ fn bench_all(seq: &[u8], queries: &QS) {
     // bench::<Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>(seq, queries);
     // bench::<Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>(seq, queries);
     // bench::<Ranker<QuartBlock, NoSB, SimdCount8, false>>(seq, queries);
-    bench::<Ranker<QuartBlock, NoSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<QuartBlock, NoSB, SimdCount10, false>>(seq, queries);
-    // bench::<Ranker<PentaBlock, TrivialSB, SimdCount8, false>>(seq, queries);
-    // bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    // bench::<Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount8, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount9, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount8, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount10, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
-    bench1::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
+    // bench::<Ranker<QuartBlock, NoSB, SimdCount9, false>>(seq, queries);
+    // bench::<Ranker<QuartBlock, NoSB, SimdCount10, false>>(seq, queries);
+    // // bench::<Ranker<PentaBlock, TrivialSB, SimdCount8, false>>(seq, queries);
+    // // bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    // // bench::<Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    // // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount8, false>>(seq, queries);
+    // // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount9, false>>(seq, queries);
+    // // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount8, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount9, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount10, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount9, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount9, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
+    // bench::<Ranker<TriBlock, TrivialSB, SimdCount11, false>>(seq, queries);
+    // bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
 
     // external
     // #[cfg(not(debug_assertions))]

@@ -1136,18 +1136,17 @@ impl BasicBlock for HexaBlockMid4 {
 
         let idx = hex * 8;
 
+        let self_ranks = self.ranks[c as usize];
+        let mut rank = self_ranks >> 14;
+
         let word = u64::from_le_bytes(self.seq[idx..idx + 8].try_into().unwrap());
         let inner = count_u64_mid_mask(word, c, pos % 64);
 
-        let mut rank = if (pos & 32) > 0 {
+        rank += if (pos & 32) > 0 {
             inner
         } else {
             inner.wrapping_neg()
         };
-
-        let self_ranks = self.ranks[c as usize];
-
-        rank = rank.wrapping_add(self_ranks >> 14);
 
         let shuffle = 0x000707u64;
         let shift = (shuffle >> (8 * hex)) & 7;
@@ -1197,5 +1196,156 @@ impl BasicBlock for HexaBlockMid4 {
         rank0 = rank0.wrapping_add((((parts0) >> shift0) & 0x7f).wrapping_mul(sign20 as u32));
         rank1 = rank1.wrapping_add((((parts1) >> shift1) & 0x7f).wrapping_mul(sign21 as u32));
         (rank0, rank1)
+    }
+}
+
+fn transpose_bits(data: &[u8; 16]) -> [u64; 2] {
+    let mut out = [0u64; 2];
+    for i in 0..16 {
+        let byte = data[i];
+        for b in 0..4 {
+            let l = (byte >> (2 * b)) & 1;
+            let h = (byte >> (2 * b + 1)) & 1;
+            out[0] |= (l as u64) << (4 * i + b);
+            out[1] |= (h as u64) << (4 * i + b);
+        }
+    }
+    out
+}
+
+/// New: Use transposed 16byte count that processes 128 bits at once.
+/// Layout: 128bit counts, then 3x a 128bit block.
+/// New: store offset to start of 2nd block and delta to start of 3rd block.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct TriBlock {
+    /// high 32-8=24 bits: global counts to start of 2nd block.
+    /// low 8 bits: counts from start of 2nd block to start of 3rd block.
+    /// low half: 2x 8bit counts for the first half of 2nd and 3rd 128 parts.
+    /// TODO: 25+7 bits?
+    ranks: [u32; 4],
+    // u128x3 = u8x48 = 384 bit packed sequence
+    seq: [[u8; 16]; 3],
+}
+
+impl BasicBlock for TriBlock {
+    const B: usize = 48;
+    const N: usize = 192;
+    const C: usize = 16;
+    // TODO: Make this 25
+    const W: usize = 24;
+    const TRANSPOSED: bool = true;
+
+    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts before each u64 block.
+        let mut bs = [[0u32; 4]; 6];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = add(bs[i], count4_u8x8(*chunk));
+        }
+        // global ranks are to block
+        ranks = add(add(ranks, bs[0]), bs[1]);
+        let part_rank = add(add(bs[2], bs[3]), add(bs[4], bs[5]));
+        Self {
+            ranks: from_fn(|c| (ranks[c] << 8) | part_rank[c]),
+            seq: from_fn(|i| unsafe {
+                std::mem::transmute(transpose_bits(
+                    &data[i * 16..i * 16 + 16].try_into().unwrap(),
+                ))
+            }),
+        }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
+        assert!(!C3);
+        assert!(C::S == 0);
+        let mut ranks = u32x4::splat(0);
+
+        let tri = pos / 64;
+
+        let inner_counts = C::count_mid(&self.seq[tri].try_into().unwrap(), pos % 128);
+
+        use std::mem::transmute as t;
+        let sign = (pos as u32 % 128).wrapping_sub(64);
+        ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
+
+        let self_ranks = u32x4::from_array(self.ranks);
+        ranks += self_ranks >> 8;
+
+        // for tri=0 and tri=1, shift down by 8
+        // for tri=2, shift down by 0
+        let shift = 8 - (tri as u32 / 2) * 8;
+        let parts = self_ranks & u32x4::splat(0x00ff);
+        ranks += parts >> u32x4::splat(shift);
+        ranks.to_array()
+    }
+}
+
+/// New: main offset to end, delta to end of first trip
+/// That way, the shift-down-by-8 comes out nicer.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct TriBlock2 {
+    /// 24 high bits: offset to end
+    /// 8 low bits: delta to end of first trip
+    ranks: [u32; 4],
+    // u128x3 = u8x48 = 384 bit packed sequence
+    seq: [[u8; 16]; 3],
+}
+
+impl BasicBlock for TriBlock2 {
+    const B: usize = 48;
+    const N: usize = 192;
+    const C: usize = 16;
+    // TODO: Make this 25
+    const W: usize = 24;
+    const TRANSPOSED: bool = true;
+
+    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts before each u64 block.
+        let mut bs = [[0u32; 4]; 6];
+        let mut sum = [0u32; 4];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = add(bs[i], count4_u8x8(*chunk));
+            sum = add(sum, bs[i]);
+        }
+        // global ranks are to block
+        ranks = add(ranks, sum);
+        let part_rank = add(add(bs[2], bs[3]), add(bs[4], bs[5]));
+        Self {
+            ranks: from_fn(|c| (ranks[c] << 8) | part_rank[c]),
+            seq: from_fn(|i| unsafe {
+                std::mem::transmute(transpose_bits(
+                    &data[i * 16..i * 16 + 16].try_into().unwrap(),
+                ))
+            }),
+        }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
+        assert!(!C3);
+        assert!(C::S == 0);
+        let mut ranks = u32x4::splat(0);
+
+        let tri = pos / 64;
+
+        let inner_counts = C::count_mid(&self.seq[tri], pos % 128);
+
+        use std::mem::transmute as t;
+        let sign = (pos as u32 % 128).wrapping_sub(64);
+        ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
+
+        let self_ranks = u32x4::from_array(self.ranks);
+        ranks += self_ranks >> 8;
+
+        // for tri=0 and tri=1, shift down by 0
+        // for tri=2, shift down by 8
+        let shift = (tri as u32 / 2) * 8;
+        let parts = self_ranks & u32x4::splat(0x00ff);
+        ranks += parts >> u32x4::splat(shift);
+        ranks.to_array()
     }
 }
