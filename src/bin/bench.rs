@@ -55,7 +55,7 @@ fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
         .collect();
     times.sort();
     let ns2 = times[2] as f64 / queries[0].len() as f64;
-    eprint!(" {ns2:>6.1}",);
+    eprint!(" {ns2:>7.2}",);
 }
 
 fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
@@ -69,7 +69,7 @@ fn time_fn_mt(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
         });
     });
     let ns = start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64;
-    eprint!(" {ns:>6.1}",);
+    eprint!(" {ns:>7.2}",);
 }
 
 fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
@@ -251,7 +251,7 @@ where
 
 fn bench_header(threads: usize) {
     eprintln!(
-        "{:<60} {:>6} | {:>6} {:>6} {:>6} | {:>6} {:>6} {:>6} |",
+        "{:<60} {:>6} | {:>7} {:>7} {:>7} | {:>7} {:>7} {:>7} |",
         "Ranker",
         "bits",
         "1t",
@@ -262,7 +262,7 @@ fn bench_header(threads: usize) {
         ""
     );
     eprintln!(
-        "{:<60} {:>6} | {:>6} {:>6} {:>6} | {:>6} {:>6} {:>6} |",
+        "{:<60} {:>6} | {:>7} {:>7} {:>7} | {:>7} {:>7} {:>7} |",
         "", "", "latncy", "loop", "stream", "latncy", "loop", "stream"
     );
 }
