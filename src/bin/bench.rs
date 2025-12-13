@@ -11,8 +11,9 @@ use clap::Parser;
 use quadrank::{
     Ranks,
     blocks::{
-        FullBlock, FullBlockMid, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
-        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
+        BinaryBlock, BinaryBlock2, BinaryBlock3, BinaryBlock4, FullBlock, FullBlockMid, HexaBlock,
+        HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3, HexaBlockMid4, PentaBlock,
+        Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
     },
     count4::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
@@ -437,6 +438,7 @@ fn bench_all(seq: &[u8], queries: &QS) {
     // bench1::<Ranker<BinaryBlock, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock2, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock3, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock4, TrivialSB, SimdCount11, false>>(seq, queries);
 
     // external
     // #[cfg(not(debug_assertions))]

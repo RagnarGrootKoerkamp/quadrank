@@ -1462,7 +1462,7 @@ impl BasicBlock for BinaryBlock2 {
                     .unwrap(),
             );
             let inner_count = (l & mask_l).count_ones() + (h & mask_h).count_ones();
-            inner_count + self.ranks[quad / 2] as u32
+            inner_count + self.ranks[quad / 2]
         }
     }
 }
@@ -1536,6 +1536,68 @@ impl BasicBlock for BinaryBlock3 {
             let delta = delta >> ((quad / 2) * 16);
 
             inner_count + rank - delta
+        }
+    }
+}
+
+/// Store two 16 bit global ranks at the end.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct BinaryBlock4 {
+    /// last 5 bytes are global rank info
+    /// low 9 bits: delta from 1/4 to 3/4
+    /// high 31 bits global offset
+    seq: [u8; 60],
+    ranks: [u16; 2],
+}
+
+impl BasicBlock for BinaryBlock4 {
+    const B: usize = 60;
+    const N: usize = 240;
+    const C: usize = 16;
+    const W: usize = 16;
+    const TRANSPOSED: bool = true;
+
+    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts in each u64 block.
+        let mut bs = [0; 8];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = u64::from_le_bytes(*chunk).count_ones();
+        }
+        // partial ranks after 1 and 3 blocks
+        let rank = ranks[0] + bs[0] + bs[1];
+        let delta = bs[2] + bs[3] + bs[4] + bs[5];
+        let ranks = [rank as u16, rank as u16 + delta as u16];
+        Self { seq: *data, ranks }
+    }
+
+    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, _pos: usize) -> Ranks {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, _c: u8) -> u32 {
+        unsafe {
+            let quad = pos / 128;
+            let pos = pos % 256;
+
+            let [mask_l, mask_h] = BINARY_MID_MASKS[pos];
+            // NOTE: This *will* go out-of-bounds, but it's ok because 'ranks' is used as padding.
+            let l = u64::from_le_bytes(
+                self.seq
+                    .get_unchecked(quad * 16..quad * 16 + 8)
+                    .try_into()
+                    .unwrap(),
+            );
+            let h = u64::from_le_bytes(
+                self.seq
+                    .get_unchecked(quad * 16 + 8..quad * 16 + 16)
+                    .try_into()
+                    .unwrap(),
+            );
+            let inner_count = (l & mask_l).count_ones() + (h & mask_h).count_ones();
+            inner_count + self.ranks[quad / 2] as u32
         }
     }
 }
