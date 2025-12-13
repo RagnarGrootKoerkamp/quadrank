@@ -166,30 +166,45 @@ where
     /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
     fn count(&self, pos: usize) -> Ranks {
-        let block_idx = pos / BB::N;
-        let block_pos = pos % BB::N;
-        let mut ranks = self.blocks[block_idx].count::<CF, C3>(block_pos);
-        if (BB::W) < 32 {
-            let long_pos = block_idx / Self::LONG_STRIDE;
-            let long_ranks = self.super_blocks[long_pos / SB::BB].get(long_pos % SB::BB);
-            for c in 0..4 {
-                ranks[c] += long_ranks[c];
+        // assert!(pos < self.len);
+        unsafe {
+            let block_idx = pos / BB::N;
+            let block_pos = pos % BB::N;
+            let mut ranks = self
+                .blocks
+                .get_unchecked(block_idx)
+                .count::<CF, C3>(block_pos);
+            if (BB::W) < 32 {
+                let long_pos = block_idx / Self::LONG_STRIDE;
+                let long_ranks = self
+                    .super_blocks
+                    .get_unchecked(long_pos / SB::BB)
+                    .get(long_pos % SB::BB);
+                for c in 0..4 {
+                    ranks[c] += long_ranks[c];
+                }
             }
+            ranks
         }
-        ranks
     }
     /// Count the number of times character `c` occurs before position `pos`.
     #[inline(always)]
     fn count1(&self, pos: usize, c: u8) -> u32 {
-        let block_idx = pos / BB::N;
-        let block_pos = pos % BB::N;
-        let mut rank = self.blocks[block_idx].count1(block_pos, c);
-        if (BB::W) < 32 {
-            let long_pos = block_idx / Self::LONG_STRIDE;
-            let long_ranks = self.super_blocks[long_pos / SB::BB].get(long_pos % SB::BB);
-            rank += long_ranks[c as usize];
+        // assert!(pos < self.len);
+        unsafe {
+            let block_idx = pos / BB::N;
+            let block_pos = pos % BB::N;
+            let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c);
+            if (BB::W) < 32 {
+                let long_pos = block_idx / Self::LONG_STRIDE;
+                let long_ranks = self
+                    .super_blocks
+                    .get_unchecked(long_pos / SB::BB)
+                    .get(long_pos % SB::BB);
+                rank += long_ranks[c as usize];
+            }
+            rank
         }
-        rank
     }
     #[inline(always)]
     fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {

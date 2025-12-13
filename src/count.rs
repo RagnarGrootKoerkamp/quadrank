@@ -55,7 +55,7 @@ pub fn count_u64_2(word: u64, c: u8) -> u32 {
     let scatter = 0x5555555555555555u64;
     let masks: [u64; 4] = from_fn(|c| (c ^ 3) as u64 * scatter);
     // should be |11|11|... to match c.
-    let tmp = word ^ masks[c as usize];
+    let tmp = word ^ unsafe { *masks.get_unchecked(c as usize) };
     // |11| when c
     let union = (tmp & (tmp >> 1)) & scatter;
     union.count_ones()
@@ -68,7 +68,7 @@ pub fn count_u64_mask(word: u64, c: u8, pos: usize) -> u32 {
     let scatter = 0x5555555555555555u64;
     let masks: [u64; 4] = from_fn(|c| (c ^ 3) as u64 * scatter);
     // should be |11|11|... to match c.
-    let tmp = word ^ masks[c as usize];
+    let tmp = word ^ unsafe { *masks.get_unchecked(c as usize) };
     // |11| when c
     let union = (tmp & (tmp >> 1)) & MASKS_SCATTER[pos];
     union.count_ones()
@@ -81,7 +81,7 @@ pub fn count_u64_mid_mask(word: u64, c: u8, pos: usize) -> u32 {
     let scatter = 0x5555555555555555u64;
     let masks: [u64; 4] = from_fn(|c| (c ^ 3) as u64 * scatter);
     // should be |11|11|... to match c.
-    let tmp = word ^ masks[c as usize];
+    let tmp = word ^ unsafe { *masks.get_unchecked(c as usize) };
     // tmp &= MID_MASKS[pos];
     // |11| when c
     let union = (tmp & (tmp >> 1)) & MID_MASKS_SCATTER[pos];
