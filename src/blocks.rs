@@ -34,13 +34,17 @@ impl BasicBlock for Plain512 {
     const N: usize = 256; // Number of characters in block.
     const C: usize = 64; // Bytes of the underlying count function.
     const W: usize = 0;
+    const TRANSPOSED: bool = false;
 
     fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
         Plain512 { seq: *data }
     }
 
     #[inline(always)]
-    fn count<C: CountFn<{ Self::C }>, const C3: bool>(&self, pos: usize) -> Ranks {
+    fn count<C: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>, const C3: bool>(
+        &self,
+        pos: usize,
+    ) -> Ranks {
         let mut ranks = C::count(&self.seq, pos);
         if C3 {
             ranks[0] = pos as u32 - ranks[1] - ranks[2] - ranks[3];
@@ -62,6 +66,7 @@ impl BasicBlock for Plain256 {
     const N: usize = 128; // Number of characters in block.
     const C: usize = 32; // Bytes of the underlying count function.
     const W: usize = 0;
+    const TRANSPOSED: bool = false;
 
     fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
         Self { seq: *data }
@@ -90,6 +95,7 @@ impl BasicBlock for Plain128 {
     const N: usize = 64; // Number of characters in block.
     const C: usize = 16; // Bytes of the underlying count function.
     const W: usize = 0;
+    const TRANSPOSED: bool = false;
 
     fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
         Self { seq: *data }
@@ -127,6 +133,7 @@ impl BasicBlock for FullBlock {
     const N: usize = 128; // Number of characters in block.
     const C: usize = 32; // Bytes of the underlying count function.
     const W: usize = 64;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         FullBlock {
@@ -176,6 +183,7 @@ impl BasicBlock for FullBlockMid {
     const N: usize = 128; // Number of characters in block.
     const C: usize = 16; // Bytes of the underlying count function.
     const W: usize = 64;
+    const TRANSPOSED: bool = false;
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
         for chunk in &data.as_chunks::<8>().0[0..2] {
@@ -250,6 +258,7 @@ impl BasicBlock for HalfBlock {
     const N: usize = 128;
     const C: usize = 16;
     const W: usize = 32;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut meta = [0; 8];
@@ -312,6 +321,7 @@ impl BasicBlock for HalfBlock2 {
     const N: usize = 128;
     const C: usize = 16;
     const W: usize = 32;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut half_ranks = ranks;
@@ -372,6 +382,7 @@ impl BasicBlock for QuartBlock {
     const N: usize = 128;
     const C: usize = 8;
     const W: usize = 32;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut part_ranks = [0; 4];
@@ -479,6 +490,7 @@ impl BasicBlock for PentaBlock {
     const N: usize = 160;
     const C: usize = 8;
     const W: usize = 16;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut part_ranks = [0u32; 4];
@@ -548,6 +560,7 @@ impl BasicBlock for PentaBlock20bit {
     const N: usize = 160;
     const C: usize = 8;
     const W: usize = 20;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut part_ranks = [0u32; 4];
@@ -628,6 +641,7 @@ impl BasicBlock for HexaBlock {
     const N: usize = 192;
     const C: usize = 16;
     const W: usize = 16;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut part_ranks = [0u16; 4];
@@ -696,6 +710,7 @@ impl BasicBlock for HexaBlock2 {
     const N: usize = 192;
     const C: usize = 16;
     const W: usize = 16;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         let mut part_ranks = [0u16; 4];
@@ -771,6 +786,7 @@ impl BasicBlock for HexaBlock18bit {
     const N: usize = 192;
     const C: usize = 16;
     const W: usize = 18;
+    const TRANSPOSED: bool = false;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
         for x in ranks {
@@ -845,6 +861,7 @@ impl BasicBlock for HexaBlockMid {
     const N: usize = 192;
     const C: usize = 8;
     const W: usize = 16;
+    const TRANSPOSED: bool = false;
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
         // Counts before each u64 block.
@@ -927,6 +944,7 @@ impl BasicBlock for HexaBlockMid2 {
     const N: usize = 192;
     const C: usize = 8;
     const W: usize = 16;
+    const TRANSPOSED: bool = false;
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
         // Counts before each u64 block.
@@ -989,6 +1007,7 @@ impl BasicBlock for HexaBlockMid3 {
     const N: usize = 192;
     const C: usize = 8;
     const W: usize = 18;
+    const TRANSPOSED: bool = false;
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
         // Counts before each u64 block.
@@ -1058,6 +1077,7 @@ impl BasicBlock for HexaBlockMid4 {
     const N: usize = 192;
     const C: usize = 8;
     const W: usize = 18;
+    const TRANSPOSED: bool = false;
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
         // Counts before each u64 block.

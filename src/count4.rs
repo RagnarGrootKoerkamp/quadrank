@@ -23,6 +23,9 @@ pub trait CountFn<const B: usize>: Sync {
     /// Fixed: always the entire B-byte input is processed.
     /// Non-fixed (variable): Only process first pos/B chunks.
     const FIXED: bool;
+    /// When `false`: data is stored in normal bitpacked order.
+    /// When `true`: data is stored as a u64 of low bits followed by a u64 of high bits.
+    const TRANSPOSED: bool;
     /// Function that can count on B bytes of data.
     fn count(data: &[u8; B], pos: usize) -> Ranks;
     /// Count characters from position `pos` to the end.
@@ -38,6 +41,7 @@ pub struct Naive;
 impl<const B: usize> CountFn<B> for Naive {
     const S: usize = 1;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut counts = [0u32; 4];
@@ -62,6 +66,7 @@ pub struct U64PopcntSlice;
 impl<const B: usize> CountFn<B> for U64PopcntSlice {
     const S: usize = 8;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -104,6 +109,7 @@ pub struct U64Popcnt;
 impl CountFn<8> for U64Popcnt {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -131,6 +137,7 @@ pub struct U64Popcnt3;
 impl<const B: usize> CountFn<B> for U64Popcnt3 {
     const S: usize = 8;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
         for idx in (0..pos.div_ceil(4)).step_by(8) {
@@ -154,6 +161,7 @@ pub struct U128Popcnt;
 impl<const B: usize> CountFn<B> for U128Popcnt {
     const S: usize = 16;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -178,6 +186,7 @@ pub struct U128Popcnt3;
 impl<const B: usize> CountFn<B> for U128Popcnt3 {
     const S: usize = 16;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -215,6 +224,7 @@ pub struct ByteLookup;
 impl<const B: usize> CountFn<B> for ByteLookup {
     const S: usize = 1;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -235,6 +245,7 @@ pub struct ByteLookup4;
 impl<const B: usize> CountFn<B> for ByteLookup4 {
     const S: usize = 4;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -258,6 +269,7 @@ pub struct ByteLookup8Slice;
 impl<const B: usize> CountFn<B> for ByteLookup8Slice {
     const S: usize = 8;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -289,6 +301,7 @@ pub struct ByteLookup8;
 impl CountFn<8> for ByteLookup8 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -320,6 +333,7 @@ pub struct ByteLookup16;
 impl<const B: usize> CountFn<B> for ByteLookup16 {
     const S: usize = 16;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -359,6 +373,7 @@ pub struct ByteLookup16x2;
 impl CountFn<32> for ByteLookup16x2 {
     const S: usize = 32;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 32], pos: usize) -> Ranks {
         let mut counts: u32 = 0;
@@ -399,6 +414,7 @@ pub struct WideSimdCount;
 impl CountFn<16> for WideSimdCount {
     const S: usize = 16;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 16], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -507,6 +523,41 @@ pub static MID_MASKS: [u64; 64] = {
     }
     masks
 };
+pub static TRANSPOSED_MID_MASKS: [u64; 128] = {
+    let mut masks = [0u64; 128];
+    let mut i = 0;
+    while i < 64 {
+        let low_bits = i;
+        let mask = if low_bits == 64 {
+            u64::MAX
+        } else {
+            (1u64 << low_bits) - 1
+        };
+        masks[i] = !mask;
+        masks[i + 64] = mask;
+        i += 1;
+    }
+    masks
+};
+
+pub static BINARY_MID_MASKS: [[u64; 2]; 256] = {
+    let mut masks = [[0u64; 2]; 256];
+    let mut i = 0;
+    while i < 128 {
+        let low_bits = i;
+        let mask = if low_bits == 128 {
+            u128::MAX
+        } else {
+            (1u128 << low_bits) - 1
+        };
+        unsafe {
+            masks[i] = std::mem::transmute(!mask);
+            masks[i + 128] = std::mem::transmute(mask);
+        }
+        i += 1;
+    }
+    masks
+};
 
 pub static MID_MASKS_SCATTER: [u64; 64] = {
     let scatter = 0x5555555555555555u64;
@@ -581,6 +632,7 @@ pub static WIDE_MASKS: [u128; 128] = {
 impl CountFn<8> for WideSimdCount {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -627,6 +679,7 @@ pub struct SimdCount2;
 impl CountFn<8> for SimdCount2 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -672,6 +725,7 @@ pub struct SimdCount3;
 impl CountFn<8> for SimdCount3 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -723,6 +777,7 @@ pub struct SimdCount4;
 impl CountFn<8> for SimdCount4 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -777,6 +832,7 @@ pub struct SimdCount5;
 impl CountFn<8> for SimdCount5 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -831,6 +887,7 @@ pub struct SimdCount6;
 impl CountFn<8> for SimdCount6 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -887,6 +944,7 @@ pub struct SimdCount7;
 impl CountFn<8> for SimdCount7 {
     const S: usize = 8;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -1052,6 +1110,7 @@ impl CountFn<8> for SimdCount8 {
     /// 0: exact
     const S: usize = 0;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -1216,6 +1275,7 @@ impl CountFn<8> for SimdCount9 {
     /// 0: exact
     const S: usize = 0;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -1372,6 +1432,7 @@ pub struct WideSimdCount2;
 impl CountFn<16> for WideSimdCount2 {
     const S: usize = 16;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 16], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -1491,6 +1552,7 @@ pub struct SimdCountSlice;
 impl<const B: usize> CountFn<B> for SimdCountSlice {
     const S: usize = 16;
     const FIXED: bool = false;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; B], pos: usize) -> Ranks {
         assert!(B % 16 == 0);
@@ -1515,6 +1577,7 @@ impl CountFn<8> for SimdCount10 {
     /// 0: exact
     const S: usize = 0;
     const FIXED: bool = true;
+    const TRANSPOSED: bool = false;
     #[inline(always)]
     fn count(data: &[u8; 8], pos: usize) -> Ranks {
         let mut ranks = [0; 4];
@@ -1530,7 +1593,7 @@ impl CountFn<8> for SimdCount10 {
             let zero = u8x32::splat(0);
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
-            // 00 | 01 | 10 | 11  (0, 1, 2, 3)
+            // 00 | 10 | 01 | 11  (0, 2, 1, 3)
             const C: u64x4 = u64x4::from_array(unsafe {
                 t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]])
             });
@@ -1539,9 +1602,11 @@ impl CountFn<8> for SimdCount10 {
             let y = x;
 
             let byte_counts = u8x32::from_array([
-                // +1 for 11 in the low half
-                // +1 for 11 in the high half
+                // +1 for 11 in the low half of a nibble
+                // +1 for 11 in the high half of a nibble
+                // for 16 nibbles total
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
+                // copied for low and high half of 256bit simd
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2,
             ]);
 
@@ -1580,7 +1645,7 @@ impl CountFn<8> for SimdCount10 {
             let zero = u8x32::splat(0);
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
-            // 00 | 01 | 10 | 11  (0, 1, 2, 3)
+            // 00 | 10 | 01 | 11  (0, 2, 1, 3)
             const C: u64x4 = u64x4::from_array(unsafe {
                 t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]])
             });
@@ -1661,6 +1726,140 @@ impl CountFn<8> for SimdCount10 {
             ranks[0] += sum32[0] as u32;
             ranks[1] += sum32[2] as u32;
             ranks[2] += sum32[1] as u32;
+            ranks[3] += sum32[3] as u32;
+        }
+
+        ranks
+    }
+}
+
+// New: Store bitpacked data un-packed as 64bit word for low bits and 64bit word for high bits.
+pub struct SimdCount11;
+impl CountFn<16> for SimdCount11 {
+    /// 0: exact
+    const S: usize = 0;
+    const FIXED: bool = true;
+    const TRANSPOSED: bool = true;
+
+    #[inline(always)]
+    fn count(_data: &[u8; 16], _pos: usize) -> Ranks {
+        unimplemented!();
+    }
+
+    /// Pos can twice the size here.
+    /// If first half, count top elements, otherwise count bottom elements.
+    #[inline(always)]
+    fn count_mid(data: &[u8; 16], pos: usize) -> Ranks {
+        let mut ranks = [0; 4];
+        {
+            use std::mem::transmute as t;
+
+            // Count one u64 quarter of bits.
+            let l = u64::from_le_bytes(data[0..8].try_into().unwrap());
+            let h = u64::from_le_bytes(data[8..16].try_into().unwrap());
+            let mask = TRANSPOSED_MID_MASKS[pos];
+            // chunk &= mask;
+
+            // count AC in first half, GT in second half.
+            let l = u64x4::splat(l);
+            let h = u64x4::splat(h);
+            let zero = u8x32::splat(0);
+            let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
+            // bits of the 4 chars
+            // 00 | 10 | 01 | 11  (0, 2, 1, 3)
+            const CL: u64x4 = u64x4::from_array([!0, !0, 0, 0]);
+            const CH: u64x4 = u64x4::from_array([!0, 0, !0, 0]);
+
+            let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
+
+            let byte_counts = u8x32::from_array([
+                // popcount of every 4bit nibble
+                0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
+                0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
+            ]);
+
+            // Now reduce.
+            // no need for mask_f here.
+            // Those are needed to get rid of possible 1 high bits that mask the value to 0,
+            // but we already know those aren't 0 anyway in our case.
+            let lo = y & mask_f;
+            let hi = (y >> 4) & mask_f;
+            let popcnt1: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(lo))) };
+            let popcnt2: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(hi))) };
+            let sum4 = popcnt1 + popcnt2;
+            // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
+            let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
+            ranks[0] += sum32[0] as u32;
+            ranks[1] += sum32[2] as u32;
+            ranks[2] += sum32[1] as u32;
+            ranks[3] += sum32[3] as u32;
+        }
+
+        ranks
+    }
+}
+
+// New: Store bitpacked data un-packed as 64bit word for low bits and 64bit word for high bits.
+pub struct SimdCount11B;
+impl CountFn<16> for SimdCount11B {
+    /// 0: exact
+    const S: usize = 0;
+    const FIXED: bool = true;
+    const TRANSPOSED: bool = true;
+
+    #[inline(always)]
+    fn count(_data: &[u8; 16], _pos: usize) -> Ranks {
+        unimplemented!();
+    }
+
+    /// Pos can twice the size here.
+    /// If first half, count top elements, otherwise count bottom elements.
+    #[inline(always)]
+    fn count_mid(data: &[u8; 16], pos: usize) -> Ranks {
+        let mut ranks = [0; 4];
+        {
+            use std::mem::transmute as t;
+            // Without this, I get weird codegen.
+            // let data = std::hint::black_box(data);
+
+            // Count one u64 quarter of bits.
+            let l = u64::from_le_bytes(data[0..8].try_into().unwrap());
+            let h = u64::from_le_bytes(data[8..16].try_into().unwrap());
+            let mask = TRANSPOSED_MID_MASKS[pos];
+            // chunk &= mask;
+
+            // count AC in first half, GT in second half.
+            let l = u64x4::splat(l);
+            let h = u64x4::splat(h);
+            let zero = u8x32::splat(0);
+            let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
+            // bits of the 4 chars
+            // 00 | 10 | 01 | 11  (0, 2, 1, 3)
+            const CL: u64x4 = u64x4::from_array([!0, 0, !0, 0]);
+            const CH: u64x4 = u64x4::from_array([!0, !0, 0, 0]);
+
+            let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
+
+            let byte_counts = u8x32::from_array([
+                // popcount of every 4bit nibble
+                0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
+                0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
+            ]);
+
+            // Now reduce.
+            // no need for mask_f here.
+            // Those are needed to get rid of possible 1 high bits that mask the value to 0,
+            // but we already know those aren't 0 anyway in our case.
+            let lo = y & mask_f;
+            let hi = (y >> 4) & mask_f;
+            let popcnt1: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(lo))) };
+            let popcnt2: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(hi))) };
+            let sum4 = popcnt1 + popcnt2;
+            // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
+            let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
+            ranks[0] += sum32[0] as u32;
+            ranks[1] += sum32[1] as u32;
+            ranks[2] += sum32[2] as u32;
             ranks[3] += sum32[3] as u32;
         }
 

@@ -15,10 +15,17 @@ pub trait BasicBlock: Sync {
     const C: usize;
     /// Bit-width of the internal global ranks.
     const W: usize;
+    /// When `false`, basic data is bit-packed.
+    /// When `true`, transposed layout is used with a u64 of high bits followed
+    /// by a u64 of low bits.
+    const TRANSPOSED: bool;
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self;
     /// Count the number of times each character occurs before position `pos`.
-    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, pos: usize) -> Ranks;
+    fn count<CF: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>, const C3: bool>(
+        &self,
+        pos: usize,
+    ) -> Ranks;
     /// Count the number of times character `c` occurs before position `pos`.
     fn count1(&self, _pos: usize, _c: u8) -> u32 {
         unimplemented!()
@@ -81,8 +88,12 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const 
     cf: PhantomData<CF>,
 }
 
-impl<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool> RankerT
-    for Ranker<BB, SB, CF, C3>
+impl<
+    BB: BasicBlock,
+    SB: SuperBlock,
+    CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>,
+    const C3: bool,
+> RankerT for Ranker<BB, SB, CF, C3>
 where
     [(); BB::B]:,
     [(); SB::BB]:,
@@ -199,7 +210,12 @@ where
         (rank0, rank1)
     }
 }
-impl<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool> Ranker<BB, SB, CF, C3>
+impl<
+    BB: BasicBlock,
+    SB: SuperBlock,
+    CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>,
+    const C3: bool,
+> Ranker<BB, SB, CF, C3>
 where
     [(); BB::B]:,
     [(); SB::BB]:,
