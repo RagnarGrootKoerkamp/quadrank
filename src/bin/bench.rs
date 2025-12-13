@@ -25,14 +25,15 @@ use quadrank::{
 fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
     let pos = pos as u32;
-    if ranks[1] == 0 {
-        debug_assert_eq!(ranks, [(pos + 3) / 4, 0, 0, 0]);
-    } else {
-        debug_assert_eq!(
-            ranks,
-            [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
-        );
-    }
+    debug_assert_eq!(
+        ranks,
+        [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
+    );
+}
+fn check1(pos: usize, rank: u32) {
+    std::hint::black_box(&rank);
+    let pos = pos as u32;
+    debug_assert_eq!(rank, (pos + 3) / 4);
 }
 
 type QS = Vec<Vec<usize>>;
@@ -79,6 +80,8 @@ fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
     }
 }
 
+const BATCH: usize = 32;
+
 fn time_latency(
     queries: &QS,
     t: Threading,
@@ -105,8 +108,6 @@ fn time_loop(queries: &QS, t: Threading, f: impl Fn(usize) -> Ranks + Sync + Cop
         }
     });
 }
-
-const BATCH: usize = 32;
 
 fn time_batch(
     queries: &QS,
@@ -153,9 +154,88 @@ fn time_trip(
     prefetch: impl Fn(usize) + Sync + Copy,
     f: impl Fn(usize) -> Ranks + Sync + Copy,
 ) {
-    time_latency(queries, t, prefetch, f);
-    time_loop(queries, t, f);
-    time_stream(queries, t, prefetch, f);
+    time_fn(queries, t, |queries| {
+        for &q in queries {
+            check(q, f(q));
+        }
+    });
+}
+
+fn time_latency1(
+    queries: &QS,
+    t: Threading,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> u32 + Sync + Copy,
+) {
+    time_fn(queries, t, |queries| {
+        let mut acc = 0;
+        for &q in queries {
+            // Make query depend on previous result.
+            let q = q ^ acc;
+            prefetch(q);
+            let rank = f(q);
+            acc ^= (rank & 1) as usize;
+            check1(q, rank);
+        }
+    });
+}
+
+fn time_loop1(queries: &QS, t: Threading, f: impl Fn(usize) -> u32 + Sync + Copy) {
+    time_fn(queries, t, |queries| {
+        for &q in queries {
+            check1(q, f(q));
+        }
+    });
+}
+
+fn time_batch1(
+    queries: &QS,
+    t: Threading,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> u32 + Sync,
+) {
+    time_fn(queries, t, |queries| {
+        let qs = queries.as_chunks::<BATCH>().0;
+        for batch in qs {
+            for &q in batch {
+                prefetch(q);
+            }
+            for &q in batch {
+                check1(q, f(q));
+            }
+        }
+    })
+}
+
+fn time_stream1(
+    queries: &QS,
+    t: Threading,
+    prefetch: impl Fn(usize) + Sync,
+    f: impl Fn(usize) -> u32 + Sync,
+) {
+    time_fn(queries, t, |queries| {
+        for i in 0..queries.len() - BATCH {
+            unsafe {
+                let q = *queries.get_unchecked(i);
+                let ahead = *queries.get_unchecked(i + BATCH);
+                // Prefetch next cacheline of queries.
+                prefetch_index(queries, i + 2 * BATCH);
+                prefetch(ahead);
+                check1(q, f(q));
+            }
+        }
+    });
+}
+
+fn time_trip1(
+    queries: &QS,
+    t: Threading,
+    prefetch: impl Fn(usize) + Sync + Copy,
+    f: impl Fn(usize) -> u32 + Sync + Copy,
+) {
+    time_latency1(queries, t, prefetch, f);
+    time_loop1(queries, t, f);
+    time_stream1(queries, t, prefetch, f);
 }
 
 #[inline(always)]
@@ -299,11 +379,12 @@ fn bench1<R: RankerT>(seq: &[u8], queries: &QS) {
     eprint!("{bits:>6.2}b |");
 
     for t in [Threading::Single, Threading::Multi] {
-        time_trip(
+        // for t in [Threading::Single] {
+        time_trip1(
             &queries,
             t,
             |p| ranker.prefetch(p),
-            |p| [ranker.count1(p, p as u8 & 3), 0, 0, 0],
+            |p| ranker.count1(p, p as u8 & 3),
         );
         eprint!(" |");
     }
