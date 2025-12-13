@@ -433,6 +433,11 @@ fn bench_all(seq: &[u8], queries: &QS) {
     // bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
 
+    // bench1::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
+    // bench1::<Ranker<BinaryBlock, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock2, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock3, TrivialSB, SimdCount11, false>>(seq, queries);
+
     // external
     // #[cfg(not(debug_assertions))]
     // bench::<sux::prelude::Rank9>(seq, queries);
