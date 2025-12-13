@@ -357,7 +357,7 @@ fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
     eprint!("{name:<60}");
 
     let ranker = R::new(&seq);
-    let bits = (ranker.size() * 8) as f64 / (4 * seq.len()) as f64;
+    let bits = (ranker.size() * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
     for t in [Threading::Single, Threading::Multi] {
@@ -376,7 +376,7 @@ fn bench1<R: RankerT>(seq: &[u8], queries: &QS) {
     eprint!("{name:<60}");
 
     let ranker = R::new(&seq);
-    let bits = (ranker.size() * 8) as f64 / (4 * seq.len()) as f64;
+    let bits = (ranker.size() * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
 
     for t in [Threading::Single, Threading::Multi] {
