@@ -153,7 +153,8 @@ where
     fn prefetch(&self, pos: usize) {
         let block_idx = pos / BB::N;
         prefetch_index(&self.blocks, block_idx);
-        if BB::W < 32 {
+        // if BB::W < 32 {
+        if BB::W < 24 {
             let long_pos = block_idx / Self::LONG_STRIDE;
             prefetch_index(&self.super_blocks, long_pos / SB::BB);
         }
