@@ -5,7 +5,7 @@ use std::{arch::x86_64::_mm_sign_epi32, array::from_fn, simd::u32x4};
 use crate::{
     Ranks, add,
     count::{count_u8x8, count_u8x16, count_u64_mask, count_u64_mid_mask},
-    count4::{BINARY_MID_MASKS, CountFn, WideSimdCount2, count4_u8x8},
+    count4::{BINARY_MID_MASKS, BINARY_MID_MASKS256, CountFn, WideSimdCount2, count4_u8x8},
     ranker::BasicBlock,
 };
 
@@ -1599,5 +1599,112 @@ impl BasicBlock for BinaryBlock4 {
             let inner_count = (l & mask_l).count_ones() + (h & mask_h).count_ones();
             inner_count + self.ranks[quad / 2] as u32
         }
+    }
+}
+
+/// Only store a count to the middle and then count 256 bits.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct BinaryBlock5 {
+    seq: [u8; 60],
+    rank: u32,
+}
+
+impl BasicBlock for BinaryBlock5 {
+    const B: usize = 60;
+    const N: usize = 240;
+    const C: usize = 16;
+    const W: usize = 32;
+    const TRANSPOSED: bool = true;
+
+    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts in each u64 block.
+        let mut bs = [0; 8];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = u64::from_le_bytes(*chunk).count_ones();
+        }
+        // partial ranks after 1 and 3 blocks
+        let rank = ranks[0] + bs[0] + bs[1] + bs[2] + bs[3];
+        Self { seq: *data, rank }
+    }
+
+    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, _pos: usize) -> Ranks {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, _c: u8) -> u32 {
+        let half = pos / 256;
+        let pos = pos;
+
+        let [m0, m1, m2, m3] = BINARY_MID_MASKS256[pos];
+        // NOTE: This *will* go out-of-bounds, but it's ok because 'ranks' is used as padding.
+        let [v0, v1, v2, v3]: [u64; 4] = unsafe {
+            std::mem::transmute::<[u8; 32], _>(
+                (*self.seq.get_unchecked(half * 32..half * 32 + 32))
+                    .try_into()
+                    .unwrap(),
+            )
+        };
+        self.rank
+            + (v0 & m0).count_ones()
+            + (v1 & m1).count_ones()
+            + (v2 & m2).count_ones()
+            + (v3 & m3).count_ones()
+    }
+}
+
+/// Only store a count to the middle and then count 256 bits.
+#[repr(align(64))]
+#[repr(C)]
+#[derive(mem_dbg::MemSize)]
+pub struct BinaryBlock6 {
+    seq: [u8; 62],
+    rank: u16,
+}
+
+impl BasicBlock for BinaryBlock6 {
+    const B: usize = 62;
+    const N: usize = 248;
+    const C: usize = 16;
+    const W: usize = 16;
+    const TRANSPOSED: bool = true;
+
+    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts in each u64 block.
+        let mut bs = [0; 8];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = u64::from_le_bytes(*chunk).count_ones();
+        }
+        // partial ranks after 1 and 3 blocks
+        let rank = (ranks[0] + bs[0] + bs[1] + bs[2] + bs[3]) as u16;
+        Self { seq: *data, rank }
+    }
+
+    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, _pos: usize) -> Ranks {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, _c: u8) -> u32 {
+        let half = pos / 256;
+        let pos = pos;
+
+        let [m0, m1, m2, m3] = BINARY_MID_MASKS256[pos];
+        // NOTE: This *will* go out-of-bounds, but it's ok because 'ranks' is used as padding.
+        let [v0, v1, v2, v3]: [u64; 4] = unsafe {
+            std::mem::transmute::<[u8; 32], _>(
+                (*self.seq.get_unchecked(half * 32..half * 32 + 32))
+                    .try_into()
+                    .unwrap(),
+            )
+        };
+        self.rank as u32
+            + (v0 & m0).count_ones()
+            + (v1 & m1).count_ones()
+            + (v2 & m2).count_ones()
+            + (v3 & m3).count_ones()
     }
 }

@@ -559,6 +559,25 @@ pub static BINARY_MID_MASKS: [[u64; 2]; 256] = {
     masks
 };
 
+pub static BINARY_MID_MASKS256: [[u64; 4]; 512] = {
+    let mut masks = [[0u64; 4]; 512];
+    let mut i = 0;
+    while i < 256 {
+        let lo_mask = if i < 128 { (1u128 << i) - 1 } else { u128::MAX };
+        let hi_mask = if i <= 128 {
+            0
+        } else {
+            (1u128 << (i - 128)) - 1
+        };
+        unsafe {
+            masks[i] = std::mem::transmute([!lo_mask, !hi_mask]);
+            masks[i + 256] = std::mem::transmute([lo_mask, hi_mask]);
+        }
+        i += 1;
+    }
+    masks
+};
+
 pub static MID_MASKS_SCATTER: [u64; 64] = {
     let scatter = 0x5555555555555555u64;
     let mut masks = [0u64; 64];
