@@ -21,7 +21,9 @@ use quadrank::{
     },
     ranker::{Ranker, RankerT, prefetch_index},
     super_block::{NoSB, SB8, TrivialSB},
+    sux::*,
 };
+use sux::prelude::Rank9;
 
 fn check(pos: usize, ranks: Ranks) {
     std::hint::black_box(&ranks);
@@ -443,7 +445,14 @@ fn bench_all(seq: &[usize], queries: &QS) {
     // external
     // #[cfg(not(debug_assertions))]
     // bench::<sux::prelude::Rank9>(seq, queries);
-    // bench::<qwt::RSQVector256>(seq, queries);
+    bench1::<qwt::RSNarrow>(seq, queries);
+    bench1::<qwt::RSWide>(seq, queries);
+    bench1::<Rank9>(seq, queries);
+    bench1::<RankSmall1>(seq, queries);
+    bench1::<RankSmall2>(seq, queries);
+    bench1::<RankSmall3>(seq, queries);
+    bench1::<RankSmall4>(seq, queries);
+    bench1::<RankSmall5>(seq, queries);
 
     // broken
     // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
