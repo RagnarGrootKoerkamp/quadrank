@@ -121,13 +121,13 @@ where
         let mut ranks = [0u32; 4];
         let mut l_ranks = [0u32; 4];
 
-        let chunks = packed_seq.as_chunks::<{ BB::B }>().0;
+        let (chunks, tail) = seq.as_chunks::<{ BB::B }>();
         let num_chunks = chunks.len();
         let num_long_chunks = num_chunks.div_ceil(Self::LONG_STRIDE);
         let mut block_ranks = Vec::with_capacity(num_long_chunks);
         let mut blocks = Vec::with_capacity(num_chunks);
         for (i, chunk) in chunks.iter().enumerate() {
-            if (BB::W < 32) && i % Self::LONG_STRIDE == 0 {
+            if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
                 for i in 0..4 {
                     l_ranks[i] += ranks[i];
                 }
@@ -137,10 +137,28 @@ where
             blocks.push(BB::new(ranks, chunk));
 
             for chunk in chunk.as_chunks::<8>().0 {
-                for c in 0..4 {
-                    ranks[c as usize] += count_u8x8(chunk, c);
+                if BB::X == 2 {
+                    for c in 0..4 {
+                        ranks[c as usize] += count_u8x8(chunk, c);
+                    }
+                } else {
+                    ranks[0] += u64::from_le_bytes(*chunk).count_ones() as u32;
                 }
             }
+        }
+
+        {
+            let i = chunks.len();
+            let mut chunk = [0; BB::B];
+            chunk[..tail.len()].copy_from_slice(tail);
+            if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
+                for i in 0..4 {
+                    l_ranks[i] += ranks[i];
+                }
+                block_ranks.push(l_ranks);
+                ranks = [0; 4];
+            }
+            blocks.push(BB::new(ranks, &chunk));
         }
 
         while block_ranks.len() % SB::BB != 0 {
@@ -161,6 +179,7 @@ where
             cf: PhantomData,
         }
     }
+
     /// Prefetch the cacheline for the given position.
     #[inline(always)]
     fn prefetch(&self, pos: usize) {
