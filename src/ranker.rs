@@ -7,6 +7,9 @@ use std::marker::PhantomData;
 use std::ops::Coroutine;
 
 pub trait BasicBlock: Sync {
+    /// Character width. 1 for binary, 2 for DNA.
+    const X: usize;
+
     /// Number of bytes per block.
     const B: usize;
     /// Number of characters per block.
@@ -96,7 +99,7 @@ pub trait RankerT: Sync + Sized {
 pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool> {
     /// Cacheline-sized counts.
     blocks: Vec<BB>,
-    /// Additional counts every 2^31 cachelines.
+    /// Additional sparse counts.
     super_blocks: Vec<SB>,
     cf: PhantomData<CF>,
 }

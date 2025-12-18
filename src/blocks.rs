@@ -30,6 +30,7 @@ pub struct Plain512 {
 }
 
 impl BasicBlock for Plain512 {
+    const X: usize = 2; // DNA
     const B: usize = 64; // Bytes of characters in block.
     const N: usize = 256; // Number of characters in block.
     const C: usize = 64; // Bytes of the underlying count function.
@@ -62,6 +63,7 @@ pub struct Plain256 {
 }
 
 impl BasicBlock for Plain256 {
+    const X: usize = 2; // DNA
     const B: usize = 32; // Bytes of characters in block.
     const N: usize = 128; // Number of characters in block.
     const C: usize = 32; // Bytes of the underlying count function.
@@ -91,6 +93,7 @@ pub struct Plain128 {
 }
 
 impl BasicBlock for Plain128 {
+    const X: usize = 2; // DNA
     const B: usize = 16; // Bytes of characters in block.
     const N: usize = 64; // Number of characters in block.
     const C: usize = 16; // Bytes of the underlying count function.
@@ -129,6 +132,7 @@ pub struct FullBlock {
 }
 
 impl BasicBlock for FullBlock {
+    const X: usize = 2; // DNA
     const B: usize = 32; // Bytes of characters in block.
     const N: usize = 128; // Number of characters in block.
     const C: usize = 32; // Bytes of the underlying count function.
@@ -179,6 +183,7 @@ pub struct FullBlockMid {
 }
 
 impl BasicBlock for FullBlockMid {
+    const X: usize = 2; // DNA
     const B: usize = 32; // Bytes of characters in block.
     const N: usize = 128; // Number of characters in block.
     const C: usize = 16; // Bytes of the underlying count function.
@@ -254,6 +259,7 @@ pub struct HalfBlock {
 }
 
 impl BasicBlock for HalfBlock {
+    const X: usize = 2; // DNA
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 16;
@@ -317,6 +323,7 @@ pub struct HalfBlock2 {
 }
 
 impl BasicBlock for HalfBlock2 {
+    const X: usize = 2; // DNA
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 16;
@@ -378,6 +385,7 @@ pub struct QuartBlock {
 }
 
 impl BasicBlock for QuartBlock {
+    const X: usize = 2; // DNA
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 8;
@@ -486,6 +494,7 @@ pub struct PentaBlock {
 }
 
 impl BasicBlock for PentaBlock {
+    const X: usize = 2; // DNA
     const B: usize = 40;
     const N: usize = 160;
     const C: usize = 8;
@@ -556,6 +565,7 @@ pub struct PentaBlock20bit {
 }
 
 impl BasicBlock for PentaBlock20bit {
+    const X: usize = 2; // DNA
     const B: usize = 40;
     const N: usize = 160;
     const C: usize = 8;
@@ -637,6 +647,7 @@ pub struct HexaBlock {
 }
 
 impl BasicBlock for HexaBlock {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
@@ -706,6 +717,7 @@ pub struct HexaBlock2 {
 }
 
 impl BasicBlock for HexaBlock2 {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
@@ -782,6 +794,7 @@ pub struct HexaBlock18bit {
 }
 
 impl BasicBlock for HexaBlock18bit {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
@@ -857,6 +870,7 @@ pub struct HexaBlockMid {
 }
 
 impl BasicBlock for HexaBlockMid {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 8;
@@ -940,6 +954,7 @@ pub struct HexaBlockMid2 {
 }
 
 impl BasicBlock for HexaBlockMid2 {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 8;
@@ -1003,6 +1018,7 @@ pub struct HexaBlockMid3 {
 }
 
 impl BasicBlock for HexaBlockMid3 {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 8;
@@ -1073,6 +1089,7 @@ pub struct HexaBlockMid4 {
 }
 
 impl BasicBlock for HexaBlockMid4 {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 8;
@@ -1229,6 +1246,7 @@ pub struct TriBlock {
 }
 
 impl BasicBlock for TriBlock {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
@@ -1295,6 +1313,7 @@ pub struct TriBlock2 {
 }
 
 impl BasicBlock for TriBlock2 {
+    const X: usize = 2; // DNA
     const B: usize = 48;
     const N: usize = 192;
     const C: usize = 16;
@@ -1362,8 +1381,9 @@ pub struct BinaryBlock {
 }
 
 impl BasicBlock for BinaryBlock {
+    const X: usize = 1; // Binary
     const B: usize = 48;
-    const N: usize = 192;
+    const N: usize = 384;
     const C: usize = 16;
     const W: usize = 64;
     const TRANSPOSED: bool = true;
@@ -1413,8 +1433,9 @@ pub struct BinaryBlock2 {
 }
 
 impl BasicBlock for BinaryBlock2 {
+    const X: usize = 1; // Binary
     const B: usize = 56;
-    const N: usize = 224;
+    const N: usize = 448;
     const C: usize = 16;
     const W: usize = 32;
     const TRANSPOSED: bool = true;
@@ -1479,8 +1500,9 @@ pub struct BinaryBlock3 {
 }
 
 impl BasicBlock for BinaryBlock3 {
+    const X: usize = 1; // Binary
     const B: usize = 59;
-    const N: usize = 236;
+    const N: usize = 472;
     const C: usize = 16;
     const W: usize = 32;
     const TRANSPOSED: bool = true;
@@ -1552,8 +1574,9 @@ pub struct BinaryBlock4 {
 }
 
 impl BasicBlock for BinaryBlock4 {
+    const X: usize = 1; // Binary
     const B: usize = 60;
-    const N: usize = 240;
+    const N: usize = 480;
     const C: usize = 16;
     const W: usize = 16;
     const TRANSPOSED: bool = true;
@@ -1611,8 +1634,9 @@ pub struct BinaryBlock5 {
 }
 
 impl BasicBlock for BinaryBlock5 {
+    const X: usize = 1; // Binary
     const B: usize = 60;
-    const N: usize = 240;
+    const N: usize = 480;
     const C: usize = 16;
     const W: usize = 32;
     const TRANSPOSED: bool = true;
@@ -1665,8 +1689,9 @@ pub struct BinaryBlock6 {
 }
 
 impl BasicBlock for BinaryBlock6 {
+    const X: usize = 1; // Binary
     const B: usize = 62;
-    const N: usize = 248;
+    const N: usize = 496;
     const C: usize = 16;
     const W: usize = 16;
     const TRANSPOSED: bool = true;
