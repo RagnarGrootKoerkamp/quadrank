@@ -348,7 +348,7 @@ fn bench_header(threads: usize) {
     );
 }
 
-fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
+fn bench<R: RankerT>(packed_seq: &[usize], queries: &QS) {
     let name = type_name::<R>();
     let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
         .unwrap()
@@ -356,9 +356,9 @@ fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
 
     eprint!("{name:<60}");
 
-    let ranker = R::new(&seq);
     let bits = (ranker.size() * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
+    let ranker = R::new_packed(&packed_seq);
 
     for t in [Threading::Single, Threading::Multi] {
         time_trip(&queries, t, |p| ranker.prefetch(p), |p| ranker.count(p));
@@ -367,7 +367,7 @@ fn bench<R: RankerT>(seq: &[u8], queries: &QS) {
     eprintln!();
 }
 
-fn bench1<R: RankerT>(seq: &[u8], queries: &QS) {
+fn bench1<R: RankerT>(packed_seq: &[usize], queries: &QS) {
     let name = type_name::<R>();
     let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
         .unwrap()
@@ -375,9 +375,9 @@ fn bench1<R: RankerT>(seq: &[u8], queries: &QS) {
 
     eprint!("{name:<60}");
 
-    let ranker = R::new(&seq);
     let bits = (ranker.size() * 8) as f64 / seq.len() as f64;
     eprint!("{bits:>6.2}b |");
+    let ranker = R::new_packed(&packed_seq);
 
     for t in [Threading::Single, Threading::Multi] {
         // for t in [Threading::Single] {
@@ -392,15 +392,15 @@ fn bench1<R: RankerT>(seq: &[u8], queries: &QS) {
     eprintln!();
 }
 
-fn bench_coro<R: RankerT>(seq: &[u8], queries: &QS) {
-    let ranker = R::new(&seq);
+fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
+    let ranker = R::new_packed(&packed_seq);
     time_coro_stream(&queries, |p| ranker.count_coro(p));
     time_coro_stream(&queries, |p| ranker.count_coro(p));
     time_coro_stream(&queries, |p| ranker.count_coro(p));
 }
 
 #[inline(never)]
-fn bench_all(seq: &[u8], queries: &QS) {
+fn bench_all(seq: &[usize], queries: &QS) {
     bench_header(queries.len());
     // plain external vec
     // bench::<Ranker<Plain128, TrivialSB, WideSimdCount2, false>>(seq, queries);
@@ -466,7 +466,13 @@ fn main() {
     #[cfg(not(debug_assertions))]
     let q = 10_000_000;
     #[cfg(not(debug_assertions))]
-    let mut ns = vec![100_000, 1_000_000_000];
+    let mut ns = vec![
+        100_000,
+        1_000_000_000,
+        4_000_000_000,
+        16_000_000_000,
+        64_000_000_000,
+    ];
 
     let args = Args::parse();
     let threads = args.threads;
@@ -477,14 +483,13 @@ fn main() {
     for n in ns {
         // for n in [100_000] {
         eprintln!("n = {}", n);
-        let seq = b"ACTG".repeat(n / 4);
-        // let seq = [0b11100100].repeat(n / 4);
-        let queries = (0..threads.max(5))
-            .map(|_| {
-                (0..q)
-                    .map(|_| rand::random_range(0..seq.len()))
-                    .collect::<Vec<_>>()
-            })
+        // let seq = b"ACTG".repeat(n / 4);
+        let seq = vec![
+            0b1110010011100100111001001110010011100100111001001110010011100100;
+            n.div_ceil(64)
+        ];
+        let queries = (0..12)
+            .map(|_| (0..q).map(|_| rand::random_range(0..n)).collect::<Vec<_>>())
             .collect::<Vec<_>>();
 
         bench_all(&seq, &queries);

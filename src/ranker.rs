@@ -47,8 +47,21 @@ pub trait SuperBlock: Sync {
     fn get(&self, idx: usize) -> Ranks;
 }
 
-pub trait RankerT: Sync {
-    fn new(seq: &[u8]) -> Self;
+pub trait RankerT: Sync + Sized {
+    /// Construct from ASCII DNA input.
+    fn new(seq: &[u8]) -> Self {
+        // let mut packed_seq = seq.to_vec();
+        let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
+        // eprintln!("packed_seq: {:?}", packed_seq);
+        // Add one block of padding.
+        packed_seq.resize(packed_seq.len() + 1024, 0);
+        let (head, data, tail) = unsafe { packed_seq.align_to::<usize>() };
+        assert!(head.is_empty());
+        assert!(tail.is_empty());
+        Self::new_packed(data)
+    }
+    /// Construct from bitpacked data.
+    fn new_packed(seq: &[usize]) -> Self;
     /// Prefetch the cacheline for the given position.
     fn prefetch(&self, pos: usize);
     fn size(&self) -> usize;
@@ -98,13 +111,10 @@ where
     [(); BB::B]:,
     [(); SB::BB]:,
 {
-    fn new(seq: &[u8]) -> Self {
-        // let mut packed_seq = seq.to_vec();
-        let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
-        // eprintln!("packed_seq: {:?}", packed_seq);
-        // Add one block of padding.
-        packed_seq.resize(packed_seq.len() + 2 * BB::B, 0);
-
+    fn new_packed(seq: &[usize]) -> Self {
+        let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
+        assert!(head.is_empty());
+        assert!(tail.is_empty());
         let mut ranks = [0u32; 4];
         let mut l_ranks = [0u32; 4];
 

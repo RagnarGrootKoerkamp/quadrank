@@ -1,4 +1,3 @@
-use packed_seq::{PackedSeqVec, SeqVec};
 use qwt::{RSQVector256, RankBin, RankQuad, WTSupport};
 
 use crate::ranker::RankerT;
@@ -12,6 +11,10 @@ impl RankerT for RSQVector256 {
         //     .flat_map(|x| (0..4).map(move |i| (x >> (2 * i)) & 3))
         //     .collect::<Vec<_>>();
         RSQVector256::new(&seq)
+    }
+
+    fn new_packed(_seq: &[usize]) -> Self {
+        unimplemented!()
     }
 
     #[inline(always)]
@@ -36,16 +39,10 @@ impl RankerT for RSQVector256 {
 }
 
 impl RankerT for qwt::RSNarrow {
-    fn new(seq: &[u8]) -> Self {
-        let packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
-        let iter = packed_seq
-            .as_chunks()
-            .0
-            .iter()
-            .map(|x| u64::from_le_bytes(*x));
+    fn new_packed(seq: &[usize]) -> Self {
         let mut bitvec = qwt::BitVectorMut::default();
-        for x in iter {
-            bitvec.append_bits(x, 64);
+        for &x in seq {
+            bitvec.append_bits(x as u64, usize::BITS as usize);
         }
 
         Self::new(bitvec.into())
@@ -72,19 +69,8 @@ impl RankerT for qwt::RSNarrow {
 }
 
 impl RankerT for qwt::RSWide {
-    fn new(seq: &[u8]) -> Self {
-        let packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
-        let iter = packed_seq
-            .as_chunks()
-            .0
-            .iter()
-            .map(|x| u64::from_le_bytes(*x));
-        let mut bitvec = qwt::BitVectorMut::default();
-        for x in iter {
-            bitvec.append_bits(x, 64);
-        }
-
-        Self::new(bitvec.into())
+    fn new_packed(seq: &[usize]) -> Self {
+        Self::new(qwt::BitVector::from_slice(seq))
     }
 
     #[inline(always)]
