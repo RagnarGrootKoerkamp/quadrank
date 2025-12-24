@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use std::{arch::x86_64::_mm_sign_epi32, array::from_fn, simd::u32x4};
+use std::{arch::x86_64::_mm_sign_epi32, array::from_fn, hint::assert_unchecked, simd::u32x4};
 
 use crate::{
     Ranks, add,
@@ -1731,5 +1731,61 @@ impl BasicBlock for BinaryBlock6 {
             + (v1 & m1).count_ones()
             + (v2 & m2).count_ones()
             + (v3 & m3).count_ones()
+    }
+}
+
+/// Like BinarBlock6, but count to the start and linear scan rank in block.
+#[repr(align(64))]
+#[repr(C)]
+#[derive(mem_dbg::MemSize)]
+pub struct Spider {
+    // First 2 bytes are rank offset.
+    // The rest bits.
+    seq: [u8; 64],
+}
+
+impl BasicBlock for Spider {
+    const X: usize = 1; // Binary
+    const B: usize = 62;
+    const N: usize = 496;
+    const C: usize = 16;
+    const W: usize = 16;
+    const TRANSPOSED: bool = true;
+
+    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        let mut seq = [0; 64];
+        seq[0] = (ranks[0] & 0xff) as u8;
+        seq[1] = ((ranks[0] >> 8) & 0xff) as u8;
+        seq[2..].copy_from_slice(&data[0..62]);
+        Self { seq }
+    }
+
+    fn count<CF: CountFn<{ Self::C }>, const C3: bool>(&self, _pos: usize) -> Ranks {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, _c: u8) -> u32 {
+        unsafe { assert_unchecked(pos < 512) };
+        let words = self.seq.as_ptr().cast::<u64>();
+        let last_uint = pos / 64;
+        let mut pop_val = 0;
+        let final_x;
+
+        const BIT_MASK: u64 = 0xFFFFFFFFFFFF0000;
+
+        unsafe {
+            if last_uint > 0 {
+                pop_val += (words.read() & BIT_MASK).count_ones();
+                for i in 1..last_uint {
+                    pop_val += words.add(i).read().count_ones();
+                }
+
+                final_x = words.add(last_uint).read() >> (63 - (pos % 64));
+            } else {
+                final_x = words.add(last_uint).read() >> (63 - pos);
+            }
+            pop_val + final_x.count_ones()
+        }
     }
 }

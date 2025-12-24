@@ -13,7 +13,8 @@ use quadrank::{
     blocks::{
         BinaryBlock, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
         FullBlock, FullBlockMid, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
-        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
+        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, Spider, TriBlock,
+        TriBlock2,
     },
     count4::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
@@ -481,6 +482,8 @@ fn bench_all(seq: &[usize], queries: &QS) {
     // external
     // #[cfg(not(debug_assertions))]
     // bench::<sux::prelude::Rank9>(seq, queries);
+    // spider
+    bench1::<Ranker<Spider, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<qwt::RSNarrow>(seq, queries);
     bench1::<qwt::RSWide>(seq, queries);
     bench1::<Rank9>(seq, queries);
