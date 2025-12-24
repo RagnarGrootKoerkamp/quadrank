@@ -20,6 +20,7 @@ use quadrank::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
         U64PopcntSlice, U128Popcnt3, WideSimdCount2,
     },
+    genedex,
     ranker::{Ranker, RankerT, prefetch_index},
     super_block::{NoSB, SB8, TrivialSB},
     sux::*,
@@ -468,24 +469,30 @@ fn bench_all(seq: &[usize], queries: &QS) {
 
     // bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
     // bench::<qwt::RSQVector256>(seq, queries);
+    // bench1::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
 
     eprintln!("BINARY");
 
-    // bench1::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
-    // bench1::<Ranker<BinaryBlock, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock2, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock3, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock4, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock5, TrivialSB, SimdCount11, false>>(seq, queries);
     bench1::<Ranker<BinaryBlock6, TrivialSB, SimdCount11, false>>(seq, queries);
 
-    // external
-    // #[cfg(not(debug_assertions))]
-    // bench::<sux::prelude::Rank9>(seq, queries);
     // spider
     bench1::<Ranker<Spider, TrivialSB, SimdCount11, false>>(seq, queries);
+
+    // genedex
+    bench1::<genedex::Flat64>(seq, queries);
+    bench1::<genedex::Flat512>(seq, queries);
+    bench1::<genedex::Condensed64>(seq, queries);
+    bench1::<genedex::Condensed512>(seq, queries);
+
+    // qwt
     bench1::<qwt::RSNarrow>(seq, queries);
     bench1::<qwt::RSWide>(seq, queries);
+    // sux
     bench1::<Rank9>(seq, queries);
     bench1::<RankSmall1>(seq, queries);
     bench1::<RankSmall2>(seq, queries);

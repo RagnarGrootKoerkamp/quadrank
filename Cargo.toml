@@ -8,6 +8,8 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5.51", features = ["derive"] }
+# genedex = "0.2.2"
+genedex = { path = "../forks/genedex", features = ["mem_dbg"]}
 mem_dbg = "0.3.2"
 packed-seq = "4.2.0"
 # qwt = "0.3.1"

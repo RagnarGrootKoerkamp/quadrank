@@ -13,6 +13,7 @@ use std::array::from_fn;
 pub mod blocks;
 pub mod count;
 pub mod count4;
+pub mod genedex;
 pub mod qwt;
 pub mod ranker;
 pub mod super_block;

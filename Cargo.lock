@@ -1568,6 +1568,7 @@ name = "quadrank"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "genedex",
  "mem_dbg 0.3.2",
  "packed-seq",
  "qwt 0.3.2",
