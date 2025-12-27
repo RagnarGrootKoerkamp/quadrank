@@ -38,7 +38,20 @@ fn check(pos: usize, ranks: Ranks) {
 fn check1(pos: usize, rank: u32) {
     std::hint::black_box(&rank);
     let pos = pos as u32;
-    debug_assert_eq!(rank, (pos + 3) / 4);
+    // debug_assert_eq!(rank, (pos + 3) / 4);
+    // 11100100
+    // 32111000
+    debug_assert_eq!(
+        rank,
+        // 0,
+        pos,
+        // pos / 8 * 4 + [0, 0, 0, 1, 1, 1, 2, 3][pos as usize % 8],
+        "pos: {pos}  pos%512 {}  pos%256 {}  pos%8 {} bits {:08b}",
+        pos % 512,
+        pos % 256,
+        pos % 8,
+        pos % 256,
+    );
 }
 
 type QS = Vec<Vec<usize>>;
@@ -537,7 +550,9 @@ fn main() {
         eprintln!("n = {}", n);
         // let seq = b"ACTG".repeat(n / 4);
         let seq = vec![
-            0b1110010011100100111001001110010011100100111001001110010011100100;
+            // 0;
+            usize::MAX;
+            // 0b1110010011100100111001001110010011100100111001001110010011100100;
             n.div_ceil(64)
         ];
         let queries = (0..12)
