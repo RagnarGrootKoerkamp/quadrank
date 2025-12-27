@@ -18,7 +18,7 @@ macro_rules! impl_rank {
             }
 
             fn prefetch(&self, pos: usize) {
-                TextWithRankSupport::prefetch(self, pos);
+                TextWithRankSupport::prefetch(self, 1, pos);
             }
 
             fn size(&self) -> usize {
