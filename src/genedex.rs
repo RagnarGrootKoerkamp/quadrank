@@ -31,8 +31,8 @@ macro_rules! impl_rank {
             }
 
             #[inline(always)]
-            fn count1(&self, pos: usize, _c: u8) -> u32 {
-                unsafe { self.rank_unchecked(1, pos) as u32 }
+            fn count1(&self, pos: usize, _c: u8) -> usize {
+                unsafe { self.rank_unchecked(1, pos) as usize }
             }
         }
     };

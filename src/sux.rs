@@ -32,8 +32,8 @@ macro_rules! impl_rank_small {
             }
 
             #[inline(always)]
-            fn count1(&self, pos: usize, _c: u8) -> u32 {
-                self.rank(pos) as u32
+            fn count1(&self, pos: usize, _c: u8) -> usize {
+                self.rank(pos) as usize
             }
         }
     };

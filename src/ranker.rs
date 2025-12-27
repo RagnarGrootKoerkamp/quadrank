@@ -48,6 +48,9 @@ pub trait SuperBlock: Sync {
 
     fn new(ranks: [Ranks; Self::BB]) -> Self;
     fn get(&self, idx: usize) -> Ranks;
+    fn get1(&self, idx: usize) -> usize {
+        self.get(idx)[0] as usize
+    }
 }
 
 pub trait RankerT: Sync + Sized {
@@ -71,9 +74,9 @@ pub trait RankerT: Sync + Sized {
     /// Count the number of times each character occurs before position `pos`.
     fn count(&self, pos: usize) -> Ranks;
     /// Count the number of times character `c` occurs before position `pos`.
-    fn count1(&self, pos: usize, c: u8) -> u32;
+    fn count1(&self, pos: usize, c: u8) -> usize;
     #[inline(always)]
-    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {
+    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
         (self.count1(pos0, c), self.count1(pos1, c))
     }
 
@@ -232,38 +235,40 @@ where
     }
     /// Count the number of times character `c` occurs before position `pos`.
     #[inline(always)]
-    fn count1(&self, pos: usize, c: u8) -> u32 {
+    fn count1(&self, pos: usize, c: u8) -> usize {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;
             let block_pos = pos % BB::N;
-            let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c);
+            let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c) as usize;
             if (BB::W) < 32 {
                 let long_pos = block_idx / Self::LONG_STRIDE;
-                let long_ranks = self
+                let long_rank = self
                     .super_blocks
                     .get_unchecked(long_pos / SB::BB)
-                    .get(long_pos % SB::BB);
-                rank += long_ranks[0];
+                    .get1(long_pos % SB::BB);
+                rank += long_rank;
             }
             rank
         }
     }
     #[inline(always)]
-    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (u32, u32) {
+    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
         let block_idx0 = pos0 / BB::N;
         let block_pos0 = pos0 % BB::N;
         let block_idx1 = pos1 / BB::N;
         let block_pos1 = pos1 % BB::N;
-        let (mut rank0, mut rank1) =
+        let (rank0, rank1) =
             self.blocks[block_idx0].count1x2(&self.blocks[block_idx1], block_pos0, block_pos1, c);
+        let mut rank0 = rank0 as usize;
+        let mut rank1 = rank1 as usize;
         if (BB::W) < 32 {
             let long_pos0 = block_idx0 / Self::LONG_STRIDE;
             let long_pos1 = block_idx1 / Self::LONG_STRIDE;
-            let long_ranks0 = self.super_blocks[long_pos0 / SB::BB].get(long_pos0 % SB::BB);
-            let long_ranks1 = self.super_blocks[long_pos1 / SB::BB].get(long_pos1 % SB::BB);
-            rank0 += long_ranks0[c as usize];
-            rank1 += long_ranks1[c as usize];
+            let long_ranks0 = self.super_blocks[long_pos0 / SB::BB].get1(long_pos0 % SB::BB);
+            let long_ranks1 = self.super_blocks[long_pos1 / SB::BB].get1(long_pos1 % SB::BB);
+            rank0 += long_ranks0;
+            rank1 += long_ranks1;
         }
         (rank0, rank1)
     }

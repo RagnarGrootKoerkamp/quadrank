@@ -33,8 +33,8 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    fn count1(&self, pos: usize, c: u8) -> u32 {
-        unsafe { self.rank_unchecked(c, pos) as u32 }
+    fn count1(&self, pos: usize, c: u8) -> usize {
+        unsafe { self.rank_unchecked(c, pos) as usize }
     }
 }
 
@@ -63,8 +63,8 @@ impl RankerT for qwt::RSNarrow {
     }
 
     #[inline(always)]
-    fn count1(&self, pos: usize, _c: u8) -> u32 {
-        unsafe { self.rank1_unchecked(pos) as u32 }
+    fn count1(&self, pos: usize, _c: u8) -> usize {
+        unsafe { self.rank1_unchecked(pos) as usize }
     }
 }
 
@@ -88,7 +88,7 @@ impl RankerT for qwt::RSWide {
     }
 
     #[inline(always)]
-    fn count1(&self, pos: usize, _c: u8) -> u32 {
-        unsafe { self.rank1_unchecked(pos) as u32 }
+    fn count1(&self, pos: usize, _c: u8) -> usize {
+        unsafe { self.rank1_unchecked(pos) as usize }
     }
 }

@@ -35,9 +35,8 @@ fn check(pos: usize, ranks: Ranks) {
         [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
     );
 }
-fn check1(pos: usize, rank: u32) {
+fn check1(pos: usize, rank: usize) {
     std::hint::black_box(&rank);
-    let pos = pos as u32;
     // debug_assert_eq!(rank, (pos + 3) / 4);
     // 11100100
     // 32111000
@@ -187,7 +186,7 @@ fn time_latency1(
     queries: &QS,
     t: Threading,
     prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> u32 + Sync + Copy,
+    f: impl Fn(usize) -> usize + Sync + Copy,
 ) {
     time_fn(queries, t, |queries| {
         let mut acc = 0;
@@ -202,7 +201,7 @@ fn time_latency1(
     });
 }
 
-fn time_loop1(queries: &QS, t: Threading, f: impl Fn(usize) -> u32 + Sync + Copy) {
+fn time_loop1(queries: &QS, t: Threading, f: impl Fn(usize) -> usize + Sync + Copy) {
     time_fn(queries, t, |queries| {
         for &q in queries {
             check1(q, f(q));
@@ -214,7 +213,7 @@ fn time_batch1(
     queries: &QS,
     t: Threading,
     prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> u32 + Sync,
+    f: impl Fn(usize) -> usize + Sync,
 ) {
     time_fn(queries, t, |queries| {
         let qs = queries.as_chunks::<BATCH>().0;
@@ -233,7 +232,7 @@ fn time_stream1(
     queries: &QS,
     t: Threading,
     prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> u32 + Sync,
+    f: impl Fn(usize) -> usize + Sync,
 ) {
     time_fn(queries, t, |queries| {
         for i in 0..queries.len() - BATCH {
@@ -253,7 +252,7 @@ fn time_trip1(
     queries: &QS,
     t: Threading,
     prefetch: impl Fn(usize) + Sync + Copy,
-    f: impl Fn(usize) -> u32 + Sync + Copy,
+    f: impl Fn(usize) -> usize + Sync + Copy,
 ) {
     time_latency1(queries, t, prefetch, f);
     time_loop1(queries, t, f);
