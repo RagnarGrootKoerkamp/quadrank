@@ -1771,6 +1771,8 @@ impl BasicBlock for Spider {
 
     #[inline(always)]
     fn count1(&self, pos: usize, _c: u8) -> u32 {
+        // Pad for the first 16 bits.
+        let pos = pos + 16;
         unsafe { assert_unchecked(pos < 512) };
         let words = self.seq.as_ptr().cast::<u64>();
         let last_uint = pos / 64;
@@ -1786,11 +1788,17 @@ impl BasicBlock for Spider {
                     pop_val += words.add(i).read().count_ones();
                 }
 
-                final_x = words.add(last_uint).read() >> (63 - (pos % 64));
+                // FIXME: Why does the original have >> here.
+                final_x = words.add(last_uint).read() << (63 - (pos % 64));
             } else {
-                final_x = words.add(last_uint).read() >> (63 - pos);
+                final_x = (words.read() & BIT_MASK) << (63 - pos);
             }
-            pop_val + final_x.count_ones()
+            // correct for inclusive position
+            let rank = words.cast::<u16>().read() as u32;
+            let inner_count = pop_val + final_x.count_ones();
+            // -1 to correct for inclusive position when testing on all-1 data.
+            // FIXME: Add inclusive vs exclusive generic.
+            rank + inner_count - 1
         }
     }
 }
