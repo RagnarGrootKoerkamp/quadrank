@@ -1417,7 +1417,11 @@ impl BasicBlock for BinaryBlock {
         let [mask_l, mask_h] = BINARY_MID_MASKS[pos];
         let [l, h] = self.seq[tri];
         let inner_count = (l & mask_l).count_ones() + (h & mask_h).count_ones();
-        inner_count + self.ranks[tri / 2] as u32
+        if pos < 128 {
+            self.ranks[tri / 2] as u32 - inner_count
+        } else {
+            self.ranks[tri / 2] as u32 + inner_count
+        }
     }
 }
 
@@ -1476,14 +1480,14 @@ impl BasicBlock for BinaryBlock2 {
                     .try_into()
                     .unwrap(),
             );
-            let h = u64::from_le_bytes(
-                self.seq
-                    .get_unchecked(quad * 16 + 8..quad * 16 + 16)
-                    .try_into()
-                    .unwrap(),
-            );
+            // This reads outside `self.seq` and into `self.ranks`.
+            let h = (self.seq.as_ptr().add(quad * 16 + 8) as *const u64).read();
             let inner_count = (l & mask_l).count_ones() + (h & mask_h).count_ones();
-            inner_count + self.ranks[quad / 2]
+            if pos < 128 {
+                self.ranks[quad / 2] as u32 - inner_count
+            } else {
+                self.ranks[quad / 2] as u32 + inner_count
+            }
         }
     }
 }
@@ -1557,18 +1561,20 @@ impl BasicBlock for BinaryBlock3 {
             let delta = meta as u32 & 0x1ff;
             let delta = delta >> ((quad / 2) * 16);
 
-            inner_count + rank - delta
+            if pos < 128 {
+                rank - delta - inner_count
+            } else {
+                rank - delta + inner_count
+            }
         }
     }
 }
 
 /// Store two 16 bit global ranks at the end.
+/// to 1/4 and 3/4
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct BinaryBlock4 {
-    /// last 5 bytes are global rank info
-    /// low 9 bits: delta from 1/4 to 3/4
-    /// high 31 bits global offset
     seq: [u8; 60],
     ranks: [u16; 2],
 }
@@ -1613,14 +1619,15 @@ impl BasicBlock for BinaryBlock4 {
                     .try_into()
                     .unwrap(),
             );
-            let h = u64::from_le_bytes(
-                self.seq
-                    .get_unchecked(quad * 16 + 8..quad * 16 + 16)
-                    .try_into()
-                    .unwrap(),
-            );
+            // This reads outside `self.seq` and into `self.ranks`.
+            let h = (self.seq.as_ptr().add(quad * 16 + 8) as *const u64).read();
             let inner_count = (l & mask_l).count_ones() + (h & mask_h).count_ones();
-            inner_count + self.ranks[quad / 2] as u32
+            let rank = *self.ranks.get_unchecked(quad / 2) as u32;
+            if pos < 128 {
+                rank - inner_count
+            } else {
+                rank + inner_count
+            }
         }
     }
 }
@@ -1664,18 +1671,17 @@ impl BasicBlock for BinaryBlock5 {
 
         let [m0, m1, m2, m3] = BINARY_MID_MASKS256[pos];
         // NOTE: This *will* go out-of-bounds, but it's ok because 'ranks' is used as padding.
-        let [v0, v1, v2, v3]: [u64; 4] = unsafe {
-            std::mem::transmute::<[u8; 32], _>(
-                (*self.seq.get_unchecked(half * 32..half * 32 + 32))
-                    .try_into()
-                    .unwrap(),
-            )
-        };
-        self.rank
-            + (v0 & m0).count_ones()
+        let [v0, v1, v2, v3]: [u64; 4] =
+            unsafe { self.seq.as_ptr().cast::<[u64; 4]>().add(half).read() };
+        let inner_count = (v0 & m0).count_ones()
             + (v1 & m1).count_ones()
             + (v2 & m2).count_ones()
-            + (v3 & m3).count_ones()
+            + (v3 & m3).count_ones();
+        if pos < 256 {
+            self.rank - inner_count
+        } else {
+            self.rank + inner_count
+        }
     }
 }
 
@@ -1719,18 +1725,17 @@ impl BasicBlock for BinaryBlock6 {
 
         let [m0, m1, m2, m3] = BINARY_MID_MASKS256[pos];
         // NOTE: This *will* go out-of-bounds, but it's ok because 'ranks' is used as padding.
-        let [v0, v1, v2, v3]: [u64; 4] = unsafe {
-            std::mem::transmute::<[u8; 32], _>(
-                (*self.seq.get_unchecked(half * 32..half * 32 + 32))
-                    .try_into()
-                    .unwrap(),
-            )
-        };
-        self.rank as u32
-            + (v0 & m0).count_ones()
+        let [v0, v1, v2, v3]: [u64; 4] =
+            unsafe { self.seq.as_ptr().cast::<[u64; 4]>().add(half).read() };
+        let inner_count = (v0 & m0).count_ones()
             + (v1 & m1).count_ones()
             + (v2 & m2).count_ones()
-            + (v3 & m3).count_ones()
+            + (v3 & m3).count_ones();
+        if pos < 256 {
+            self.rank as u32 - inner_count
+        } else {
+            self.rank as u32 + inner_count
+        }
     }
 }
 
