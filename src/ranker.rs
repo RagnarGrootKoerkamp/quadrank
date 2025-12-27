@@ -1,6 +1,6 @@
 use packed_seq::{PackedSeqVec, SeqVec};
 
-use crate::count::count_u8x8;
+use crate::count::{count_u8, count_u8x8};
 use crate::{Ranks, count4::CountFn};
 // use packed_seq::{PackedSeqVec, SeqVec};
 use std::marker::PhantomData;
@@ -136,13 +136,23 @@ where
             }
             blocks.push(BB::new(ranks, chunk));
 
-            for chunk in chunk.as_chunks::<8>().0 {
+            let (words, tail) = chunk.as_chunks::<8>();
+            for chunk in words {
                 if BB::X == 2 {
                     for c in 0..4 {
                         ranks[c as usize] += count_u8x8(chunk, c);
                     }
                 } else {
                     ranks[0] += u64::from_le_bytes(*chunk).count_ones() as u32;
+                }
+            }
+            for &byte in tail {
+                if BB::X == 2 {
+                    for c in 0..4 {
+                        ranks[c as usize] += count_u8(byte, c);
+                    }
+                } else {
+                    ranks[0] += byte.count_ones() as u32;
                 }
             }
         }
@@ -234,7 +244,7 @@ where
                     .super_blocks
                     .get_unchecked(long_pos / SB::BB)
                     .get(long_pos % SB::BB);
-                rank += long_ranks[c as usize];
+                rank += long_ranks[0];
             }
             rank
         }
