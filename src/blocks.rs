@@ -1371,6 +1371,7 @@ impl BasicBlock for TriBlock2 {
 
 /// Like TriBlock, but for binary counts.
 #[repr(align(64))]
+#[repr(C)]
 #[derive(mem_dbg::MemSize)]
 pub struct BinaryBlock {
     /// offset to end of 1st and 3rd 128bit block.
@@ -1427,6 +1428,7 @@ impl BasicBlock for BinaryBlock {
 
 /// Store two 32bit ranks at the end, and put in some more bits.
 #[repr(align(64))]
+#[repr(C)]
 #[derive(mem_dbg::MemSize)]
 pub struct BinaryBlock2 {
     // u128x3 + u64 = u8x56 = 448 bit packed sequence
@@ -1573,6 +1575,7 @@ impl BasicBlock for BinaryBlock3 {
 /// Store two 16 bit global ranks at the end.
 /// to 1/4 and 3/4
 #[repr(align(64))]
+#[repr(C)]
 #[derive(mem_dbg::MemSize)]
 pub struct BinaryBlock4 {
     seq: [u8; 60],
@@ -1634,6 +1637,7 @@ impl BasicBlock for BinaryBlock4 {
 
 /// Only store a count to the middle and then count 256 bits.
 #[repr(align(64))]
+#[repr(C)]
 #[derive(mem_dbg::MemSize)]
 pub struct BinaryBlock5 {
     seq: [u8; 60],
