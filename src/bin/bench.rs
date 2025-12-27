@@ -22,7 +22,7 @@ use quadrank::{
     },
     genedex,
     ranker::{Ranker, RankerT, prefetch_index},
-    super_block::{NoSB, SB8, TrivialSB},
+    super_block::{NoSB, SB8, TrivialSB, TrivialSB1},
     sux::*,
 };
 use sux::prelude::Rank9;
@@ -485,15 +485,15 @@ fn bench_all(seq: &[usize], queries: &QS) {
 
     eprintln!("BINARY");
 
-    bench1::<Ranker<BinaryBlock, TrivialSB, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock2, TrivialSB, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock3, TrivialSB, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock4, TrivialSB, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock5, TrivialSB, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock6, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock, TrivialSB1, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock2, TrivialSB1, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock3, TrivialSB1, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock4, TrivialSB1, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock5, TrivialSB1, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<BinaryBlock6, TrivialSB1, SimdCount11, false>>(seq, queries);
 
     // spider
-    bench1::<Ranker<Spider, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench1::<Ranker<Spider, TrivialSB1, SimdCount11, false>>(seq, queries);
 
     // genedex
     bench1::<genedex::Flat64>(seq, queries);

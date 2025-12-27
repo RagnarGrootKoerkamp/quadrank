@@ -78,3 +78,28 @@ impl SuperBlock for SB8 {
         })
     }
 }
+
+/// u64 rank for binary alphabet.
+#[derive(mem_dbg::MemSize)]
+pub struct TrivialSB1 {
+    rank: usize,
+}
+
+impl SuperBlock for TrivialSB1 {
+    const BB: usize = 1;
+    const W: usize = 0;
+    #[inline(always)]
+    fn new(ranks: [Ranks; 1]) -> Self {
+        Self {
+            rank: ranks[0][0] as usize,
+        }
+    }
+    fn get(&self, _idx: usize) -> Ranks {
+        unimplemented!()
+    }
+    #[inline(always)]
+    fn get1(&self, idx: usize) -> usize {
+        debug_assert!(idx == 0);
+        self.rank
+    }
+}
