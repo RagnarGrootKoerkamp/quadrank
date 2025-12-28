@@ -8,6 +8,7 @@ use mem_dbg::MemSize;
 macro_rules! impl_rank {
     ($T: ty) => {
         impl RankerT for $T {
+            #[inline(always)]
             fn new_packed(seq: &[usize]) -> Self {
                 // convert bitvec to vec of 0 and 1 u8s
                 let bits = seq
@@ -17,10 +18,12 @@ macro_rules! impl_rank {
                 Self::construct(&bits, 2)
             }
 
+            #[inline(always)]
             fn prefetch(&self, pos: usize) {
                 TextWithRankSupport::prefetch(self, 1, pos);
             }
 
+            #[inline(always)]
             fn size(&self) -> usize {
                 self.mem_size(Default::default())
             }

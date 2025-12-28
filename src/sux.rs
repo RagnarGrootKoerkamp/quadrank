@@ -11,6 +11,7 @@ use crate::ranker::RankerT;
 macro_rules! impl_rank_small {
     ($T: ty) => {
         impl RankerT for $T {
+            #[inline(always)]
             fn new_packed(seq: &[usize]) -> Self {
                 let bits = unsafe {
                     BitVec::from_raw_parts(seq.to_vec(), seq.len() * usize::BITS as usize)
@@ -18,10 +19,12 @@ macro_rules! impl_rank_small {
                 <$T>::new(bits)
             }
 
+            #[inline(always)]
             fn prefetch(&self, pos: usize) {
                 sux::traits::RankUnchecked::prefetch(&self, pos);
             }
 
+            #[inline(always)]
             fn size(&self) -> usize {
                 self.mem_size(Default::default())
             }
