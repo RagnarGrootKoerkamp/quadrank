@@ -531,13 +531,11 @@ fn main() {
     #[cfg(not(debug_assertions))]
     let q = 10_000_000;
     #[cfg(not(debug_assertions))]
+    #[rustfmt::skip]
     let mut ns = vec![
-        // 100_000,
-        // 1_000_000_000,
-        // 4_000_000_000,
-        // 16_000_000_000,
-        32_000_000_000,
-        // 64_000_000_000,
+        1_000_000, // L2
+        64_000_000, // L3
+        32_000_000_000, // RAM
     ];
 
     let args = Args::parse();
