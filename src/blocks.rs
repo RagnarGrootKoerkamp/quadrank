@@ -1364,7 +1364,7 @@ impl BasicBlock for TriBlock2 {
         // for tri=2, shift down by 8
         let shift = (tri as u32 / 2) * 8;
         let parts = self_ranks & u32x4::splat(0x00ff);
-        ranks += parts >> u32x4::splat(shift);
+        ranks -= parts >> u32x4::splat(shift);
         ranks.to_array()
     }
 }
