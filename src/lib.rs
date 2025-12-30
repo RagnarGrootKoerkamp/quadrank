@@ -10,6 +10,7 @@
 
 use std::array::from_fn;
 
+pub mod binary;
 pub mod blocks;
 pub mod count;
 pub mod count4;

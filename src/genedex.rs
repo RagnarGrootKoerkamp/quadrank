@@ -2,7 +2,7 @@ use genedex::text_with_rank_support::{
     Block64, Block512, CondensedTextWithRankSupport, FlatTextWithRankSupport, TextWithRankSupport,
 };
 
-use crate::ranker::RankerT;
+use crate::binary::RankerT;
 use mem_dbg::MemSize;
 
 macro_rules! impl_rank {
@@ -29,13 +29,8 @@ macro_rules! impl_rank {
             }
 
             #[inline(always)]
-            fn count(&self, pos: usize) -> crate::Ranks {
-                [unsafe { self.rank_unchecked(1, pos) } as u32, 0, 0, 0]
-            }
-
-            #[inline(always)]
-            fn count1(&self, pos: usize, _c: u8) -> usize {
-                unsafe { self.rank_unchecked(1, pos) as usize }
+            unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
+                unsafe { TextWithRankSupport::rank_unchecked(self, 1, pos) as u64 }
             }
         }
     };

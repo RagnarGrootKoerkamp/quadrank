@@ -49,7 +49,7 @@ impl RankerT for RSQVector256 {
     }
 }
 
-impl RankerT for qwt::RSNarrow {
+impl crate::binary::RankerT for qwt::RSNarrow {
     #[inline(always)]
     fn new_packed(seq: &[usize]) -> Self {
         let mut bitvec = qwt::BitVectorMut::default();
@@ -71,17 +71,12 @@ impl RankerT for qwt::RSNarrow {
     }
 
     #[inline(always)]
-    fn count(&self, _pos: usize) -> crate::Ranks {
-        unimplemented!()
-    }
-
-    #[inline(always)]
-    fn count1(&self, pos: usize, _c: u8) -> usize {
-        unsafe { self.rank1_unchecked(pos) as usize }
+    unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
+        unsafe { self.rank1_unchecked(pos) as u64 }
     }
 }
 
-impl RankerT for qwt::RSWide {
+impl crate::binary::RankerT for qwt::RSWide {
     #[inline(always)]
     fn new_packed(seq: &[usize]) -> Self {
         Self::new(qwt::BitVector::from_slice(seq))
@@ -98,12 +93,7 @@ impl RankerT for qwt::RSWide {
     }
 
     #[inline(always)]
-    fn count(&self, _pos: usize) -> crate::Ranks {
-        unimplemented!()
-    }
-
-    #[inline(always)]
-    fn count1(&self, pos: usize, _c: u8) -> usize {
-        unsafe { self.rank1_unchecked(pos) as usize }
+    unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
+        unsafe { self.rank1_unchecked(pos) as u64 }
     }
 }

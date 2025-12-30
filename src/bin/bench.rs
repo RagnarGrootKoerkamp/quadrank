@@ -10,11 +10,16 @@ use std::{
 use clap::Parser;
 use quadrank::{
     Ranks,
+    binary::{
+        self,
+        blocks::{
+            BinaryBlock, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
+            Spider,
+        },
+    },
     blocks::{
-        BinaryBlock, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
         FullBlock, FullBlockMid, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
-        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, Spider, TriBlock,
-        TriBlock2,
+        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
     },
     count4::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
@@ -22,7 +27,7 @@ use quadrank::{
     },
     genedex,
     ranker::{Ranker, RankerT, prefetch_index},
-    super_block::{NoSB, SB8, TrivialSB, TrivialSB1},
+    super_block::{NoSB, SB8, TrivialSB},
     sux::*,
 };
 use sux::prelude::Rank9;
@@ -479,24 +484,24 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<qwt::RSQVector256>(seq, queries);
 
+    // broken
+    // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
+    // bench::<Ranker<HexaBlock18bit, TrivialSB, WideSimdCount2, false>>(seq, queries);
+
     eprintln!("BINARY");
-
-    bench1::<Ranker<BinaryBlock, TrivialSB1, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock2, TrivialSB1, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock3, TrivialSB1, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock4, TrivialSB1, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock5, TrivialSB1, SimdCount11, false>>(seq, queries);
-    bench1::<Ranker<BinaryBlock6, TrivialSB1, SimdCount11, false>>(seq, queries);
-
+    bench1::<binary::Ranker<BinaryBlock>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock2>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock3>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock4>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock5>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock6>>(seq, queries);
     // spider
-    bench1::<Ranker<Spider, TrivialSB1, SimdCount11, false>>(seq, queries);
-
+    bench1::<binary::Ranker<Spider>>(seq, queries);
     // genedex
     bench1::<genedex::Flat64>(seq, queries);
     bench1::<genedex::Flat512>(seq, queries);
     bench1::<genedex::Condensed64>(seq, queries);
     bench1::<genedex::Condensed512>(seq, queries);
-
     // qwt
     bench1::<qwt::RSNarrow>(seq, queries);
     bench1::<qwt::RSWide>(seq, queries);
@@ -507,10 +512,6 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench1::<RankSmall3>(seq, queries);
     bench1::<RankSmall4>(seq, queries);
     bench1::<RankSmall5>(seq, queries);
-
-    // broken
-    // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
-    // bench::<Ranker<HexaBlock18bit, TrivialSB, WideSimdCount2, false>>(seq, queries);
 }
 
 #[derive(clap::Parser)]

@@ -1,11 +1,8 @@
 use mem_dbg::MemSize;
-use sux::{
-    bits::BitVec,
-    prelude::{Rank9, RankSmall},
-    traits::Rank,
-};
+pub use sux::prelude::Rank9;
+use sux::{bits::BitVec, prelude::RankSmall, traits::RankUnchecked};
 
-use crate::ranker::RankerT;
+use crate::binary::RankerT;
 
 // A macro that implements RankerT for the given RankSmall parameters.
 macro_rules! impl_rank_small {
@@ -13,6 +10,7 @@ macro_rules! impl_rank_small {
         impl RankerT for $T {
             #[inline(always)]
             fn new_packed(seq: &[usize]) -> Self {
+                // RankUnchecked::rank_unchecked does not work for `len`, so we add some padding.
                 let bits = unsafe {
                     BitVec::from_raw_parts(seq.to_vec(), seq.len() * usize::BITS as usize)
                 };
@@ -30,13 +28,8 @@ macro_rules! impl_rank_small {
             }
 
             #[inline(always)]
-            fn count(&self, pos: usize) -> crate::Ranks {
-                [self.rank(pos) as u32, 0, 0, 0]
-            }
-
-            #[inline(always)]
-            fn count1(&self, pos: usize, _c: u8) -> usize {
-                self.rank(pos) as usize
+            unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
+                unsafe { RankUnchecked::rank_unchecked(self, pos) as u64 }
             }
         }
     };
