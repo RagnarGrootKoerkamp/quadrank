@@ -175,11 +175,9 @@ fn time_trip(
     prefetch: impl Fn(usize) + Sync + Copy,
     f: impl Fn(usize) -> Ranks + Sync + Copy,
 ) {
-    time_fn(queries, t, |queries| {
-        for &q in queries {
-            check(q, f(q));
-        }
-    });
+    time_latency(queries, t, prefetch, f);
+    time_loop(queries, t, f);
+    time_stream(queries, t, prefetch, f);
 }
 
 fn time_latency1(
