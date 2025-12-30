@@ -1,6 +1,6 @@
 use std::hint::assert_unchecked;
 
-use crate::count4::{BINARY_MID_MASKS, BINARY_MID_MASKS256};
+use crate::quad::count4::{BINARY_MID_MASKS, BINARY_MID_MASKS256};
 
 use super::BasicBlock;
 

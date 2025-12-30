@@ -8,8 +8,8 @@ use std::{
 };
 
 use crate::{
-    Ranks,
     count::{count_u8, count_u64, count_u128},
+    quad::Ranks,
 };
 
 pub fn count4_u8x8(data: [u8; 8]) -> Ranks {

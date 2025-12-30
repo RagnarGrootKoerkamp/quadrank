@@ -8,31 +8,14 @@
     associated_const_equality
 )]
 
-use std::array::from_fn;
-
 pub mod binary;
-pub mod blocks;
 pub mod count;
-pub mod count4;
 pub mod genedex;
 pub mod quad;
 pub mod qwt;
-pub mod super_block;
 pub mod sux;
 #[cfg(test)]
 pub mod test;
-
-pub type Ranks = [u32; 4];
-
-pub type QuartRank =
-    quad::Ranker<blocks::QuartBlock, super_block::NoSB, count4::SimdCount10, false>;
-pub type HexRank =
-    quad::Ranker<blocks::HexaBlockMid4, super_block::TrivialSB, count4::SimdCount10, false>;
-pub type QwtRank = ::qwt::RSQVector256;
-
-fn add(a: Ranks, b: Ranks) -> Ranks {
-    from_fn(|c| a[c] + b[c])
-}
 
 /// Prefetch the given cacheline into L1 cache.
 pub fn prefetch_index<T>(s: &[T], index: usize) {

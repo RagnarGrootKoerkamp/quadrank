@@ -1,6 +1,6 @@
 use qwt::{RSQVector256, RankBin, RankQuad, WTSupport};
 
-use crate::quad::RankerT;
+use crate::quad::{RankerT, Ranks};
 
 impl RankerT for RSQVector256 {
     #[inline(always)]
@@ -39,7 +39,7 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    fn count(&self, pos: usize) -> crate::Ranks {
+    fn count(&self, pos: usize) -> Ranks {
         std::array::from_fn(|c| unsafe { self.rank_unchecked(c as u8, pos) as u32 })
     }
 

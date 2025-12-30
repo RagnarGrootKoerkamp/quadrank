@@ -1,4 +1,4 @@
-use crate::{Ranks, quad::SuperBlock};
+use crate::{quad::Ranks, quad::SuperBlock};
 
 #[derive(mem_dbg::MemSize)]
 pub struct NoSB;
@@ -7,11 +7,11 @@ impl SuperBlock for NoSB {
     const BB: usize = 1;
     const W: usize = 32;
     #[inline(always)]
-    fn new(_ranks: [crate::Ranks; 1]) -> Self {
+    fn new(_ranks: [Ranks; 1]) -> Self {
         Self
     }
     #[inline(always)]
-    fn get(&self, _idx: usize) -> crate::Ranks {
+    fn get(&self, _idx: usize) -> Ranks {
         [0; 4]
     }
 }
@@ -26,11 +26,11 @@ impl SuperBlock for TrivialSB {
     const BB: usize = 1;
     const W: usize = 0;
     #[inline(always)]
-    fn new(ranks: [crate::Ranks; 1]) -> Self {
+    fn new(ranks: [Ranks; 1]) -> Self {
         Self { block: ranks[0] }
     }
     #[inline(always)]
-    fn get(&self, idx: usize) -> crate::Ranks {
+    fn get(&self, idx: usize) -> Ranks {
         debug_assert!(idx == 0);
         self.block
     }
@@ -51,7 +51,7 @@ impl SuperBlock for SB8 {
     const W: usize = 0;
 
     #[inline(always)]
-    fn new(ranks: [crate::Ranks; 8]) -> Self {
+    fn new(ranks: [Ranks; 8]) -> Self {
         Self {
             blocks: std::array::from_fn(|c| {
                 // Super block offset
@@ -69,7 +69,7 @@ impl SuperBlock for SB8 {
     }
 
     #[inline(always)]
-    fn get(&self, idx: usize) -> crate::Ranks {
+    fn get(&self, idx: usize) -> Ranks {
         std::array::from_fn(|c| {
             let x = self.blocks[c];
             let base = x as u32;

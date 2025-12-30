@@ -9,7 +9,6 @@ use std::{
 
 use clap::Parser;
 use quadrank::{
-    Ranks,
     binary::{
         self,
         blocks::{
@@ -17,17 +16,18 @@ use quadrank::{
             Spider,
         },
     },
-    blocks::{
+    genedex, prefetch_index,
+    quad::Ranks,
+    quad::blocks::{
         FullBlock, FullBlockMid, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
         HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
     },
-    count4::{
+    quad::count4::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
         U64PopcntSlice, U128Popcnt3, WideSimdCount2,
     },
-    genedex, prefetch_index,
+    quad::super_blocks::{NoSB, SB8, TrivialSB},
     quad::{Ranker, RankerT},
-    super_block::{NoSB, SB8, TrivialSB},
     sux::*,
 };
 use sux::prelude::Rank9;

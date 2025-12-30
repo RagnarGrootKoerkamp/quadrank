@@ -2,7 +2,7 @@
 
 use std::array::from_fn;
 
-use crate::count4::{MASKS_SCATTER, MID_MASKS_SCATTER};
+use crate::quad::count4::{MASKS_SCATTER, MID_MASKS_SCATTER};
 
 #[inline(always)]
 pub fn count_u8x8(word: &[u8; 8], c: u8) -> u32 {
