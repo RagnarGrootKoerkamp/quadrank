@@ -14,6 +14,8 @@ pub trait BasicBlock: Sync {
     const B: usize;
     /// Bit-width of the internal global ranks.
     const W: usize;
+    /// `true` when the basic block returns right-inclusive counts.
+    const INCLUSIVE: bool = false;
 
     /// Construct a new basic block with the given bits and given rank of the
     /// start of the block.

@@ -12,8 +12,7 @@ fn binary() {
     test::<binary::Ranker<BinaryBlock4>>();
     test::<binary::Ranker<BinaryBlock5>>();
     test::<binary::Ranker<BinaryBlock6>>();
-    // This has issues because it needs right-inclusive ranks.
-    //test::<binary::Ranker<Spider>>();
+    test::<binary::Ranker<Spider>>();
     // These only go up to 2^32 bits
     test::<genedex::Flat64>();
     test::<genedex::Flat512>();

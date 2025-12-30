@@ -83,8 +83,15 @@ where
 
     /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
-    unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
+    unsafe fn rank_unchecked(&self, mut pos: usize) -> u64 {
         unsafe {
+            if BB::INCLUSIVE {
+                if pos == 0 {
+                    return 0;
+                }
+                pos -= 1;
+            }
+
             let block_idx = pos / BB::N;
             let block_pos = pos % BB::N;
             debug_assert!(block_idx < self.basic_blocks.len());

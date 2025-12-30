@@ -354,6 +354,7 @@ impl BasicBlock for Spider {
     const B: usize = 62;
     const N: usize = 496;
     const W: usize = 16;
+    const INCLUSIVE: bool = true;
 
     fn new(rank: u64, data: &[u8; Self::B]) -> Self {
         let mut seq = [0; 64];
@@ -363,6 +364,7 @@ impl BasicBlock for Spider {
         Self { seq }
     }
 
+    /// `pos` is in [0, 512) and right-inclusive here.
     #[inline(always)]
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         // Pad for the first 16 bits.
@@ -390,9 +392,8 @@ impl BasicBlock for Spider {
             // correct for inclusive position
             let rank = words.cast::<u16>().read() as u64;
             let inner_count = pop_val + final_x.count_ones();
-            // -1 to correct for inclusive position when testing on all-1 data.
             // FIXME: Add inclusive vs exclusive generic.
-            rank + inner_count as u64 - 1
+            rank + inner_count as u64
         }
     }
 }
