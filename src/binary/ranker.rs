@@ -7,6 +7,8 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock = TrivialSB> {
     super_blocks: Vec<SB>,
 }
 
+const TARGET_BITS: usize = 40;
+
 impl<BB: BasicBlock, SB: SuperBlock> RankerT for Ranker<BB, SB>
 where
     [(); BB::B]:,
@@ -19,33 +21,30 @@ where
         let mut rank = 0u64;
         let mut l_rank = 0u64;
 
-        let (chunks, tail) = seq.as_chunks::<{ BB::B }>();
-        let num_chunks = chunks.len();
+        let chunks = seq.chunks(BB::B);
+        let num_chunks = seq.len().div_ceil(BB::B);
         let num_long_chunks = num_chunks.div_ceil(Self::LONG_STRIDE);
         let mut block_ranks = Vec::with_capacity(num_long_chunks);
         let mut blocks = Vec::with_capacity(num_chunks);
-        for (i, chunk) in chunks.iter().enumerate() {
-            if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
+        let mut array_chunk: [u8; BB::B];
+        for (i, chunk) in chunks.enumerate() {
+            if ((BB::W) < TARGET_BITS) && i % Self::LONG_STRIDE == 0 {
                 l_rank += rank;
                 block_ranks.push(l_rank);
                 rank = 0;
             }
-            blocks.push(BB::new(rank, chunk));
+            let array_chunk = if chunk.len() == BB::B {
+                chunk.try_into().unwrap()
+            } else {
+                // pad the last chunk with zeros.
+                array_chunk = [0u8; BB::B];
+                array_chunk[..chunk.len()].copy_from_slice(chunk);
+                &array_chunk
+            };
+            blocks.push(BB::new(rank, array_chunk));
             for byte in chunk {
                 rank += byte.count_ones() as u64;
             }
-        }
-
-        {
-            let i = chunks.len();
-            let mut chunk = [0; BB::B];
-            chunk[..tail.len()].copy_from_slice(tail);
-            if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
-                l_rank += rank;
-                block_ranks.push(l_rank);
-                rank = 0;
-            }
-            blocks.push(BB::new(rank, &chunk));
         }
 
         while block_ranks.len() % SB::BB != 0 {
@@ -90,7 +89,7 @@ where
             let block_pos = pos % BB::N;
             debug_assert!(block_idx < self.basic_blocks.len());
             let mut rank = self.basic_blocks.get_unchecked(block_idx).rank(block_pos);
-            if (BB::W) < 32 {
+            if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / Self::LONG_STRIDE;
                 let long_rank = self
                     .super_blocks
@@ -102,6 +101,7 @@ where
         }
     }
 }
+
 impl<BB: BasicBlock, SB: SuperBlock> Ranker<BB, SB>
 where
     [(); BB::B]:,
@@ -112,7 +112,7 @@ where
     // => x < 2^32 / N - 1
     const LONG_STRIDE: usize = if BB::W == 0 {
         1
-    } else if BB::W >= 32 {
+    } else if BB::W >= TARGET_BITS {
         usize::MAX
     } else {
         (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2

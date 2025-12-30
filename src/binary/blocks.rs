@@ -130,7 +130,7 @@ pub struct BinaryBlock3 {
 impl BasicBlock for BinaryBlock3 {
     const B: usize = 59;
     const N: usize = 472;
-    const W: usize = 32;
+    const W: usize = 31;
 
     fn new(rank: u64, data: &[u8; Self::B]) -> Self {
         // Counts in each u64 block.
