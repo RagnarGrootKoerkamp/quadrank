@@ -1,7 +1,5 @@
 use std::hint::assert_unchecked;
 
-use crate::quad::count4::{BINARY_MID_MASKS, BINARY_MID_MASKS256};
-
 use super::BasicBlock;
 
 /// Like TriBlock, but for binary counts.
@@ -397,3 +395,41 @@ impl BasicBlock for Spider {
         }
     }
 }
+
+pub static BINARY_MID_MASKS: [[u64; 2]; 256] = {
+    let mut masks = [[0u64; 2]; 256];
+    let mut i = 0;
+    while i < 128 {
+        let low_bits = i;
+        let mask = if low_bits == 128 {
+            u128::MAX
+        } else {
+            (1u128 << low_bits) - 1
+        };
+        unsafe {
+            masks[i] = std::mem::transmute(!mask);
+            masks[i + 128] = std::mem::transmute(mask);
+        }
+        i += 1;
+    }
+    masks
+};
+
+pub static BINARY_MID_MASKS256: [[u64; 4]; 512] = {
+    let mut masks = [[0u64; 4]; 512];
+    let mut i = 0;
+    while i < 256 {
+        let lo_mask = if i < 128 { (1u128 << i) - 1 } else { u128::MAX };
+        let hi_mask = if i <= 128 {
+            0
+        } else {
+            (1u128 << (i - 128)) - 1
+        };
+        unsafe {
+            masks[i] = std::mem::transmute([!lo_mask, !hi_mask]);
+            masks[i + 256] = std::mem::transmute([lo_mask, hi_mask]);
+        }
+        i += 1;
+    }
+    masks
+};
