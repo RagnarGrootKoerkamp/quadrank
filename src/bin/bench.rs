@@ -32,34 +32,6 @@ use quadrank::{
 };
 use sux::prelude::Rank9;
 
-fn check(pos: usize, ranks: Ranks) -> Ranks {
-    std::hint::black_box(&ranks);
-    let pos = pos as u32;
-    debug_assert_eq!(
-        ranks,
-        [(pos + 3) / 4, (pos + 2) / 4, (pos + 1) / 4, pos / 4],
-    );
-    ranks
-}
-fn check1(pos: usize, rank: usize) -> usize {
-    std::hint::black_box(&rank);
-    // debug_assert_eq!(rank, (pos + 3) / 4);
-    // 11100100
-    // 32111000
-    debug_assert_eq!(
-        rank,
-        // 0,
-        pos,
-        // pos / 8 * 4 + [0, 0, 0, 1, 1, 1, 2, 3][pos as usize % 8],
-        "pos: {pos}  pos%512 {}  pos%256 {}  pos%8 {} bits {:08b}",
-        pos % 512,
-        pos % 256,
-        pos % 8,
-        pos % 256,
-    );
-    rank
-}
-
 type QS = Vec<Vec<usize>>;
 
 #[derive(Clone, Copy)]
@@ -203,7 +175,7 @@ where
                 let Complete(fq) = pin!(func).resume(()) else {
                     panic!()
                 };
-                check(*q, fq);
+                std::hint::black_box(fq);
             }
         }
     });
@@ -227,7 +199,7 @@ where
             let Complete(fq) = pin!(func).resume(()) else {
                 panic!()
             };
-            check(queries[i], fq);
+            std::hint::black_box(fq);
 
             // Start a new fn.
             funcs[i % 32] = f(queries[i + 32]);
@@ -249,7 +221,7 @@ where
                 let Complete(fq) = pin!(func).resume(()) else {
                     panic!()
                 };
-                check(*q, fq);
+                std::hint::black_box(fq);
             }
         }
     });
@@ -269,7 +241,7 @@ where
             let Complete(fq) = pin!(func).resume(()) else {
                 panic!()
             };
-            check(queries[i], fq);
+            std::hint::black_box(fq);
 
             // new future
             funcs[i % BATCH] = f(queries[i + BATCH]);
@@ -333,7 +305,7 @@ fn bench<R: RankerT>(packed_seq: &[usize], queries: &QS) {
             &queries,
             t,
             |q| ranker.prefetch(q),
-            |q| check(q, ranker.count(q))[0] as usize,
+            |q| std::hint::black_box(unsafe { ranker.count(q) })[0] as usize,
         );
         eprint!(" |");
     }
@@ -361,7 +333,7 @@ fn bench1<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
             &queries,
             t,
             |q| ranker.prefetch(q),
-            |q| check1(q, unsafe { ranker.rank_unchecked(q) as usize }),
+            |q| std::hint::black_box(unsafe { ranker.rank_unchecked(q) as usize }),
         );
         eprint!(" |");
     }
