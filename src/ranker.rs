@@ -1,6 +1,7 @@
 use packed_seq::{PackedSeqVec, SeqVec};
 
 use crate::count::{count_u8, count_u8x8};
+use crate::prefetch_index;
 use crate::{Ranks, count4::CountFn};
 // use packed_seq::{PackedSeqVec, SeqVec};
 use std::marker::PhantomData;
@@ -293,25 +294,4 @@ where
     } else {
         (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2
     };
-}
-
-/// Prefetch the given cacheline into L1 cache.
-pub fn prefetch_index<T>(s: &[T], index: usize) {
-    let ptr = s.as_ptr().wrapping_add(index) as *const u64;
-    #[cfg(target_arch = "x86_64")]
-    unsafe {
-        std::arch::x86_64::_mm_prefetch(ptr as *const i8, std::arch::x86_64::_MM_HINT_T0);
-    }
-    #[cfg(target_arch = "x86")]
-    unsafe {
-        std::arch::x86::_mm_prefetch(ptr as *const i8, std::arch::x86::_MM_HINT_T0);
-    }
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        std::arch::aarch64::_prefetch(ptr as *const i8, std::arch::aarch64::_PREFETCH_LOCALITY3);
-    }
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64")))]
-    {
-        // Do nothing.
-    }
 }

@@ -25,8 +25,8 @@ use quadrank::{
         SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
         U64PopcntSlice, U128Popcnt3, WideSimdCount2,
     },
-    genedex,
-    ranker::{Ranker, RankerT, prefetch_index},
+    genedex, prefetch_index,
+    ranker::{Ranker, RankerT},
     super_block::{NoSB, SB8, TrivialSB},
     sux::*,
 };
