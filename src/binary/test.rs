@@ -13,7 +13,6 @@ fn binary() {
     test::<binary::Ranker<BinaryBlock5>>();
     test::<binary::Ranker<BinaryBlock6>>();
     test::<binary::Ranker<Spider>>();
-    // These only go up to 2^32 bits
     test::<genedex::Flat64>();
     test::<genedex::Flat512>();
     test::<genedex::Condensed64>();
@@ -64,7 +63,7 @@ fn tests() -> Vec<Test> {
     seqs()
         .into_iter()
         .map(|seq| {
-            let queries = queries::<binary::Ranker<BinaryBlock>>(&seq);
+            let queries = queries(&seq);
             Test { seq, queries }
         })
         .collect()
@@ -95,7 +94,7 @@ fn seqs() -> Vec<Vec<usize>> {
     seqs
 }
 
-fn queries<R: binary::RankerT>(seq: &Vec<usize>) -> Vec<(usize, usize)> {
+fn queries(seq: &Vec<usize>) -> Vec<(usize, usize)> {
     let n = seq.len() * usize::BITS as usize;
     let mut queries = vec![];
     if n <= 10000 {

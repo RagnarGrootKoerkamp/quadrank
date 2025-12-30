@@ -2,6 +2,8 @@ pub mod blocks;
 pub mod count4;
 pub mod ranker;
 pub mod super_blocks;
+#[cfg(test)]
+pub mod test;
 
 use crate::quad::count4::CountFn;
 use packed_seq::{PackedSeqVec, SeqVec};

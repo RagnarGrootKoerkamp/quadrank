@@ -1,6 +1,8 @@
 pub mod blocks;
 pub mod ranker;
 pub mod super_blocks;
+#[cfg(test)]
+pub mod test;
 
 pub use ranker::Ranker;
 pub use super_blocks::TrivialSB;

@@ -14,8 +14,6 @@ pub mod genedex;
 pub mod quad;
 pub mod qwt;
 pub mod sux;
-#[cfg(test)]
-pub mod test;
 
 /// Prefetch the given cacheline into L1 cache.
 pub fn prefetch_index<T>(s: &[T], index: usize) {
