@@ -19,6 +19,8 @@ pub mod qwt;
 pub mod ranker;
 pub mod super_block;
 pub mod sux;
+#[cfg(test)]
+pub mod test;
 
 pub type Ranks = [u32; 4];
 

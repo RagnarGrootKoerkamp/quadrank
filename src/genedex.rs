@@ -36,10 +36,10 @@ macro_rules! impl_rank {
     };
 }
 
-pub type Flat64 = FlatTextWithRankSupport<u32, Block64>;
-pub type Flat512 = FlatTextWithRankSupport<u32, Block512>;
-pub type Condensed64 = CondensedTextWithRankSupport<u32, Block64>;
-pub type Condensed512 = CondensedTextWithRankSupport<u32, Block512>;
+pub type Flat64 = FlatTextWithRankSupport<i64, Block64>;
+pub type Flat512 = FlatTextWithRankSupport<i64, Block512>;
+pub type Condensed64 = CondensedTextWithRankSupport<i64, Block64>;
+pub type Condensed512 = CondensedTextWithRankSupport<i64, Block512>;
 
 impl_rank!(Flat64);
 impl_rank!(Flat512);
