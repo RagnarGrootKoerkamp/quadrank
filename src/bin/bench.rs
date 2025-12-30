@@ -447,39 +447,37 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench_header(queries.len());
     eprintln!("QUAD");
     // plain external vec
-    // bench::<Ranker<Plain128, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    // bench::<Ranker<Plain256, TrivialSB, SimdCountSlice, false>>(seq, queries);
-    // bench::<Ranker<Plain512, TrivialSB, SimdCountSlice, false>>(seq, queries);
+    bench::<Ranker<Plain128, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    bench::<Ranker<Plain256, TrivialSB, SimdCountSlice, false>>(seq, queries);
+    bench::<Ranker<Plain512, TrivialSB, SimdCountSlice, false>>(seq, queries);
 
-    // // like qwt
-    // bench::<Ranker<Plain512, SB8, U128Popcnt3, true>>(seq, queries);
-    // bench::<Ranker<Plain512, SB8, SimdCountSlice, false>>(seq, queries);
+    // like qwt
+    bench::<Ranker<Plain512, SB8, U128Popcnt3, true>>(seq, queries);
+    bench::<Ranker<Plain512, SB8, SimdCountSlice, false>>(seq, queries);
 
     // fast
-    // bench::<Ranker<FullBlock, NoSB, U64PopcntSlice, false>>(seq, queries);
-    // bench::<Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>(seq, queries);
-    // bench::<Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>(seq, queries);
-    // bench::<Ranker<QuartBlock, NoSB, SimdCount8, false>>(seq, queries);
-    // bench::<Ranker<QuartBlock, NoSB, SimdCount9, false>>(seq, queries);
-    // bench::<Ranker<QuartBlock, NoSB, SimdCount10, false>>(seq, queries);
-    // // bench::<Ranker<PentaBlock, TrivialSB, SimdCount8, false>>(seq, queries);
-    // // bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    // // bench::<Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    // // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount8, false>>(seq, queries);
-    // // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount9, false>>(seq, queries);
-    // // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount8, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount9, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount10, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount9, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount9, false>>(seq, queries);
-    // bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
-    // bench::<Ranker<TriBlock, TrivialSB, SimdCount11, false>>(seq, queries);
-    // bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
-
-    // bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
-    // bench::<qwt::RSQVector256>(seq, queries);
-    // bench1::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
+    bench::<Ranker<FullBlock, NoSB, U64PopcntSlice, false>>(seq, queries);
+    bench::<Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>(seq, queries);
+    bench::<Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>(seq, queries);
+    bench::<Ranker<QuartBlock, NoSB, SimdCount8, false>>(seq, queries);
+    bench::<Ranker<QuartBlock, NoSB, SimdCount9, false>>(seq, queries);
+    bench::<Ranker<QuartBlock, NoSB, SimdCount10, false>>(seq, queries);
+    // bench::<Ranker<PentaBlock, TrivialSB, SimdCount8, false>>(seq, queries);
+    // bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    // bench::<Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount8, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount9, false>>(seq, queries);
+    // bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount8, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount9, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount10, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount9, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount9, false>>(seq, queries);
+    bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
+    bench::<Ranker<TriBlock, TrivialSB, SimdCount11, false>>(seq, queries);
+    bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<qwt::RSQVector256>(seq, queries);
 
     eprintln!("BINARY");
 
@@ -531,9 +529,10 @@ fn main() {
     #[cfg(not(debug_assertions))]
     #[rustfmt::skip]
     let mut ns = vec![
-        1_000_000, // L2
-        64_000_000, // L3
-        32_000_000_000, // RAM
+        // 1_000_000, // L2
+        // 64_000_000, // L3
+        // 32_000_000_000, // RAM
+        1_000_000_000,
     ];
 
     let args = Args::parse();
@@ -547,9 +546,9 @@ fn main() {
         // let seq = b"ACTG".repeat(n / 4);
         let seq = vec![
             // 0;
-            usize::MAX;
-            // 0b1110010011100100111001001110010011100100111001001110010011100100;
-            n.div_ceil(64)
+            // usize::MAX;
+            0b1110010011100100111001001110010011100100111001001110010011100100;
+            n.div_ceil(32)
         ];
         let queries = (0..12)
             .map(|_| (0..q).map(|_| rand::random_range(0..n)).collect::<Vec<_>>())
