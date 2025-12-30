@@ -17,17 +17,19 @@ use quadrank::{
         },
     },
     genedex, prefetch_index,
-    quad::Ranks,
-    quad::blocks::{
-        FullBlock, FullBlockMid, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
-        HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
+    quad::{
+        Ranker, RankerT, Ranks,
+        blocks::{
+            FullBlock, FullBlockMid, FullBlockTransposed, HexaBlock, HexaBlock2, HexaBlockMid,
+            HexaBlockMid2, HexaBlockMid3, HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512,
+            QuartBlock, TriBlock, TriBlock2,
+        },
+        count4::{
+            SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
+            SimdCountSlice, U64PopcntSlice, U128Popcnt3, WideSimdCount2,
+        },
+        super_blocks::{NoSB, SB8, TrivialSB},
     },
-    quad::count4::{
-        SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B, SimdCountSlice,
-        U64PopcntSlice, U128Popcnt3, WideSimdCount2,
-    },
-    quad::super_blocks::{NoSB, SB8, TrivialSB},
-    quad::{Ranker, RankerT},
     sux::*,
 };
 use sux::prelude::Rank9;
@@ -434,7 +436,7 @@ fn main() {
         // 1_000_000, // L2
         // 64_000_000, // L3
         // 32_000_000_000, // RAM
-        1_000_000_000,
+        4_000_000_000,
     ];
 
     let args = Args::parse();
