@@ -1369,3 +1369,66 @@ impl BasicBlock for TriBlock2 {
         ranks.to_array()
     }
 }
+
+/// Like TriBlock2, but with 4 absolute u64 counts
+/// Updates FullBlock with the transposed bit layout.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct FullBlockTransposed {
+    // 4*64 = 256 bit counts
+    ranks: [[u32; 4]; 2],
+    // 2x transposed packed sequence
+    seq: [[u8; 16]; 2],
+}
+
+impl BasicBlock for FullBlockTransposed {
+    const X: usize = 2; // DNA
+    const B: usize = 32;
+    const N: usize = 128;
+    const C: usize = 16;
+    const W: usize = 64;
+    const TRANSPOSED: bool = true;
+
+    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts before each u64 block.
+        let mut bs = [[0u32; 4]; 6];
+        let mut sum = [0u32; 4];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = add(bs[i], count4_u8x8(*chunk));
+            sum = add(sum, bs[i]);
+        }
+        // global ranks are to block
+        ranks = add(ranks, add(bs[0], bs[1]));
+        Self {
+            ranks: [ranks; 2],
+            seq: from_fn(|i| unsafe {
+                std::mem::transmute(transpose_bits(
+                    &data[i * 16..i * 16 + 16].try_into().unwrap(),
+                ))
+            }),
+        }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, pos: usize) -> Ranks {
+        assert!(!C3);
+        assert!(C::S == 0);
+        let mut ranks = u32x4::splat(0);
+
+        let half = pos / 64;
+
+        let inner_counts = C::count_mid(&self.seq[half], pos % 128);
+
+        use std::mem::transmute as t;
+        let sign = (pos as u32).wrapping_sub(64);
+        ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
+
+        let self_ranks = u32x4::from_array(self.ranks[0]);
+        ranks += self_ranks;
+
+        // for tri=0 and tri=1, shift down by 0
+        // for tri=2, shift down by 8
+        ranks.to_array()
+    }
+}

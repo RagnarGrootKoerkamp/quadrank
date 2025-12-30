@@ -380,6 +380,8 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<Ranker<TriBlock, TrivialSB, SimdCount11, false>>(seq, queries);
     bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>(seq, queries);
+
     bench::<qwt::RSQVector256>(seq, queries);
     bench::<qwt::RSQVector512>(seq, queries);
 
