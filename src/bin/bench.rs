@@ -26,7 +26,7 @@ use quadrank::{
         U64PopcntSlice, U128Popcnt3, WideSimdCount2,
     },
     genedex, prefetch_index,
-    ranker::{Ranker, RankerT},
+    quad::{Ranker, RankerT},
     super_block::{NoSB, SB8, TrivialSB},
     sux::*,
 };

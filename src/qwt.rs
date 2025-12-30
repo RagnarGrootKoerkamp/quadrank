@@ -1,6 +1,6 @@
 use qwt::{RSQVector256, RankBin, RankQuad, WTSupport};
 
-use crate::ranker::RankerT;
+use crate::quad::RankerT;
 
 impl RankerT for RSQVector256 {
     #[inline(always)]

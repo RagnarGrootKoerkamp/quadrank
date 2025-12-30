@@ -1,6 +1,6 @@
 use std::arch::x86_64::{_pext_u32, _pext_u64};
 
-use quadrank::{HexRank, ranker::RankerT};
+use quadrank::{HexRank, quad::RankerT};
 use qwt::{RankQuad, WTSupport};
 
 use crate::bwt::BWT;

@@ -1,4 +1,4 @@
-use crate::{Ranks, ranker::SuperBlock};
+use crate::{Ranks, quad::SuperBlock};
 
 #[derive(mem_dbg::MemSize)]
 pub struct NoSB;

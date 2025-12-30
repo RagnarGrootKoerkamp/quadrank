@@ -6,7 +6,7 @@ use crate::{
     Ranks, add,
     count::{count_u8x8, count_u8x16, count_u64_mask, count_u64_mid_mask},
     count4::{CountFn, WideSimdCount2, count4_u8x8},
-    ranker::BasicBlock,
+    quad::BasicBlock,
 };
 
 #[inline(always)]
