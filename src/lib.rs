@@ -33,23 +33,3 @@ pub type QwtRank = ::qwt::RSQVector256;
 fn add(a: Ranks, b: Ranks) -> Ranks {
     from_fn(|c| a[c] + b[c])
 }
-
-// TODO: investigate different bitpacking layouts, like QWT does
-
-#[test]
-fn test() {
-    use ranker::RankerT;
-
-    let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    let ranker = HexRank::new(text);
-
-    assert_eq!(ranker.count(0), [0, 0, 0, 0]);
-
-    eprintln!();
-    let base = b"ACTG".map(|c| text.iter().filter(|x| **x == c).count() as u32);
-    eprintln!("want: {:?}", base);
-    let cnt = ranker.count(text.len());
-    eprintln!("get {:?}", cnt);
-    assert_eq!(cnt, base);
-    // panic!();
-}
