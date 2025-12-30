@@ -381,6 +381,7 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<qwt::RSQVector256>(seq, queries);
+    bench::<qwt::RSQVector512>(seq, queries);
 
     // broken
     // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
