@@ -309,7 +309,7 @@ fn bench_header(threads: usize) {
         "stream"
     );
     println!(
-        "ranker,n,bits,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12"
+        "ranker,sigma,n,bits,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12"
     );
 }
 
@@ -326,7 +326,7 @@ fn bench<R: RankerT>(packed_seq: &[usize], queries: &QS) {
     let ranker = R::new_packed(&packed_seq);
     let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
     eprint!("{bits:>6.3}b |");
-    print!("\"{name}\",{n},{bits:>.3}");
+    print!("\"{name}\",4,{n},{bits:>.3}");
 
     for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
         time_trip(
@@ -354,7 +354,7 @@ fn bench1<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
     let ranker = R::new_packed(&packed_seq);
     let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
     eprint!("{bits:>6.3}b |");
-    print!("\"{name}\",{n},{bits:>.3}");
+    print!("\"{name}\",2,{n},{bits:>.3}");
 
     for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
         time_trip(
