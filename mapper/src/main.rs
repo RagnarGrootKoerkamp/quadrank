@@ -16,7 +16,7 @@ use genedex::text_with_rank_support::{
     Block64, Block512, CondensedTextWithRankSupport, FlatTextWithRankSupport, TextWithRankSupport,
 };
 use mem_dbg::MemSize;
-use quadrank::{HexRank, QuartRank, QwtRank, quad::RankerT};
+use quadrank::quad::{HexRank, QuartRank, QwtRank, RankerT};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::{Path, PathBuf},
