@@ -2,12 +2,13 @@ use genedex::text_with_rank_support::{
     Block64, Block512, CondensedTextWithRankSupport, FlatTextWithRankSupport, TextWithRankSupport,
 };
 
-use crate::binary::RankerT;
+use crate::binary;
+use crate::quad::{self, Ranks};
 use mem_dbg::MemSize;
 
 macro_rules! impl_rank {
     ($T: ty) => {
-        impl RankerT for $T {
+        impl binary::RankerT for $T {
             #[inline(always)]
             fn new_packed(seq: &[usize]) -> Self {
                 // convert bitvec to vec of 0 and 1 u8s
@@ -31,6 +32,44 @@ macro_rules! impl_rank {
             #[inline(always)]
             unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
                 unsafe { TextWithRankSupport::rank_unchecked(self, 1, pos) as u64 }
+            }
+        }
+
+        impl quad::RankerT for $T {
+            #[inline(always)]
+            fn new_packed(seq: &[usize]) -> Self {
+                // convert bitvec to vec of 0 and 1 u8s
+                let bits = seq
+                    .iter()
+                    .flat_map(|word| {
+                        (0..usize::BITS)
+                            .step_by(2)
+                            .map(move |i| ((word >> i) & 3) as u8)
+                    })
+                    .collect::<Vec<u8>>();
+                Self::construct(&bits, 4)
+            }
+
+            #[inline(always)]
+            fn prefetch(&self, pos: usize) {
+                TextWithRankSupport::prefetch(self, 1, pos);
+            }
+
+            #[inline(always)]
+            fn size(&self) -> usize {
+                self.mem_size(Default::default())
+            }
+
+            #[inline(always)]
+            fn count(&self, pos: usize) -> Ranks {
+                std::array::from_fn(|c| unsafe {
+                    TextWithRankSupport::rank_unchecked(self, c as u8, pos) as u32
+                })
+            }
+
+            #[inline(always)]
+            fn count1(&self, pos: usize, c: u8) -> usize {
+                unsafe { TextWithRankSupport::rank_unchecked(self, c, pos) as usize }
             }
         }
     };
