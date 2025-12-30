@@ -15,8 +15,16 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    fn new_packed(_seq: &[usize]) -> Self {
-        unimplemented!()
+    fn new_packed(seq: &[usize]) -> Self {
+        let bits = seq
+            .iter()
+            .flat_map(|word| {
+                (0..usize::BITS)
+                    .step_by(2)
+                    .map(move |i| ((word >> i) & 3) as u8)
+            })
+            .collect::<Vec<u8>>();
+        Self::new(&bits)
     }
 
     #[inline(always)]
