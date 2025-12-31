@@ -20,9 +20,9 @@ use quadrank::{
     quad::{
         Ranker, RankerT, Ranks,
         blocks::{
-            FullBlock, FullBlockMid, FullBlockTransposed, HexaBlock, HexaBlock2, HexaBlockMid,
-            HexaBlockMid2, HexaBlockMid3, HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512,
-            QuartBlock, TriBlock, TriBlock2,
+            FullBlock, FullBlockMid, FullBlockTransposed, FullDouble16, FullDouble32, HexaBlock,
+            HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3, HexaBlockMid4, PentaBlock,
+            Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
         },
         count4::{
             SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
@@ -294,7 +294,7 @@ fn bench<R: RankerT>(packed_seq: &[usize], queries: &QS) {
         .replace_all(name, |_: &regex::Captures| "".to_string());
 
     eprint!("{name:<60}");
-    let n = packed_seq.len() * 64;
+    let n = packed_seq.len() * 64 / 2;
     eprint!("{n:>11}");
 
     let ranker = R::new_packed(&packed_seq);
@@ -383,6 +383,8 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<FullDouble32, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<FullDouble16, TrivialSB, SimdCount11B, false>>(seq, queries);
 
     bench::<qwt::RSQVector256>(seq, queries);
     bench::<qwt::RSQVector512>(seq, queries);

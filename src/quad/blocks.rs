@@ -1391,7 +1391,7 @@ impl BasicBlock for FullBlockTransposed {
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
         // Counts before each u64 block.
-        let mut bs = [[0u32; 4]; 6];
+        let mut bs = [[0u32; 4]; 4];
         let mut sum = [0u32; 4];
         // count each part half.
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
@@ -1429,6 +1429,162 @@ impl BasicBlock for FullBlockTransposed {
 
         // for tri=0 and tri=1, shift down by 0
         // for tri=2, shift down by 8
+        ranks.to_array()
+    }
+}
+
+/// Like TriBlock2, but with 4 absolute u64 counts
+/// Updates FullBlock with the transposed bit layout.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct FullDouble32 {
+    // First [u32; 4]: ranks
+    // Then [[u64;2];3] of (high, low) transposed pairs
+    seq: [[u8; 16]; 4],
+}
+
+impl BasicBlock for FullDouble32 {
+    const X: usize = 2; // DNA
+    const B: usize = 48;
+    const N: usize = 192;
+    const C: usize = 16;
+    const W: usize = 32;
+    const TRANSPOSED: bool = true;
+
+    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // Counts before each u64 block.
+        let mut bs = [[0u32; 4]; 6];
+        // count each part half.
+        for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
+            bs[i] = add(bs[i], count4_u8x8(*chunk));
+        }
+        // global ranks are to block
+        unsafe {
+            let mut seq = [[0u64; 2]; 4];
+            ranks = add(ranks, add(bs[0], bs[1]));
+            seq[0] = std::mem::transmute(ranks);
+            for i in 0..3 {
+                seq[i + 1] = std::mem::transmute(transpose_bits(
+                    &data[i * 16..i * 16 + 16].try_into().unwrap(),
+                ))
+            }
+            Self {
+                seq: std::mem::transmute(seq),
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, mut pos: usize) -> Ranks {
+        assert!(!C3);
+        assert!(C::S == 0);
+        let mut ranks = u32x4::splat(0);
+
+        // correct for 128bits of ranks
+        pos += 64;
+
+        let half = pos / 128;
+
+        let pos_l = (pos % 128).min(64) + 64 * half;
+        let pos_h = (pos % 128).saturating_sub(64) + 64 * half;
+        let inner_counts = add(
+            C::count_mid(&self.seq[2 * half], pos_l),
+            C::count_mid(&self.seq[2 * half + 1], pos_h),
+        );
+
+        use std::mem::transmute as t;
+        let sign = (pos as u32).wrapping_sub(128);
+        ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
+
+        let self_ranks = u32x4::from_array(unsafe { t(self.seq[0]) });
+        ranks += self_ranks;
+
+        ranks.to_array()
+    }
+}
+
+/// Like FullDouble32, but using only 16bit offsets.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct FullDouble16 {
+    // First [u16; 8] of [A, C, high, high, G, T, low, low]
+    // Then [[u64;2];3] of (high, low) transposed pairs
+    seq: [[u8; 16]; 4],
+}
+
+impl BasicBlock for FullDouble16 {
+    const X: usize = 2; // DNA
+    const B: usize = 56;
+    const N: usize = 224;
+    const C: usize = 16;
+    const W: usize = 16;
+    const TRANSPOSED: bool = true;
+
+    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // FIXME
+        // Counts before each u64 block.
+        // count each part half.
+        for chunk in data[0..24].as_chunks::<8>().0 {
+            ranks = add(ranks, count4_u8x8(*chunk));
+        }
+        // global ranks are to block
+        unsafe {
+            let mut seq = [[0u16; 8]; 4];
+
+            let [low, high] = transpose_bits(&data[0..16].try_into().unwrap());
+
+            seq[0] = [
+                ranks[0] as u16,
+                ranks[1] as u16,
+                low as u16,
+                (low >> 16) as u16,
+                ranks[2] as u16,
+                ranks[3] as u16,
+                high as u16,
+                (high >> 16) as u16,
+            ];
+            for i in 0..3 {
+                seq[i + 1] = std::mem::transmute(transpose_bits(
+                    &data[8 + i * 16..8 + i * 16 + 16].try_into().unwrap(),
+                ))
+            }
+            Self {
+                seq: std::mem::transmute(seq),
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn count<C: CountFn<16>, const C3: bool>(&self, mut pos: usize) -> Ranks {
+        assert!(!C3);
+        assert!(C::S == 0);
+        let mut ranks = u32x4::splat(0);
+
+        // correct for 128bits of ranks
+        pos += 32;
+
+        let half = pos / 128;
+
+        let pos_l = (pos % 128).min(64) + 64 * half;
+        let pos_h = (pos % 128).saturating_sub(64) + 64 * half;
+        let inner_counts = add(
+            C::count_mid(&self.seq[2 * half], pos_l),
+            C::count_mid(&self.seq[2 * half + 1], pos_h),
+        );
+
+        use std::mem::transmute as t;
+        let sign = (pos as u32).wrapping_sub(128);
+        ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
+
+        let u16s: &[u16; 8] = unsafe { t(&self.seq[0]) };
+        let self_ranks = u32x4::from_array([
+            u16s[0] as u32,
+            u16s[1] as u32,
+            u16s[4] as u32,
+            u16s[5] as u32,
+        ]);
+        ranks += self_ranks;
+
         ranks.to_array()
     }
 }

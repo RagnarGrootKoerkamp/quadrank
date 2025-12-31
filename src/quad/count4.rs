@@ -523,10 +523,10 @@ pub static MID_MASKS: [u64; 64] = {
     }
     masks
 };
-pub static TRANSPOSED_MID_MASKS: [u64; 128] = {
-    let mut masks = [0u64; 128];
+pub static TRANSPOSED_MID_MASKS: [u64; 129] = {
+    let mut masks = [0u64; 129];
     let mut i = 0;
-    while i < 64 {
+    while i <= 64 {
         let low_bits = i;
         let mask = if low_bits == 64 {
             u64::MAX
