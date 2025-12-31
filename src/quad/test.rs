@@ -36,7 +36,7 @@ fn quad() {
     test::<quad::Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>();
     test::<quad::Ranker<FullDouble32, TrivialSB, SimdCount11B, false>>();
     test::<quad::Ranker<FullDouble16, TrivialSB, SimdCount11B, false>>();
-    test::<quad::Ranker<FullDouble16, TrivialSB, TransposedPopcount, false>>();
+    test::<quad::Ranker<FullDouble16Inl, TrivialSB, SimdCount11B, false>>();
     test::<qwt::RSQVector256>();
     test::<qwt::RSQVector512>();
     test::<genedex::Flat64>();

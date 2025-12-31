@@ -540,6 +540,23 @@ pub static TRANSPOSED_MID_MASKS: [u64; 129] = {
     masks
 };
 
+pub static DOUBLE_TRANSPOSED_MID_MASKS: [[u64; 2]; 257] = {
+    let mut masks = [0u128; 257];
+    let mut i = 0;
+    while i <= 128 {
+        let low_bits = i;
+        let mask = if low_bits == 128 {
+            u128::MAX
+        } else {
+            (1u128 << low_bits) - 1
+        };
+        masks[i] = !mask;
+        masks[i + 128] = mask;
+        i += 1;
+    }
+    unsafe { std::mem::transmute(masks) }
+};
+
 pub static MID_MASKS_SCATTER: [u64; 64] = {
     let scatter = 0x5555555555555555u64;
     let mut masks = [0u64; 64];
@@ -1849,6 +1866,7 @@ impl CountFn<16> for SimdCount11B {
 }
 
 // New: Store bitpacked data un-packed as 64bit word for low bits and 64bit word for high bits.
+// Slower than 11B above.
 pub struct TransposedPopcount;
 impl CountFn<16> for TransposedPopcount {
     /// 0: exact
@@ -1876,4 +1894,63 @@ impl CountFn<16> for TransposedPopcount {
             (l & h & mask).count_ones(),
         ]
     }
+}
+
+/// Pos in [0, 256]
+/// data is low or high half of (l, h, l, h) transposed layout.
+#[inline(always)]
+pub fn double_mid(data: &[[u8; 16]; 2], pos: usize) -> Ranks {
+    use std::mem::transmute as t;
+    let zero = u8x32::splat(0);
+
+    let mut byte_sums = zero;
+    let masks = DOUBLE_TRANSPOSED_MID_MASKS[pos];
+    for i in 0..2 {
+        // Without this, I get weird codegen.
+        // let data = std::hint::black_box(data);
+
+        // Count one u64 quarter of bits.
+        let l = u64::from_le_bytes(data[i][0..8].try_into().unwrap());
+        let h = u64::from_le_bytes(data[i][8..16].try_into().unwrap());
+        let mask = masks[i];
+        // chunk &= mask;
+
+        // count AC in first half, GT in second half.
+        let l = u64x4::splat(l);
+        let h = u64x4::splat(h);
+        let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
+        // bits of the 4 chars
+        // 00 | 10 | 01 | 11  (0, 2, 1, 3)
+        const CL: u64x4 = u64x4::from_array([!0, 0, !0, 0]);
+        const CH: u64x4 = u64x4::from_array([!0, !0, 0, 0]);
+
+        let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
+
+        let byte_counts = u8x32::from_array([
+            // popcount of every 4bit nibble
+            0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
+            0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
+        ]);
+
+        // Now reduce.
+        // no need for mask_f here.
+        // Those are needed to get rid of possible 1 high bits that mask the value to 0,
+        // but we already know those aren't 0 anyway in our case.
+        let lo = y & mask_f;
+        let popcnt1: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(lo))) };
+        byte_sums += popcnt1;
+
+        let hi = (y >> 4) & mask_f;
+        let popcnt2: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(hi))) };
+        byte_sums += popcnt2;
+    }
+
+    // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
+    let ranks: u64x4 = unsafe { t(_mm256_sad_epu8(t(byte_sums), t(zero))) };
+    [
+        ranks[0] as u32,
+        ranks[1] as u32,
+        ranks[2] as u32,
+        ranks[3] as u32,
+    ]
 }

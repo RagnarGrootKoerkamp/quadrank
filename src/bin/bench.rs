@@ -20,9 +20,10 @@ use quadrank::{
     quad::{
         Ranker, RankerT, Ranks,
         blocks::{
-            FullBlock, FullBlockMid, FullBlockTransposed, FullDouble16, FullDouble32, HexaBlock,
-            HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3, HexaBlockMid4, PentaBlock,
-            Plain128, Plain256, Plain512, QuartBlock, TriBlock, TriBlock2,
+            FullBlock, FullBlockMid, FullBlockTransposed, FullDouble16, FullDouble16Inl,
+            FullDouble32, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
+            HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock,
+            TriBlock2,
         },
         count4::{
             SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
@@ -386,7 +387,7 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<FullDouble32, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<FullDouble16, TrivialSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<FullDouble16, TrivialSB, TransposedPopcount, false>>(seq, queries);
+    bench::<Ranker<FullDouble16Inl, TrivialSB, SimdCount11B, false>>(seq, queries);
 
     bench::<qwt::RSQVector256>(seq, queries);
     bench::<qwt::RSQVector512>(seq, queries);

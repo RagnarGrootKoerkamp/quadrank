@@ -20,6 +20,7 @@ pub type HexRank =
     Ranker<blocks::HexaBlockMid4, super_blocks::TrivialSB, count4::SimdCount10, false>;
 pub type QwtRank = ::qwt::RSQVector256;
 
+#[inline(always)]
 fn add(a: Ranks, b: Ranks) -> Ranks {
     from_fn(|c| a[c] + b[c])
 }

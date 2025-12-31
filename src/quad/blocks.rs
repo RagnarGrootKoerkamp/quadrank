@@ -6,7 +6,7 @@ use crate::{
     count::{count_u8x8, count_u8x16, count_u64_mask, count_u64_mid_mask},
     quad::{
         BasicBlock, Ranks, add,
-        count4::{CountFn, WideSimdCount2, count4_u8x8},
+        count4::{CountFn, WideSimdCount2, count4_u8x8, double_mid},
     },
 };
 
@@ -1577,6 +1577,88 @@ impl BasicBlock for FullDouble16 {
         ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
 
         let u16s: &[u16; 8] = unsafe { t(&self.seq[0]) };
+        // This becomes a single simd shuffle.
+        let self_ranks = u32x4::from_array([
+            u16s[0] as u32,
+            u16s[1] as u32,
+            u16s[4] as u32,
+            u16s[5] as u32,
+        ]);
+        ranks += self_ranks;
+
+        ranks.to_array()
+    }
+}
+
+/// Like FullDouble32, but using only 16bit offsets.
+#[repr(align(64))]
+#[derive(mem_dbg::MemSize)]
+pub struct FullDouble16Inl {
+    // First [u16; 8] of [A, C, high, high, G, T, low, low]
+    // Then [[u64;2];3] of (high, low) transposed pairs
+    seq: [[u8; 16]; 4],
+}
+
+impl BasicBlock for FullDouble16Inl {
+    const X: usize = 2; // DNA
+    const B: usize = 56;
+    const N: usize = 224;
+    const C: usize = 16;
+    const W: usize = 16;
+    const TRANSPOSED: bool = true;
+
+    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+        // FIXME
+        // Counts before each u64 block.
+        // count each part half.
+        for chunk in data[0..24].as_chunks::<8>().0 {
+            ranks = add(ranks, count4_u8x8(*chunk));
+        }
+        // global ranks are to block
+        unsafe {
+            let mut seq = [[0u16; 8]; 4];
+
+            let [low, high] = transpose_bits(&data[0..16].try_into().unwrap());
+
+            seq[0] = [
+                ranks[0] as u16,
+                ranks[1] as u16,
+                low as u16,
+                (low >> 16) as u16,
+                ranks[2] as u16,
+                ranks[3] as u16,
+                high as u16,
+                (high >> 16) as u16,
+            ];
+            for i in 0..3 {
+                seq[i + 1] = std::mem::transmute(transpose_bits(
+                    &data[8 + i * 16..8 + i * 16 + 16].try_into().unwrap(),
+                ))
+            }
+            Self {
+                seq: std::mem::transmute(seq),
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn count<CF: CountFn<16, TRANSPOSED = true>, const C3: bool>(&self, mut pos: usize) -> Ranks {
+        assert!(!C3);
+        assert!(CF::S == 0);
+        let mut ranks = u32x4::splat(0);
+
+        // correct for 128bits of ranks
+        pos += 32;
+
+        let half = pos / 128;
+        let inner_counts = double_mid(&self.seq[2 * half..2 * half + 2].try_into().unwrap(), pos);
+
+        use std::mem::transmute as t;
+        let sign = (pos as u32).wrapping_sub(128);
+        ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
+
+        let u16s: &[u16; 8] = unsafe { t(&self.seq[0]) };
+        // This becomes a single simd shuffle.
         let self_ranks = u32x4::from_array([
             u16s[0] as u32,
             u16s[1] as u32,
