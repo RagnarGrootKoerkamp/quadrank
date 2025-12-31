@@ -26,7 +26,7 @@ use quadrank::{
         },
         count4::{
             SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
-            SimdCountSlice, U64PopcntSlice, U128Popcnt3, WideSimdCount2,
+            SimdCountSlice, TransposedPopcount, U64PopcntSlice, U128Popcnt3, WideSimdCount2,
         },
         super_blocks::{NoSB, SB8, TrivialSB},
     },
@@ -382,9 +382,11 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<Ranker<TriBlock, TrivialSB, SimdCount11, false>>(seq, queries);
     bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<TriBlock2, TrivialSB, TransposedPopcount, false>>(seq, queries);
     bench::<Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<FullDouble32, TrivialSB, SimdCount11B, false>>(seq, queries);
     bench::<Ranker<FullDouble16, TrivialSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<FullDouble16, TrivialSB, TransposedPopcount, false>>(seq, queries);
 
     bench::<qwt::RSQVector256>(seq, queries);
     bench::<qwt::RSQVector512>(seq, queries);

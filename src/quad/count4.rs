@@ -1847,3 +1847,33 @@ impl CountFn<16> for SimdCount11B {
         ranks
     }
 }
+
+// New: Store bitpacked data un-packed as 64bit word for low bits and 64bit word for high bits.
+pub struct TransposedPopcount;
+impl CountFn<16> for TransposedPopcount {
+    /// 0: exact
+    const S: usize = 0;
+    const FIXED: bool = true;
+    const TRANSPOSED: bool = true;
+
+    #[inline(always)]
+    fn count(_data: &[u8; 16], _pos: usize) -> Ranks {
+        unimplemented!();
+    }
+
+    /// Pos can twice the size here.
+    /// If first half, count top elements, otherwise count bottom elements.
+    #[inline(always)]
+    fn count_mid(data: &[u8; 16], pos: usize) -> Ranks {
+        let l = u64::from_le_bytes(data[0..8].try_into().unwrap());
+        let h = u64::from_le_bytes(data[8..16].try_into().unwrap());
+        let mask = TRANSPOSED_MID_MASKS[pos];
+
+        [
+            (!l & !h & mask).count_ones(),
+            (l & !h & mask).count_ones(),
+            (!l & h & mask).count_ones(),
+            (l & h & mask).count_ones(),
+        ]
+    }
+}
