@@ -19,7 +19,7 @@ use quadrank::{
     },
     genedex, prefetch_index,
     quad::{
-        Ranker, RankerT, Ranks,
+        LongRanks, Ranker, RankerT,
         blocks::{
             FullBlock, FullBlockMid, FullBlockTransposed, FullDouble16, FullDouble16Inl,
             FullDouble32, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
@@ -171,7 +171,7 @@ fn time_trip(
 #[inline(always)]
 fn time_coro2_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
-    F: Coroutine<Return = Ranks> + Unpin,
+    F: Coroutine<Return = LongRanks> + Unpin,
 {
     time_fn(queries, Threading::Single, |queries| {
         for batch in queries.as_chunks::<32>().0 {
@@ -194,7 +194,7 @@ where
 #[inline(always)]
 fn time_coro2_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
-    F: Coroutine<Return = Ranks> + Unpin,
+    F: Coroutine<Return = LongRanks> + Unpin,
 {
     time_fn(queries, Threading::Single, |queries| {
         let mut funcs: [F; 32] = from_fn(|i| {
@@ -221,7 +221,7 @@ where
 #[inline(always)]
 fn time_coro_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
-    F: Coroutine<Return = Ranks> + Unpin,
+    F: Coroutine<Return = LongRanks> + Unpin,
 {
     time_fn(queries, Threading::Single, |queries| {
         for batch in queries.as_chunks::<BATCH>().0 {
@@ -240,7 +240,7 @@ where
 #[inline(always)]
 fn time_coro_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
-    F: Coroutine<Return = Ranks> + Unpin,
+    F: Coroutine<Return = LongRanks> + Unpin,
 {
     time_fn(queries, Threading::Single, |queries| {
         let mut funcs: [F; BATCH] = from_fn(|i| f(queries[i]));

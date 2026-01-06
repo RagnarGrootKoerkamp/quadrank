@@ -3,7 +3,7 @@ use genedex::text_with_rank_support::{
 };
 
 use crate::binary;
-use crate::quad::{self, Ranks};
+use crate::quad::{self, LongRanks};
 use mem_dbg::MemSize;
 
 macro_rules! impl_rank {
@@ -63,9 +63,9 @@ macro_rules! impl_rank {
             }
 
             #[inline(always)]
-            fn count(&self, pos: usize) -> Ranks {
+            fn count(&self, pos: usize) -> LongRanks {
                 std::array::from_fn(|c| unsafe {
-                    TextWithRankSupport::rank_unchecked(self, c as u8, pos) as u32
+                    TextWithRankSupport::rank_unchecked(self, c as u8, pos) as u64
                 })
             }
 

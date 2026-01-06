@@ -50,7 +50,7 @@ static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
 fn test<R: quad::RankerT>() {
     for test in &*TESTS {
         eprintln!(
-            "testing ranker {} on len {}",
+            "testing ranker {} on len {} words",
             std::any::type_name::<R>(),
             test.seq.len()
         );

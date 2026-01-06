@@ -14,6 +14,7 @@ pub use ranker::Ranker;
 pub use super_blocks::TrivialSB;
 
 pub type Ranks = [u32; 4];
+pub type LongRanks = [u64; 4];
 
 pub type QuartRank = Ranker<blocks::QuartBlock, super_blocks::NoSB, count4::SimdCount10, false>;
 pub type HexRank =
@@ -65,8 +66,8 @@ pub trait SuperBlock: Sync {
     /// Bit-width of the basic block ranks.
     const W: usize;
 
-    fn new(ranks: [Ranks; Self::BB]) -> Self;
-    fn get(&self, idx: usize) -> Ranks;
+    fn new(ranks: [LongRanks; Self::BB]) -> Self;
+    fn get(&self, idx: usize) -> LongRanks;
     fn get1(&self, idx: usize) -> usize {
         self.get(idx)[0] as usize
     }
@@ -91,7 +92,7 @@ pub trait RankerT: Sync + Sized {
     fn prefetch(&self, pos: usize);
     fn size(&self) -> usize;
     /// Count the number of times each character occurs before position `pos`.
-    fn count(&self, pos: usize) -> Ranks;
+    fn count(&self, pos: usize) -> LongRanks;
     /// Count the number of times character `c` occurs before position `pos`.
     fn count1(&self, pos: usize, c: u8) -> usize;
     #[inline(always)]
@@ -100,14 +101,14 @@ pub trait RankerT: Sync + Sized {
     }
 
     #[inline(always)]
-    fn count_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
+    fn count_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = LongRanks> + Unpin {
         self.prefetch(pos);
         #[inline(always)]
         #[coroutine]
         move || self.count(pos)
     }
     #[inline(always)]
-    fn count_coro2(&self, pos: usize) -> impl Coroutine<Yield = (), Return = Ranks> + Unpin {
+    fn count_coro2(&self, pos: usize) -> impl Coroutine<Yield = (), Return = LongRanks> + Unpin {
         #[inline(always)]
         #[coroutine]
         move || {

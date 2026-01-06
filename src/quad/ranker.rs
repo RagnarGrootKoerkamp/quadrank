@@ -1,5 +1,5 @@
 use super::count4::CountFn;
-use super::{BasicBlock, RankerT, Ranks, SuperBlock};
+use super::{BasicBlock, LongRanks, RankerT, Ranks, SuperBlock};
 use crate::count::{count_u8, count_u8x8};
 use crate::prefetch_index;
 use std::marker::PhantomData;
@@ -27,7 +27,7 @@ where
         assert!(head.is_empty());
         assert!(tail.is_empty());
         let mut ranks = [0u32; 4];
-        let mut l_ranks = [0u32; 4];
+        let mut l_ranks = [0u64; 4];
 
         let (chunks, tail) = seq.as_chunks::<{ BB::B }>();
         let num_chunks = chunks.len();
@@ -37,7 +37,7 @@ where
         for (i, chunk) in chunks.iter().enumerate() {
             if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
                 for i in 0..4 {
-                    l_ranks[i] += ranks[i];
+                    l_ranks[i] += ranks[i] as u64;
                 }
                 block_ranks.push(l_ranks);
                 ranks = [0; 4];
@@ -71,7 +71,7 @@ where
             chunk[..tail.len()].copy_from_slice(tail);
             if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
                 for i in 0..4 {
-                    l_ranks[i] += ranks[i];
+                    l_ranks[i] += ranks[i] as u64;
                 }
                 block_ranks.push(l_ranks);
                 ranks = [0; 4];
@@ -116,7 +116,7 @@ where
 
     /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
-    fn count(&self, pos: usize) -> Ranks {
+    fn count(&self, pos: usize) -> LongRanks {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;
@@ -124,7 +124,8 @@ where
             let mut ranks = self
                 .blocks
                 .get_unchecked(block_idx)
-                .count::<CF, C3>(block_pos);
+                .count::<CF, C3>(block_pos)
+                .map(|x| x as u64);
             if (BB::W) < 32 {
                 let long_pos = block_idx / Self::LONG_STRIDE;
                 let long_ranks = self

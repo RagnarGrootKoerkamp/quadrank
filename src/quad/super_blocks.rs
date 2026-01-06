@@ -1,4 +1,6 @@
-use crate::{quad::Ranks, quad::SuperBlock};
+use crate::quad::SuperBlock;
+
+use super::{LongRanks, Ranks};
 
 #[derive(mem_dbg::MemSize)]
 pub struct NoSB;
@@ -7,11 +9,11 @@ impl SuperBlock for NoSB {
     const BB: usize = 1;
     const W: usize = 32;
     #[inline(always)]
-    fn new(_ranks: [Ranks; 1]) -> Self {
+    fn new(_ranks: [LongRanks; 1]) -> Self {
         Self
     }
     #[inline(always)]
-    fn get(&self, _idx: usize) -> Ranks {
+    fn get(&self, _idx: usize) -> LongRanks {
         [0; 4]
     }
 }
@@ -19,18 +21,18 @@ impl SuperBlock for NoSB {
 #[repr(align(16))]
 #[derive(mem_dbg::MemSize)]
 pub struct TrivialSB {
-    block: Ranks,
+    block: LongRanks,
 }
 
 impl SuperBlock for TrivialSB {
     const BB: usize = 1;
     const W: usize = 0;
     #[inline(always)]
-    fn new(ranks: [Ranks; 1]) -> Self {
+    fn new(ranks: [LongRanks; 1]) -> Self {
         Self { block: ranks[0] }
     }
     #[inline(always)]
-    fn get(&self, idx: usize) -> Ranks {
+    fn get(&self, idx: usize) -> LongRanks {
         debug_assert!(idx == 0);
         self.block
     }
@@ -39,22 +41,22 @@ impl SuperBlock for TrivialSB {
 #[repr(align(16))]
 #[derive(mem_dbg::MemSize)]
 pub struct HalfSB {
-    block: [u32; 4],
+    block: Ranks,
 }
 
 impl SuperBlock for HalfSB {
     const BB: usize = 1;
     const W: usize = 0;
     #[inline(always)]
-    fn new(ranks: [Ranks; 1]) -> Self {
+    fn new(ranks: [LongRanks; 1]) -> Self {
         Self {
             block: ranks[0].map(|x| (x >> 8) as u32),
         }
     }
     #[inline(always)]
-    fn get(&self, idx: usize) -> [u32; 4] {
+    fn get(&self, idx: usize) -> LongRanks {
         debug_assert!(idx == 0);
-        self.block.map(|x| (x as u32) << 8)
+        self.block.map(|x| (x as u64) << 8)
     }
 }
 
@@ -63,7 +65,7 @@ impl SuperBlock for HalfSB {
 #[derive(mem_dbg::MemSize)]
 pub struct SB8 {
     /// One u128 per character, encoding:
-    /// - low 32 bits: super block offset
+    /// - low 32 bits: super block offset shifted by 8
     /// - high 8*12 bits: counts to each block.
     blocks: [u128; 4],
 }
@@ -73,12 +75,12 @@ impl SuperBlock for SB8 {
     const W: usize = 0;
 
     #[inline(always)]
-    fn new(ranks: [Ranks; 8]) -> Self {
+    fn new(ranks: [LongRanks; 8]) -> Self {
         Self {
             blocks: std::array::from_fn(|c| {
                 // Super block offset
-                let base: u32 = ranks[0][c];
-                let mut x = base as u128;
+                let base = ranks[0][c] >> 8 << 8;
+                let mut x = (base >> 8) as u128;
                 // Block counts
                 for i in 0..8 {
                     let diff = ranks[i][c] - base;
@@ -91,11 +93,11 @@ impl SuperBlock for SB8 {
     }
 
     #[inline(always)]
-    fn get(&self, idx: usize) -> Ranks {
+    fn get(&self, idx: usize) -> LongRanks {
         std::array::from_fn(|c| {
             let x = self.blocks[c];
-            let base = x as u32;
-            let diff = ((x >> (32 + idx * 12)) & 0xFFF) as u32;
+            let base = (x as u32 as u64) << 8;
+            let diff = ((x >> (32 + idx * 12)) & 0xFFF) as u64;
             base + diff
         })
     }
