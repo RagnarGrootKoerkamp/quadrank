@@ -36,6 +36,28 @@ impl SuperBlock for TrivialSB {
     }
 }
 
+#[repr(align(16))]
+#[derive(mem_dbg::MemSize)]
+pub struct HalfSB {
+    block: [u32; 4],
+}
+
+impl SuperBlock for HalfSB {
+    const BB: usize = 1;
+    const W: usize = 0;
+    #[inline(always)]
+    fn new(ranks: [Ranks; 1]) -> Self {
+        Self {
+            block: ranks[0].map(|x| (x >> 8) as u32),
+        }
+    }
+    #[inline(always)]
+    fn get(&self, idx: usize) -> [u32; 4] {
+        debug_assert!(idx == 0);
+        self.block.map(|x| (x as u32) << 8)
+    }
+}
+
 /// Super block inspired by QWT.
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
