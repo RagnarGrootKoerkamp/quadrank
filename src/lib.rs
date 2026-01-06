@@ -14,6 +14,7 @@ pub mod quad;
 
 pub mod ext {
     pub mod bio;
+    pub mod bitm;
     pub mod genedex;
     pub mod qwt;
     pub mod rsdict;

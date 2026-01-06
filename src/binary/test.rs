@@ -32,6 +32,8 @@ fn binary() {
     test::<rsdict::RsDict>();
     test::<bio::data_structures::rank_select::RankSelect>();
     test::<vers_vecs::RsVec>();
+    // test::<bitm::RankSimple>(); // only up to 2^32 bits
+    test::<bitm::RankSelect101111>();
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());

@@ -283,6 +283,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 
 [[package]]
+name = "bitm"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31468ea4a856000d83cb61960dfdc2980ecd96b15b61321c8c76cc96aea6e688"
+dependencies = [
+ "dyn_size_of",
+]
+
+[[package]]
 name = "block-pseudorand"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1853,9 +1862,11 @@ name = "quadrank"
 version = "0.1.0"
 dependencies = [
  "bio",
+ "bitm",
  "bv",
  "bvrs",
  "clap",
+ "dyn_size_of",
  "genedex",
  "mem_dbg 0.3.3",
  "packed-seq",

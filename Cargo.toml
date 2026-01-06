@@ -9,9 +9,11 @@ edition = "2024"
 [dependencies]
 # bio = "3.0.0"
 bio.path = "../forks/rust-bio"
+bitm = "0.5.2"
 bv = "0.11.1"
 bvrs = "0.1.1"
 clap = { version = "4.5.51", features = ["derive"] }
+dyn_size_of = "0.4.5"
 # genedex = "0.2.2"
 genedex = { path = "../forks/genedex", features = ["mem_dbg"]}
 mem_dbg = "0.3.2"

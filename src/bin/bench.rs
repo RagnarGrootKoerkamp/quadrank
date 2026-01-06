@@ -413,6 +413,9 @@ fn bench_all(seq: &[usize], queries: &QS) {
     // qwt
     bench1::<qwt::RSNarrow>(seq, queries);
     bench1::<qwt::RSWide>(seq, queries);
+    bench1::<bitm::RankSimple>(seq, queries);
+    bench1::<bitm::RankSelect101111>(seq, queries);
+
     // sux
     bench1::<Rank9>(seq, queries);
     bench1::<RankSmall1>(seq, queries);
