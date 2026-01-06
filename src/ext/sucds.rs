@@ -17,8 +17,6 @@ impl RankerT for Rank9Sel {
         self.size_in_bytes()
     }
 
-    fn prefetch(&self, _pos: usize) {}
-
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         self.rank1(pos).unwrap() as u64
     }

@@ -13,10 +13,6 @@ impl RankerT for bitm::RankSimple {
         self.size_bytes()
     }
 
-    fn prefetch(&self, _pos: usize) {
-        // TODO
-    }
-
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         unsafe { bitm::Rank::rank_unchecked(self, pos) as u64 }
     }
@@ -32,10 +28,6 @@ impl RankerT for bitm::RankSelect101111 {
 
     fn size(&self) -> usize {
         self.size_bytes()
-    }
-
-    fn prefetch(&self, _pos: usize) {
-        // TODO
     }
 
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {

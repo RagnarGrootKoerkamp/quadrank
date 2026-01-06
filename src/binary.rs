@@ -48,8 +48,9 @@ pub trait RankerT: Sync + Sized {
     fn new_packed(seq: &[usize]) -> Self;
     /// Size in bytes of the data structure.
     fn size(&self) -> usize;
+    const HAS_PREFETCH: bool = false;
     /// Prefetch the cacheline for the given position.
-    fn prefetch(&self, pos: usize);
+    fn prefetch(&self, _pos: usize) {}
     /// Unsafe version that assumes `pos < len`.
     /// Pad the input to allow `pos=len`.
     unsafe fn rank_unchecked(&self, pos: usize) -> u64;

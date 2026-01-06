@@ -9,8 +9,6 @@ impl RankerT for rsdict::RsDict {
         self.heap_size()
     }
 
-    fn prefetch(&self, _pos: usize) {}
-
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         self.rank(pos as u64, true)
     }

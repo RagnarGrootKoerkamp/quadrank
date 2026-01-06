@@ -97,6 +97,8 @@ impl crate::binary::RankerT for qwt::RSNarrow {
         Self::new(bitvec.into())
     }
 
+    const HAS_PREFETCH: bool = true;
+
     #[inline(always)]
     fn prefetch(&self, pos: usize) {
         RankBin::prefetch(self, pos);
@@ -118,6 +120,8 @@ impl crate::binary::RankerT for qwt::RSWide {
     fn new_packed(seq: &[usize]) -> Self {
         Self::new(qwt::BitVector::from_slice(seq))
     }
+
+    const HAS_PREFETCH: bool = true;
 
     #[inline(always)]
     fn prefetch(&self, pos: usize) {

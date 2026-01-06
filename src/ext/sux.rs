@@ -17,6 +17,8 @@ macro_rules! impl_rank_small {
                 <$T>::new(bits)
             }
 
+            const HAS_PREFETCH: bool = true;
+
             #[inline(always)]
             fn prefetch(&self, pos: usize) {
                 sux::traits::RankUnchecked::prefetch(&self, pos);

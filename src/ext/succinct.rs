@@ -11,8 +11,6 @@ impl RankerT for succinct::Rank9<Vec<u64>> {
         self.total_bytes()
     }
 
-    fn prefetch(&self, _pos: usize) {}
-
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         self.rank1(pos as u64 - 1)
     }
@@ -27,8 +25,6 @@ impl RankerT for succinct::JacobsonRank<Vec<u64>> {
     fn size(&self) -> usize {
         self.total_bytes()
     }
-
-    fn prefetch(&self, _pos: usize) {}
 
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         self.rank1(pos as u64 - 1)

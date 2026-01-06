@@ -19,6 +19,8 @@ macro_rules! impl_rank {
                 Self::construct(&bits, 2)
             }
 
+            const HAS_PREFETCH: bool = true;
+
             #[inline(always)]
             fn prefetch(&self, pos: usize) {
                 TextWithRankSupport::prefetch(self, 1, pos);

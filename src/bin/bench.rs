@@ -155,10 +155,16 @@ fn time_trip(
     t: Threading,
     prefetch: impl Fn(usize) + Sync + Copy,
     f: impl Fn(usize) -> usize + Sync + Copy,
+    stream: bool,
 ) {
     time_latency(queries, t, prefetch, f);
     time_loop(queries, t, f);
-    time_stream(queries, t, prefetch, f);
+    if stream {
+        time_stream(queries, t, prefetch, f);
+    } else {
+        eprint!(" {:>7.2}", 0);
+        print!(",{:.2}", 0);
+    }
 }
 
 #[inline(always)]
@@ -309,6 +315,7 @@ fn bench<R: RankerT>(packed_seq: &[usize], queries: &QS) {
             t,
             |q| ranker.prefetch(q),
             |q| std::hint::black_box(unsafe { ranker.count(q) })[0] as usize,
+            true,
         );
         eprint!(" |");
     }
@@ -337,6 +344,7 @@ fn bench1<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
             t,
             |q| ranker.prefetch(q),
             |q| std::hint::black_box(unsafe { ranker.rank_unchecked(q) as usize }),
+            R::HAS_PREFETCH,
         );
         eprint!(" |");
     }

@@ -65,6 +65,8 @@ where
         }
     }
 
+    const HAS_PREFETCH: bool = true;
+
     /// Prefetch the cacheline for the given position.
     #[inline(always)]
     fn prefetch(&self, pos: usize) {

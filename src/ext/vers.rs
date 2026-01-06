@@ -10,8 +10,6 @@ impl RankerT for vers_vecs::RsVec {
         self.heap_size()
     }
 
-    fn prefetch(&self, _pos: usize) {}
-
     unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
         self.rank0(pos) as u64
     }
