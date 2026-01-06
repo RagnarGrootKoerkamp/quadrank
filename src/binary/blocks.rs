@@ -60,7 +60,6 @@ pub struct BinaryBlock2 {
     // u128x3 + u64 = u8x56 = 448 bit packed sequence
     seq: [u8; 56],
     /// offset to end of 1st and 3rd 128bit block.
-    /// 8 low bits: delta to end of first trip
     ranks: [u32; 2],
 }
 
@@ -338,7 +337,7 @@ impl BasicBlock for BinaryBlock6 {
     }
 }
 
-/// Like BinarBlock6, but count to the start and linear scan rank in block.
+/// Like BinaryBlock6, but count to the start and linear scan rank in block.
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]

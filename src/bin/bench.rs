@@ -15,6 +15,7 @@ use quadrank::{
             BinaryBlock, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
             Spider,
         },
+        super_blocks::HalfSB,
     },
     genedex, prefetch_index,
     quad::{
@@ -406,10 +407,13 @@ fn bench_all(seq: &[usize], queries: &QS) {
 
     eprintln!("BINARY");
     bench1::<binary::Ranker<BinaryBlock>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock2>>(seq, queries);
     bench1::<binary::Ranker<BinaryBlock3>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock2>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock2, HalfSB>>(seq, queries);
     bench1::<binary::Ranker<BinaryBlock4>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock4, HalfSB>>(seq, queries);
     bench1::<binary::Ranker<BinaryBlock5>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock5, HalfSB>>(seq, queries);
     bench1::<binary::Ranker<BinaryBlock6>>(seq, queries);
     // spider
     bench1::<binary::Ranker<Spider>>(seq, queries);

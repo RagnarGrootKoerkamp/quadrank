@@ -32,15 +32,13 @@ pub trait BasicBlock: Sync {
 }
 
 /// A super block stores ranks every X basic blocks, where X depends on the bit-width `W` of the counters inside the basic blocks.
-/// A single super block stores ranks for `BB` basic blocks, so it can delta-compress them if needed.
-pub trait SuperBlock: Sync {
-    /// Number of basic blocks covered by a single super block.
-    const BB: usize;
-    /// Bit-width of the basic block ranks.
-    const W: usize;
-
-    fn new(ranks: [u64; Self::BB]) -> Self;
-    fn get(&self, idx: usize) -> u64;
+/// A single super block stores ranks for 1 basic block.
+///
+/// (We don't do delta compression here for now.)
+pub trait SuperBlock: Sync + Sized {
+    /// Return the block and the stored value.
+    fn new(ranks: u64) -> (Self, u64);
+    fn get(&self) -> u64;
 }
 
 pub trait RankerT: Sync + Sized {

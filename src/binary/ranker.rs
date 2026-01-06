@@ -12,7 +12,6 @@ const TARGET_BITS: usize = 40;
 impl<BB: BasicBlock, SB: SuperBlock> RankerT for Ranker<BB, SB>
 where
     [(); BB::B]:,
-    [(); SB::BB]:,
 {
     fn new_packed(seq: &[usize]) -> Self {
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
@@ -24,14 +23,19 @@ where
         let chunks = seq.chunks(BB::B);
         let num_chunks = seq.len().div_ceil(BB::B);
         let num_long_chunks = num_chunks.div_ceil(Self::LONG_STRIDE);
-        let mut block_ranks = Vec::with_capacity(num_long_chunks);
+        let mut super_blocks = Vec::with_capacity(num_long_chunks);
         let mut blocks = Vec::with_capacity(num_chunks);
         let mut array_chunk: [u8; BB::B];
         for (i, chunk) in chunks.enumerate() {
             if ((BB::W) < TARGET_BITS) && i % Self::LONG_STRIDE == 0 {
                 l_rank += rank;
-                block_ranks.push(l_rank);
-                rank = 0;
+                // returns the actual stored rank value
+                let (super_block, new_l_rank) = SB::new(l_rank);
+                super_blocks.push(super_block);
+                // 'leftover' rank that was not stored in the super block
+                rank = l_rank - new_l_rank;
+                // update l_rank to last stored value
+                l_rank = new_l_rank;
             }
             let array_chunk = if chunk.len() == BB::B {
                 chunk.try_into().unwrap()
@@ -46,18 +50,6 @@ where
                 rank += byte.count_ones() as u64;
             }
         }
-
-        while block_ranks.len() % SB::BB != 0 {
-            block_ranks.push(l_rank);
-        }
-
-        // convert block ranks to superblocks.
-        let super_blocks = block_ranks
-            .as_chunks()
-            .0
-            .iter()
-            .map(|x| SB::new(*x))
-            .collect();
 
         Self {
             basic_blocks: blocks,
@@ -75,7 +67,7 @@ where
         // if BB::W < 32 {
         if BB::W < 24 {
             let long_pos = block_idx / Self::LONG_STRIDE;
-            prefetch_index(&self.super_blocks, long_pos / SB::BB);
+            prefetch_index(&self.super_blocks, long_pos);
         }
     }
 
@@ -100,10 +92,7 @@ where
             let mut rank = self.basic_blocks.get_unchecked(block_idx).rank(block_pos);
             if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / Self::LONG_STRIDE;
-                let long_rank = self
-                    .super_blocks
-                    .get_unchecked(long_pos / SB::BB)
-                    .get(long_pos % SB::BB);
+                let long_rank = self.super_blocks.get_unchecked(long_pos).get();
                 rank += long_rank;
             }
             rank
@@ -114,7 +103,6 @@ where
 impl<BB: BasicBlock, SB: SuperBlock> Ranker<BB, SB>
 where
     [(); BB::B]:,
-    [(); SB::BB]:,
 {
     /// Store a new long block every this-many blocks.
     // Each long block should span N*x characters where N*x + N < 2^32, and x is fast to compute.

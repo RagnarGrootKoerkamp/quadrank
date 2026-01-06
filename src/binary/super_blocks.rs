@@ -1,20 +1,44 @@
 use super::SuperBlock;
 
-/// u64 rank for binary alphabet.
+/// Simply stores a `u64` rank.
 #[derive(mem_dbg::MemSize)]
 pub struct TrivialSB {
     rank: u64,
 }
 
 impl SuperBlock for TrivialSB {
-    const BB: usize = 1;
-    const W: usize = 0;
     #[inline(always)]
-    fn new(ranks: [u64; 1]) -> Self {
-        Self { rank: ranks[0] }
+    fn new(rank: u64) -> (Self, u64) {
+        (Self { rank }, rank)
     }
-    fn get(&self, idx: usize) -> u64 {
-        debug_assert_eq!(idx, 0);
+    fn get(&self) -> u64 {
         self.rank
+    }
+}
+
+/// Store the high 32 bits of `x>>8`.
+#[derive(mem_dbg::MemSize)]
+pub struct HalfSB {
+    rank: u32,
+}
+
+impl SuperBlock for HalfSB {
+    #[inline(always)]
+    fn new(rank: u64) -> (Self, u64) {
+        let rank = rank >> 8;
+        assert!(
+            rank <= u32::MAX as u64,
+            "Rank too large for HalfSB. Use TrivialSB instead."
+        );
+        (
+            Self {
+                rank: (rank) as u32,
+            },
+            rank << 8,
+        )
+    }
+    #[inline(always)]
+    fn get(&self) -> u64 {
+        (self.rank as u64) << 8
     }
 }
