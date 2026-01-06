@@ -7,6 +7,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# bio = "3.0.0"
+bio.path = "../forks/rust-bio"
+bv = "0.11.1"
+bvrs = "0.1.1"
 clap = { version = "4.5.51", features = ["derive"] }
 # genedex = "0.2.2"
 genedex = { path = "../forks/genedex", features = ["mem_dbg"]}
@@ -16,8 +20,12 @@ packed-seq = "4.2.0"
 qwt.path = "../forks/qwt"
 rand = "0.9.2"
 regex = "1.12.2"
+rsdict = "0.0.8"
+succinct = "0.5.2"
+sucds = "0.8.3"
 # sux = "0.9.1"
 sux.path = "../forks/sux-rs"
+vers-vecs = "1.8.2"
 
 [profile.release]
 debug = true

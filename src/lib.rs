@@ -10,10 +10,19 @@
 
 pub mod binary;
 pub mod count;
-pub mod genedex;
 pub mod quad;
-pub mod qwt;
-pub mod sux;
+
+pub mod ext {
+    pub mod bio;
+    pub mod genedex;
+    pub mod qwt;
+    pub mod rsdict;
+    pub mod succinct;
+    pub mod sucds;
+    pub mod sux;
+    pub mod vers;
+}
+pub use ext::*;
 
 /// Prefetch the given cacheline into L1 cache.
 pub fn prefetch_index<T>(s: &[T], index: usize) {
