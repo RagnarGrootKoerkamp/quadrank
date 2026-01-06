@@ -12,6 +12,8 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const 
     cf: PhantomData<CF>,
 }
 
+const TARGET_BITS: usize = 40;
+
 impl<
     BB: BasicBlock,
     SB: SuperBlock,
@@ -35,7 +37,7 @@ where
         let mut block_ranks = Vec::with_capacity(num_long_chunks);
         let mut blocks = Vec::with_capacity(num_chunks);
         for (i, chunk) in chunks.iter().enumerate() {
-            if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
+            if ((BB::W) < TARGET_BITS) && i % Self::LONG_STRIDE == 0 {
                 for i in 0..4 {
                     l_ranks[i] += ranks[i] as u64;
                 }
@@ -69,7 +71,7 @@ where
             let i = chunks.len();
             let mut chunk = [0; BB::B];
             chunk[..tail.len()].copy_from_slice(tail);
-            if ((BB::W) < 32) && i % Self::LONG_STRIDE == 0 {
+            if ((BB::W) < TARGET_BITS) && i % Self::LONG_STRIDE == 0 {
                 for i in 0..4 {
                     l_ranks[i] += ranks[i] as u64;
                 }
@@ -103,8 +105,7 @@ where
     fn prefetch(&self, pos: usize) {
         let block_idx = pos / BB::N;
         prefetch_index(&self.blocks, block_idx);
-        // if BB::W < 32 {
-        if BB::W < 24 {
+        if BB::W < TARGET_BITS - 12 {
             let long_pos = block_idx / Self::LONG_STRIDE;
             prefetch_index(&self.super_blocks, long_pos / SB::BB);
         }
@@ -126,7 +127,7 @@ where
                 .get_unchecked(block_idx)
                 .count::<CF, C3>(block_pos)
                 .map(|x| x as u64);
-            if (BB::W) < 32 {
+            if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / Self::LONG_STRIDE;
                 let long_ranks = self
                     .super_blocks
@@ -194,7 +195,7 @@ where
     // => x < 2^32 / N - 1
     const LONG_STRIDE: usize = if BB::W == 0 {
         1
-    } else if BB::W >= 32 {
+    } else if BB::W >= TARGET_BITS {
         usize::MAX
     } else {
         (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2
