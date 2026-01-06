@@ -420,6 +420,14 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench1::<RankSmall3>(seq, queries);
     bench1::<RankSmall4>(seq, queries);
     bench1::<RankSmall5>(seq, queries);
+
+    // All not pareto-optimal
+    // bench1::<succinct::Rank9<Vec<u64>>>(seq, queries);
+    // bench1::<succinct::JacobsonRank<Vec<u64>>>(seq, queries);
+    // bench1::<sucds::bit_vectors::Rank9Sel>(seq, queries);
+    // bench1::<rsdict::RsDict>(seq, queries);
+    // bench1::<bio::data_structures::rank_select::RankSelect>(seq, queries);
+    // bench1::<vers_vecs::RsVec>(seq, queries);
 }
 
 #[derive(clap::Parser)]
@@ -460,7 +468,7 @@ fn main() {
             n.div_ceil(32)
         ];
         let queries = (0..12)
-            .map(|_| (0..q).map(|_| rand::random_range(0..n)).collect::<Vec<_>>())
+            .map(|_| (0..q).map(|_| rand::random_range(1..n)).collect::<Vec<_>>())
             .collect::<Vec<_>>();
 
         bench_all(&seq, &queries);

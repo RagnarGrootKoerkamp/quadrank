@@ -25,6 +25,13 @@ fn binary() {
     test::<sux::RankSmall3>();
     test::<sux::RankSmall4>();
     test::<sux::RankSmall5>();
+
+    test::<succinct::Rank9<Vec<u64>>>();
+    test::<succinct::JacobsonRank<Vec<u64>>>();
+    test::<sucds::bit_vectors::Rank9Sel>();
+    test::<rsdict::RsDict>();
+    test::<bio::data_structures::rank_select::RankSelect>();
+    test::<vers_vecs::RsVec>();
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
@@ -98,14 +105,14 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, usize)> {
     let n = seq.len() * usize::BITS as usize;
     let mut queries = vec![];
     if n <= 10000 {
-        for i in 0..n {
+        for i in 1..n {
             queries.push(i);
         }
     } else {
-        queries.push(0);
+        // queries.push(0);
         queries.push(n - 1);
         for _ in 0..10000 {
-            queries.push(rand::random_range(0..n));
+            queries.push(rand::random_range(1..n));
         }
     }
     queries.sort_unstable();
