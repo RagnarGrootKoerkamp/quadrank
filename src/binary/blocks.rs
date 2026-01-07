@@ -6,7 +6,7 @@ use super::BasicBlock;
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock {
+pub struct BinaryBlock1 {
     /// offset to end of 1st and 3rd 128bit block.
     /// 8 low bits: delta to end of first trip
     ranks: [u64; 2],
@@ -14,7 +14,7 @@ pub struct BinaryBlock {
     seq: [[u64; 2]; 3],
 }
 
-impl BasicBlock for BinaryBlock {
+impl BasicBlock for BinaryBlock1 {
     const B: usize = 48;
     const N: usize = 384;
     const W: usize = 64;

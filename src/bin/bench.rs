@@ -12,7 +12,7 @@ use quadrank::{
     binary::{
         self,
         blocks::{
-            BinaryBlock, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
+            BinaryBlock1, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
             Spider,
         },
         super_blocks::HalfSB,
@@ -362,41 +362,9 @@ fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
 
 #[inline(never)]
 fn bench_quad(seq: &[usize], queries: &QS) {
+    use quadrank::quad::super_blocks::HalfSB;
+
     bench_header(queries.len());
-    eprintln!("QUAD");
-    // plain external vec
-    bench::<Ranker<Plain128, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    bench::<Ranker<Plain256, TrivialSB, SimdCountSlice, false>>(seq, queries);
-    bench::<Ranker<Plain512, TrivialSB, SimdCountSlice, false>>(seq, queries);
-
-    // like qwt
-    bench::<Ranker<Plain512, SB8, U128Popcnt3, true>>(seq, queries);
-    bench::<Ranker<Plain512, SB8, SimdCountSlice, false>>(seq, queries);
-
-    // fast
-    bench::<Ranker<FullBlock, NoSB, U64PopcntSlice, false>>(seq, queries);
-    bench::<Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>(seq, queries);
-    bench::<Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>(seq, queries);
-    bench::<Ranker<QuartBlock, NoSB, SimdCount8, false>>(seq, queries);
-    bench::<Ranker<QuartBlock, NoSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<QuartBlock, NoSB, SimdCount10, false>>(seq, queries);
-    bench::<Ranker<PentaBlock, TrivialSB, SimdCount8, false>>(seq, queries);
-    bench::<Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    bench::<Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount8, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid, TrivialSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount9, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid2, TrivialSB, SimdCount10, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>(seq, queries);
-    bench::<Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>(seq, queries);
-    bench::<Ranker<TriBlock, TrivialSB, SimdCount11, false>>(seq, queries);
-    bench::<Ranker<TriBlock, TrivialSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<TriBlock2, TrivialSB, TransposedPopcount, false>>(seq, queries);
-    bench::<Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<FullDouble32, TrivialSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<FullDouble16, TrivialSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<FullDouble16Inl, TrivialSB, SimdCount11B, false>>(seq, queries);
 
     bench::<qwt::RSQVector256>(seq, queries);
     bench::<qwt::RSQVector512>(seq, queries);
@@ -406,38 +374,24 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench::<genedex::Condensed64>(seq, queries);
     bench::<genedex::Condensed512>(seq, queries);
 
-    // broken
-    // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
-    // bench::<Ranker<HexaBlock18bit, TrivialSB, WideSimdCount2, false>>(seq, queries);
+    bench::<Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<TriBlock2, HalfSB, SimdCount11B, false>>(seq, queries);
+    bench::<Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>>(seq, queries);
 }
 
 #[inline(never)]
 fn bench_binary(seq: &[usize], queries: &QS) {
     bench_header(queries.len());
-    // eprintln!("BINARY");
-    bench1::<binary::Ranker<BinaryBlock>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock3>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock2>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock2, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock4>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock4, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock5>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock5, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock6>>(seq, queries);
-    // spider
-    bench1::<binary::Ranker<Spider>>(seq, queries);
-    // genedex
-    bench1::<genedex::Flat64>(seq, queries);
-    bench1::<genedex::Flat512>(seq, queries);
-    bench1::<genedex::Condensed64>(seq, queries);
-    bench1::<genedex::Condensed512>(seq, queries);
-    // qwt
+
     bench1::<qwt::RSNarrow>(seq, queries);
     bench1::<qwt::RSWide>(seq, queries);
-    bench1::<bitm::RankSimple>(seq, queries);
-    bench1::<bitm::RankSelect101111>(seq, queries);
 
-    // sux
+    bench1::<genedex::Condensed64>(seq, queries);
+    bench1::<genedex::Condensed512>(seq, queries);
+
+    bench1::<bitm::RankSelect101111>(seq, queries);
+    bench1::<vers_vecs::RsVec>(seq, queries);
+
     bench1::<Rank9>(seq, queries);
     bench1::<RankSmall1>(seq, queries);
     bench1::<RankSmall2>(seq, queries);
@@ -445,13 +399,11 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench1::<RankSmall4>(seq, queries);
     bench1::<RankSmall5>(seq, queries);
 
-    // All not pareto-optimal
-    // bench1::<succinct::Rank9<Vec<u64>>>(seq, queries);
-    // bench1::<succinct::JacobsonRank<Vec<u64>>>(seq, queries);
-    // bench1::<sucds::bit_vectors::Rank9Sel>(seq, queries);
-    // bench1::<rsdict::RsDict>(seq, queries);
-    // bench1::<bio::data_structures::rank_select::RankSelect>(seq, queries);
-    // bench1::<vers_vecs::RsVec>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock1, HalfSB>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock2, HalfSB>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock4, HalfSB>>(seq, queries);
+    bench1::<binary::Ranker<BinaryBlock6, HalfSB>>(seq, queries);
+    bench1::<binary::Ranker<Spider, HalfSB>>(seq, queries);
 }
 
 #[derive(clap::Parser)]
@@ -467,21 +419,21 @@ struct Args {
 fn main() {
     #[cfg(debug_assertions)]
     let q = 10_000;
+    #[cfg(not(debug_assertions))]
+    let q = 10_000_000;
 
-    // n: size in *u64*
+    // n: size in bytes
 
     #[cfg(debug_assertions)]
     let mut sizes = vec![100_000];
     #[cfg(not(debug_assertions))]
-    let q = 10_000_000;
-    #[cfg(not(debug_assertions))]
     #[rustfmt::skip]
     let mut sizes = vec![
-        // 1_000_000, // L2
-        // 64_000_000, // L3
-        // 32_000_000_000, // RAM
-        4_000_000_000,
-        // 32_000_000, // L3
+        128_000, // L2
+        // 8_000_000, // L3
+        4_000_000_000, // RAM
+        // 8_000_000_000, // RAM
+        // 16_000_000_000, // RAM
     ];
 
     let args = Args::parse();
@@ -490,22 +442,29 @@ fn main() {
     }
 
     for size in sizes {
-        // for n in [100_000] {
-        eprintln!("size = {} u64 = {} bits", size, size * 64);
-        let seq = vec![0b1110010011100100111001001110010011100100111001001110010011100100; size];
+        eprintln!(
+            "size = {} bytes = {} bits = {} bp",
+            size,
+            size * 8,
+            size * 4
+        );
+        let seq = vec![
+            0b1110010011100100111001001110010011100100111001001110010011100100;
+            size.div_ceil(8)
+        ];
 
         if args.binary {
-            let n = size * 64;
+            let n = size * 8;
             let queries = (0..12)
-                .map(|_| (0..q).map(|_| rand::random_range(1..n)).collect::<Vec<_>>())
+                .map(|_| (0..q).map(|_| rand::random_range(2..n)).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
             bench_binary(&seq, &queries);
         }
         if args.quad {
-            let n = size * 32;
+            let n = size * 4;
             let queries = (0..12)
-                .map(|_| (0..q).map(|_| rand::random_range(1..n)).collect::<Vec<_>>())
+                .map(|_| (0..q).map(|_| rand::random_range(2..n)).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
             bench_quad(&seq, &queries);

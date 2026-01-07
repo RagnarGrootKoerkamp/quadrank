@@ -8,7 +8,7 @@ use super::super_blocks::HalfSB;
 
 #[test]
 fn binary() {
-    test::<binary::Ranker<BinaryBlock>>();
+    test::<binary::Ranker<BinaryBlock1>>();
     test::<binary::Ranker<BinaryBlock2>>();
     test::<binary::Ranker<BinaryBlock3>>();
     test::<binary::Ranker<BinaryBlock4>>();
