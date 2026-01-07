@@ -285,10 +285,8 @@ checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 [[package]]
 name = "bitm"
 version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31468ea4a856000d83cb61960dfdc2980ecd96b15b61321c8c76cc96aea6e688"
 dependencies = [
- "dyn_size_of",
+ "dyn_size_of 0.4.5",
 ]
 
 [[package]]
@@ -805,6 +803,10 @@ dependencies = [
  "pluralizer",
  "sysinfo",
 ]
+
+[[package]]
+name = "dyn_size_of"
+version = "0.4.5"
 
 [[package]]
 name = "dyn_size_of"
@@ -1470,7 +1472,7 @@ checksum = "a28ed9f799347e3fc3b0cc999332dbba53499551bbcf1070fcc12737645ac05b"
 dependencies = [
  "binout",
  "co_sort",
- "dyn_size_of",
+ "dyn_size_of 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "fsum",
 ]
 
@@ -1866,7 +1868,7 @@ dependencies = [
  "bv",
  "bvrs",
  "clap",
- "dyn_size_of",
+ "dyn_size_of 0.4.5",
  "genedex",
  "mem_dbg 0.3.3",
  "packed-seq",
