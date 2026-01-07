@@ -361,7 +361,7 @@ fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
 }
 
 #[inline(never)]
-fn bench_all(seq: &[usize], queries: &QS) {
+fn bench_quad(seq: &[usize], queries: &QS) {
     bench_header(queries.len());
     eprintln!("QUAD");
     // plain external vec
@@ -401,11 +401,20 @@ fn bench_all(seq: &[usize], queries: &QS) {
     bench::<qwt::RSQVector256>(seq, queries);
     bench::<qwt::RSQVector512>(seq, queries);
 
+    bench::<genedex::Flat64>(seq, queries);
+    bench::<genedex::Flat512>(seq, queries);
+    bench::<genedex::Condensed64>(seq, queries);
+    bench::<genedex::Condensed512>(seq, queries);
+
     // broken
     // bench::<Ranker<PentaBlock20bit, TrivialSB, SimdCount7, false>>(seq, queries);
     // bench::<Ranker<HexaBlock18bit, TrivialSB, WideSimdCount2, false>>(seq, queries);
+}
 
-    eprintln!("BINARY");
+#[inline(never)]
+fn bench_binary(seq: &[usize], queries: &QS) {
+    bench_header(queries.len());
+    // eprintln!("BINARY");
     bench1::<binary::Ranker<BinaryBlock>>(seq, queries);
     bench1::<binary::Ranker<BinaryBlock3>>(seq, queries);
     bench1::<binary::Ranker<BinaryBlock2>>(seq, queries);
@@ -449,44 +458,58 @@ fn bench_all(seq: &[usize], queries: &QS) {
 struct Args {
     #[clap(short = 'n')]
     n: Option<usize>,
+    #[clap(short = 'b')]
+    binary: bool,
+    #[clap(short = 'q')]
+    quad: bool,
 }
 
 fn main() {
     #[cfg(debug_assertions)]
     let q = 10_000;
+
+    // n: size in *u64*
+
     #[cfg(debug_assertions)]
-    let mut ns = vec![100_000];
+    let mut sizes = vec![100_000];
     #[cfg(not(debug_assertions))]
     let q = 10_000_000;
     #[cfg(not(debug_assertions))]
     #[rustfmt::skip]
-    let mut ns = vec![
+    let mut sizes = vec![
         // 1_000_000, // L2
         // 64_000_000, // L3
         // 32_000_000_000, // RAM
         4_000_000_000,
+        // 32_000_000, // L3
     ];
 
     let args = Args::parse();
     if let Some(n) = args.n {
-        ns = vec![n];
+        sizes = vec![n];
     }
 
-    for n in ns {
+    for size in sizes {
         // for n in [100_000] {
-        eprintln!("n = {}", n);
-        // let seq = b"ACTG".repeat(n / 4);
-        let seq = vec![
-            // 0;
-            // usize::MAX;
-            0b1110010011100100111001001110010011100100111001001110010011100100;
-            n.div_ceil(32)
-        ];
-        let queries = (0..12)
-            .map(|_| (0..q).map(|_| rand::random_range(1..n)).collect::<Vec<_>>())
-            .collect::<Vec<_>>();
+        eprintln!("size = {} u64 = {} bits", size, size * 64);
+        let seq = vec![0b1110010011100100111001001110010011100100111001001110010011100100; size];
 
-        bench_all(&seq, &queries);
+        if args.binary {
+            let n = size * 64;
+            let queries = (0..12)
+                .map(|_| (0..q).map(|_| rand::random_range(1..n)).collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+
+            bench_binary(&seq, &queries);
+        }
+        if args.quad {
+            let n = size * 32;
+            let queries = (0..12)
+                .map(|_| (0..q).map(|_| rand::random_range(1..n)).collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+
+            bench_quad(&seq, &queries);
+        }
     }
 }
 
