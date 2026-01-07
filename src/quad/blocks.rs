@@ -1386,7 +1386,7 @@ impl BasicBlock for FullBlockTransposed {
     const B: usize = 32;
     const N: usize = 128;
     const C: usize = 16;
-    const W: usize = 64;
+    const W: usize = 32;
     const TRANSPOSED: bool = true;
 
     fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {

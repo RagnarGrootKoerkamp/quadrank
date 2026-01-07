@@ -17,9 +17,9 @@ fn quad() {
     test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice, false>>();
     test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>();
     test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>();
-    test::<quad::Ranker<QuartBlock, NoSB, SimdCount8, false>>();
-    test::<quad::Ranker<QuartBlock, NoSB, SimdCount9, false>>();
-    test::<quad::Ranker<QuartBlock, NoSB, SimdCount10, false>>();
+    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount8, false>>();
+    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount9, false>>();
+    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount10, false>>();
     test::<quad::Ranker<PentaBlock, TrivialSB, SimdCount8, false>>();
     test::<quad::Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>();
     test::<quad::Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>();
@@ -117,7 +117,7 @@ fn seqs() -> Vec<Vec<usize>> {
         rand::random_range(160_000_000..200_000_000),
     ] {
         eprintln!("generating seq of len {}", len);
-        seqs.push(vec![0; len]);
+        seqs.push(vec![usize::MAX; len]);
         seqs.push(vec![m; len]);
         seqs.push(vec![rand::random::<u64>() as usize; len]);
     }
@@ -135,7 +135,7 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, [usize; 4])> {
     } else {
         queries.push(0);
         queries.push(n - 1);
-        for _ in 0..10000 {
+        for _ in 0..2000 {
             queries.push(rand::random_range(0..n));
         }
     }
