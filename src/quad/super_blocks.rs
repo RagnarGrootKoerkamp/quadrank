@@ -18,7 +18,7 @@ impl SuperBlock for NoSB {
     }
 }
 
-#[repr(align(16))]
+#[repr(align(32))]
 #[derive(mem_dbg::MemSize)]
 pub struct TrivialSB {
     block: LongRanks,
