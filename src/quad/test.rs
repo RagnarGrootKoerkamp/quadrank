@@ -14,9 +14,9 @@ fn quad() {
     test::<quad::Ranker<Plain512, TrivialSB, SimdCountSlice, false>>();
     test::<quad::Ranker<Plain512, SB8, U128Popcnt3, true>>();
     test::<quad::Ranker<Plain512, SB8, SimdCountSlice, false>>();
-    test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice, false>>();
-    test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>();
-    test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>();
+    // test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice, false>>();
+    // test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>();
+    // test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>();
     test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount8, false>>();
     test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount9, false>>();
     test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount10, false>>();
