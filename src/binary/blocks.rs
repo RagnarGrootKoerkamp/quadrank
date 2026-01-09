@@ -2,19 +2,16 @@ use std::hint::assert_unchecked;
 
 use super::BasicBlock;
 
-/// Like TriBlock, but for binary counts.
+/// Store two u64 offsets, to end of first and third 128bit block.
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock1 {
-    /// offset to end of 1st and 3rd 128bit block.
-    /// 8 low bits: delta to end of first trip
+pub struct BinaryBlock64x2 {
     ranks: [u64; 2],
-    // u128x3 = u8x48 = 384 bit packed sequence
     seq: [[u64; 2]; 3],
 }
 
-impl BasicBlock for BinaryBlock1 {
+impl BasicBlock for BinaryBlock64x2 {
     const B: usize = 48;
     const N: usize = 384;
     const W: usize = 64;
@@ -52,18 +49,16 @@ impl BasicBlock for BinaryBlock1 {
     }
 }
 
-/// Store two 32bit ranks at the end, and put in some more bits.
+/// Store two 32 bit offsets to 1/4th and 3/4th of the cacheline.
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock2 {
-    // u128x3 + u64 = u8x56 = 448 bit packed sequence
+pub struct BinaryBlock32x2 {
     seq: [u8; 56],
-    /// offset to end of 1st and 3rd 128bit block.
     ranks: [u32; 2],
 }
 
-impl BasicBlock for BinaryBlock2 {
+impl BasicBlock for BinaryBlock32x2 {
     const B: usize = 56;
     const N: usize = 448;
     const W: usize = 32;
@@ -113,21 +108,18 @@ impl BasicBlock for BinaryBlock2 {
     }
 }
 
-/// Store 31bit ranks and 9bit delta at the end.
-/// #positions: 512-31-9 = 472
+/// Store a 23 bit offset to 1/4th and 9 bit delta from 1/4th to 3/4th in the last 32 bits.
+// In practice, the rank is actually to 3/4, and we subtract the delta to get 1/4.
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock3 {
-    /// last 5 bytes are global rank info
-    /// low 9 bits: delta from 1/4 to 3/4
-    /// high 31 bits global offset
+pub struct BinaryBlock23_9 {
     seq: [u8; 64],
 }
 
-impl BasicBlock for BinaryBlock3 {
-    const B: usize = 59;
-    const N: usize = 472;
-    const W: usize = 31;
+impl BasicBlock for BinaryBlock23_9 {
+    const B: usize = 60;
+    const N: usize = 480;
+    const W: usize = 23;
 
     fn new(rank: u64, data: &[u8; Self::B]) -> Self {
         // Counts in each u64 block.
@@ -141,11 +133,11 @@ impl BasicBlock for BinaryBlock3 {
         let ranks = rank + bs[0] + bs[1] + delta;
 
         let mut seq = [0u8; 64];
-        for i in 0..59 {
+        for i in 0..60 {
             seq[i] = data[i];
         }
-        let rank_bytes = ((ranks as u64) << 9) | (delta as u64);
-        seq[59..64].copy_from_slice(&rank_bytes.to_le_bytes()[0..5]);
+        let rank_bytes: u32 = ((ranks << 9) | delta).try_into().unwrap();
+        seq[60..64].copy_from_slice(&rank_bytes.to_le_bytes());
         Self { seq }
     }
 
@@ -170,9 +162,9 @@ impl BasicBlock for BinaryBlock3 {
                     .unwrap(),
             );
             let inner_count = ((l & mask_l).count_ones() + (h & mask_h).count_ones()) as u64;
-            let meta = u64::from_le_bytes(self.seq.get_unchecked(56..64).try_into().unwrap()) >> 24;
+            let meta = u32::from_le_bytes(self.seq.get_unchecked(60..64).try_into().unwrap());
             let rank = (meta >> 9) as u64;
-            let delta = meta as u32 & 0x1ff;
+            let delta = meta & 0x1ff;
             let delta = (delta >> ((quad / 2) * 16)) as u64;
 
             if pos < 128 {
@@ -184,17 +176,16 @@ impl BasicBlock for BinaryBlock3 {
     }
 }
 
-/// Store two 16 bit global ranks at the end.
-/// to 1/4 and 3/4
+/// Store two 16 bit offsets to 1/4th and 3/4th of the cacheline.
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock4 {
+pub struct BinaryBlock16x2 {
     seq: [u8; 60],
     ranks: [u16; 2],
 }
 
-impl BasicBlock for BinaryBlock4 {
+impl BasicBlock for BinaryBlock16x2 {
     const B: usize = 60;
     const N: usize = 480;
     const W: usize = 16;
@@ -240,16 +231,16 @@ impl BasicBlock for BinaryBlock4 {
     }
 }
 
-/// Only store a count to the middle and then count 256 bits.
+/// Store a single 32 bit offset to the middle.
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock5 {
+pub struct BinaryBlock32 {
     seq: [u8; 60],
     rank: u32,
 }
 
-impl BasicBlock for BinaryBlock5 {
+impl BasicBlock for BinaryBlock32 {
     const B: usize = 60;
     const N: usize = 480;
     const W: usize = 32;
@@ -290,16 +281,16 @@ impl BasicBlock for BinaryBlock5 {
     }
 }
 
-/// Only store a count to the middle and then count 256 bits.
+/// Store a single 16 bit offset to the middle.
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct BinaryBlock6 {
+pub struct BinaryBlock16 {
     seq: [u8; 62],
     rank: u16,
 }
 
-impl BasicBlock for BinaryBlock6 {
+impl BasicBlock for BinaryBlock16 {
     const B: usize = 62;
     const N: usize = 496;
     const W: usize = 16;
@@ -337,17 +328,21 @@ impl BasicBlock for BinaryBlock6 {
     }
 }
 
-/// Like BinaryBlock6, but count to the start and linear scan rank in block.
+/// Store a single 16 bit offset to the *start* and use Spider's iterative popcount.
+///
+/// This is a not-quite-faithful reimplementation of the original C version at:
+/// [https://github.com/williams-cs/spider/blob/master/spider.c]
+/// that goes with the SPIDER paper: [https://doi.org/10.4230/LIPIcs.SEA.2024.21]
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
-pub struct Spider {
-    // First 2 bytes are rank offset.
-    // The rest bits.
+pub struct BinaryBlock16Spider {
+    /// First 2 bytes are rank offset.
+    /// The rest bits.
     seq: [u8; 64],
 }
 
-impl BasicBlock for Spider {
+impl BasicBlock for BinaryBlock16Spider {
     const B: usize = 62;
     const N: usize = 496;
     const W: usize = 16;

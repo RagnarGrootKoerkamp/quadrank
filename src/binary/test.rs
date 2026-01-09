@@ -8,14 +8,14 @@ use super::super_blocks::HalfSB;
 
 #[test]
 fn binary() {
-    test::<binary::Ranker<BinaryBlock1>>();
-    test::<binary::Ranker<BinaryBlock2>>();
-    test::<binary::Ranker<BinaryBlock3>>();
-    test::<binary::Ranker<BinaryBlock4>>();
-    test::<binary::Ranker<BinaryBlock5>>();
-    test::<binary::Ranker<BinaryBlock6>>();
-    test::<binary::Ranker<BinaryBlock6, HalfSB>>();
-    test::<binary::Ranker<Spider>>();
+    test::<binary::Ranker<BinaryBlock64x2>>();
+    test::<binary::Ranker<BinaryBlock32x2>>();
+    test::<binary::Ranker<BinaryBlock23_9>>();
+    test::<binary::Ranker<BinaryBlock16x2>>();
+    test::<binary::Ranker<BinaryBlock32>>();
+    test::<binary::Ranker<BinaryBlock16>>();
+    test::<binary::Ranker<BinaryBlock16, HalfSB>>();
+    test::<binary::Ranker<BinaryBlock16Spider>>();
     test::<genedex::Flat64>();
     test::<genedex::Flat512>();
     test::<genedex::Condensed64>();

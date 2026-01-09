@@ -12,8 +12,8 @@ use quadrank::{
     binary::{
         self,
         blocks::{
-            BinaryBlock1, BinaryBlock2, BinaryBlock3, BinaryBlock4, BinaryBlock5, BinaryBlock6,
-            Spider,
+            BinaryBlock16, BinaryBlock16Spider, BinaryBlock16x2, BinaryBlock23_9, BinaryBlock32,
+            BinaryBlock32x2, BinaryBlock64x2,
         },
         super_blocks::HalfSB,
     },
@@ -411,11 +411,11 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<RankSmall4>(seq, queries);
     bench_one_binary::<RankSmall5>(seq, queries);
 
-    bench_one_binary::<binary::Ranker<BinaryBlock1, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock2, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock4, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock6, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<Spider, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock64x2, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock32x2, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16x2, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16Spider, HalfSB>>(seq, queries);
 }
 
 #[derive(clap::Parser)]
