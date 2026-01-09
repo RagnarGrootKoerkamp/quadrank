@@ -21,13 +21,11 @@ use quadrank::{
     quad::{
         LongRanks, Ranker, RankerT,
         blocks::{
-            FullBlock, FullBlockMid, FullBlockTransposed, FullDouble16, FullDouble16Inl,
-            FullDouble32, HexaBlock, HexaBlock2, HexaBlockMid, HexaBlockMid2, HexaBlockMid3,
-            HexaBlockMid4, PentaBlock, Plain128, Plain256, Plain512, QuartBlock, TriBlock,
-            TriBlock2,
+            Basic128, Basic256, Basic512, QuadBlock7_18_7P, QuadBlock16, QuadBlock24_8,
+            QuadBlock32, QuadBlock32_8_8_8FP, QuadBlock64,
         },
         count4::{
-            SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
+            NoCount, SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
             SimdCountSlice, TransposedPopcount, U64PopcntSlice, U128Popcnt3, WideSimdCount2,
         },
         super_blocks::{NoSB, SB8, TrivialSB},
@@ -386,9 +384,9 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<genedex::Condensed64>(seq, queries);
     bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench_one_quad::<Ranker<FullBlockTransposed, HalfSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<TriBlock2, HalfSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<FullDouble16Inl, HalfSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock64, HalfSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock24_8, HalfSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock16, HalfSB, NoCount>>(seq, queries);
 }
 
 #[inline(never)]

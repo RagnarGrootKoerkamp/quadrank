@@ -16,13 +16,13 @@ pub use super_blocks::TrivialSB;
 pub type Ranks = [u32; 4];
 pub type LongRanks = [u64; 4];
 
-pub type QuartRank = Ranker<blocks::QuartBlock, super_blocks::NoSB, count4::SimdCount10>;
-pub type HexRank = Ranker<blocks::HexaBlockMid4, super_blocks::TrivialSB, count4::SimdCount10>;
+pub type QuartRank = Ranker<blocks::QuadBlock32_8_8_8FP, super_blocks::NoSB, count4::SimdCount10>;
+pub type HexRank = Ranker<blocks::QuadBlock7_18_7P, super_blocks::TrivialSB, count4::SimdCount10>;
 pub type QwtRank = ::qwt::RSQVector256;
 
-pub type FastRank = Ranker<blocks::FullBlockTransposed, super_blocks::HalfSB, count4::SimdCount11B>;
-pub type MidRank = Ranker<blocks::TriBlock2, super_blocks::HalfSB, count4::SimdCount11B>;
-pub type SmallRank = Ranker<blocks::FullDouble16Inl, super_blocks::HalfSB, count4::SimdCount11B>;
+pub type FastRank = Ranker<blocks::QuadBlock64, super_blocks::HalfSB, count4::SimdCount11B>;
+pub type MidRank = Ranker<blocks::QuadBlock24_8, super_blocks::HalfSB, count4::SimdCount11B>;
+pub type SmallRank = Ranker<blocks::QuadBlock16, super_blocks::HalfSB, count4::NoCount>;
 
 #[inline(always)]
 fn add(a: Ranks, b: Ranks) -> Ranks {

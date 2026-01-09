@@ -1954,3 +1954,14 @@ pub fn double_mid(data: &[[u8; 16]; 2], pos: usize) -> Ranks {
         ranks[3] as u32,
     ]
 }
+
+/// Placeholder for blocks that inline their counting.
+pub struct NoCount;
+impl CountFn<0> for NoCount {
+    const S: usize = 0;
+    const FIXED: bool = true;
+    const TRANSPOSED: bool = true;
+    fn count(_data: &[u8; 0], _pos: usize) -> Ranks {
+        unimplemented!()
+    }
+}
