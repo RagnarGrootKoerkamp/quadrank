@@ -1,20 +1,37 @@
-ranker,sigma,n,bits,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12
-"RSQVector<RSSupportPlain>",4,512000,1.129,22.56,22.13,21.60,3.76,3.73,3.64,3.59,3.47,3.58
-"RSQVector<RSSupportPlain<512>>",4,512000,1.066,33.46,32.81,32.66,5.57,5.50,5.45,5.61,5.50,5.54
-"FlatTextWithRankSupport<i64>",4,512000,2.669,24.46,7.47,9.69,4.12,1.53,1.66,2.95,1.20,1.54
-"FlatTextWithRankSupport<i64, Block512>",4,512000,2.069,37.24,26.23,28.02,6.34,4.50,4.84,4.50,3.56,4.07
-"CondensedTextWithRankSupport<i64>",4,512000,1.503,16.23,14.15,15.47,2.76,2.40,2.56,2.61,2.28,2.55
-"CondensedTextWithRankSupport<i64, Block512>",4,512000,1.066,28.80,26.47,28.26,5.29,4.48,4.70,4.18,3.85,4.25
-"Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>",4,512000,2.001,17.78,5.56,5.03,3.00,0.98,0.86,1.99,0.89,0.79
-"Ranker<TriBlock2, HalfSB, SimdCount11B, false>",4,512000,1.334,18.14,7.44,6.93,3.16,1.37,1.20,1.78,1.10,1.09
-"Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>",4,512000,1.144,18.83,8.61,8.04,3.17,1.45,1.36,1.88,1.31,1.25
-"RSQVector<RSSupportPlain>",4,16000000000,1.127,101.05,100.00,27.86,19.83,19.47,8.24,11.34,14.80,6.70
-"RSQVector<RSSupportPlain<512>>",4,16000000000,1.064,107.02,113.57,42.60,21.80,22.92,12.11,13.35,15.86,10.38
-"FlatTextWithRankSupport<i64>",4,16000000000,2.669,101.05,34.55,36.50,18.21,7.57,7.19,10.42,5.89,6.30
-"FlatTextWithRankSupport<i64, Block512>",4,16000000000,2.066,125.70,119.48,114.29,25.61,24.17,23.08,15.03,14.24,15.36
-"CondensedTextWithRankSupport<i64>",4,16000000000,1.502,97.35,57.30,25.49,20.37,16.18,6.15,12.11,11.67,5.79
-"CondensedTextWithRankSupport<i64, Block512>",4,16000000000,1.064,110.58,110.13,102.80,24.18,23.18,19.96,13.94,13.05,11.92
-"Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>",4,16000000000,2.000,94.63,24.54,7.98,16.33,7.34,2.86,8.66,4.76,2.61
-"Ranker<TriBlock2, HalfSB, SimdCount11B, false>",4,16000000000,1.333,95.05,31.44,8.83,16.66,9.72,3.39,11.97,6.70,2.83
-"Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>",4,16000000000,1.144,95.64,46.08,10.43,17.21,8.96,2.73,8.80,6.80,2.66
-
+ranker,sigma,n,bits,count4,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12
+"RSQVector<RSSupportPlain>",4,512000,1.129,1,23.12,22.81,21.62,3.86,3.97,3.63,3.61,3.58,3.56
+"RSQVector<RSSupportPlain>",4,512000,1.129,0,16.26,10.85,10.05,2.73,1.85,1.71,2.03,1.67,1.70
+"RSQVector<RSSupportPlain<512>>",4,512000,1.066,1,46.93,45.20,45.79,7.87,7.66,7.71,9.14,8.77,9.12
+"RSQVector<RSSupportPlain<512>>",4,512000,1.066,0,22.80,19.00,19.75,3.62,3.19,3.26,3.24,2.92,3.14
+"FlatTextWithRankSupport<i64>",4,512000,2.669,1,23.50,6.85,9.08,3.97,1.16,1.69,2.88,1.11,1.45
+"FlatTextWithRankSupport<i64>",4,512000,2.669,0,21.02,5.67,9.38,3.57,1.04,1.60,2.38,0.97,1.40
+"FlatTextWithRankSupport<i64, Block512>",4,512000,2.069,1,37.06,26.13,28.44,6.29,4.98,5.83,4.48,3.68,4.11
+"FlatTextWithRankSupport<i64, Block512>",4,512000,2.069,0,27.71,11.64,13.68,4.75,2.00,2.31,3.24,1.80,2.19
+"CondensedTextWithRankSupport<i64>",4,512000,1.503,1,16.82,14.61,15.47,2.91,2.55,2.56,2.64,2.60,2.55
+"CondensedTextWithRankSupport<i64>",4,512000,1.503,0,14.03,6.36,7.23,2.43,1.41,1.20,1.59,1.05,1.22
+"CondensedTextWithRankSupport<i64, Block512>",4,512000,1.066,1,29.07,26.87,28.42,5.03,4.73,4.85,4.25,3.87,4.33
+"CondensedTextWithRankSupport<i64, Block512>",4,512000,1.066,0,26.89,15.07,16.97,4.78,2.87,2.86,2.86,2.24,2.62
+"Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>",4,512000,2.001,1,17.91,5.58,5.03,3.04,0.97,0.85,1.77,0.90,0.80
+"Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>",4,512000,2.001,0,13.71,4.90,4.19,2.37,0.84,0.90,1.42,0.79,0.73
+"Ranker<TriBlock2, HalfSB, SimdCount11B, false>",4,512000,1.334,1,18.11,7.44,6.83,3.16,1.25,1.17,1.77,1.12,1.09
+"Ranker<TriBlock2, HalfSB, SimdCount11B, false>",4,512000,1.334,0,13.28,5.75,6.08,2.27,1.02,1.03,1.36,1.01,1.06
+"Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>",4,512000,1.144,1,18.97,8.60,8.06,3.40,1.45,1.65,1.87,1.30,1.25
+"Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>",4,512000,1.144,0,14.49,7.39,7.80,2.41,1.37,1.74,1.41,1.18,1.30
+"RSQVector<RSSupportPlain>",4,16000000000,1.127,1,98.68,99.73,27.85,19.79,19.32,8.17,11.38,14.23,6.87
+"RSQVector<RSSupportPlain>",4,16000000000,1.127,0,93.37,48.93,16.93,18.83,12.01,6.83,10.30,9.56,5.69
+"RSQVector<RSSupportPlain<512>>",4,16000000000,1.064,1,121.49,125.66,52.62,24.53,27.81,16.86,16.15,15.71,11.76
+"RSQVector<RSSupportPlain<512>>",4,16000000000,1.064,0,96.72,75.04,27.68,20.29,15.66,10.13,11.65,11.78,8.26
+"FlatTextWithRankSupport<i64>",4,16000000000,2.669,1,102.88,34.94,35.95,18.13,7.40,6.69,10.18,5.79,6.15
+"FlatTextWithRankSupport<i64>",4,16000000000,2.669,0,96.00,29.31,29.49,16.95,5.99,5.56,8.92,5.30,4.79
+"FlatTextWithRankSupport<i64, Block512>",4,16000000000,2.066,1,129.29,121.90,114.08,26.07,24.55,22.45,15.04,14.51,15.31
+"FlatTextWithRankSupport<i64, Block512>",4,16000000000,2.066,0,104.54,52.01,46.03,18.72,10.23,8.64,10.07,7.88,8.18
+"CondensedTextWithRankSupport<i64>",4,16000000000,1.502,1,102.68,60.45,27.62,20.94,16.47,5.93,11.69,12.04,5.85
+"CondensedTextWithRankSupport<i64>",4,16000000000,1.502,0,99.77,29.59,19.79,19.84,9.08,5.54,10.81,7.08,5.43
+"CondensedTextWithRankSupport<i64, Block512>",4,16000000000,1.064,1,113.95,113.84,102.44,23.81,23.77,19.88,13.28,13.36,12.13
+"CondensedTextWithRankSupport<i64, Block512>",4,16000000000,1.064,0,105.86,47.13,50.41,21.67,12.33,11.50,11.72,9.81,9.67
+"Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>",4,16000000000,2.000,1,94.57,24.56,7.98,16.35,7.48,2.79,8.56,4.82,2.60
+"Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>",4,16000000000,2.000,0,90.68,19.44,7.98,15.76,6.41,2.65,8.37,4.24,2.63
+"Ranker<TriBlock2, HalfSB, SimdCount11B, false>",4,16000000000,1.333,1,93.88,30.93,8.84,16.51,6.77,2.79,8.90,5.34,2.61
+"Ranker<TriBlock2, HalfSB, SimdCount11B, false>",4,16000000000,1.333,0,89.57,23.42,8.46,15.55,6.11,2.67,8.34,4.92,2.61
+"Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>",4,16000000000,1.144,1,96.24,46.44,10.56,16.92,8.94,2.83,9.22,6.84,2.70
+"Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>",4,16000000000,1.144,0,91.86,31.28,10.90,16.18,7.58,2.78,8.48,5.71,2.69

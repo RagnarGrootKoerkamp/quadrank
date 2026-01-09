@@ -18,7 +18,7 @@ impl QuadRank {
 ## Small FM-index evaluation 
 In `mapper/` there is a count-only FM-index implementation using `QuadRank`.
 
-Here I'm mapping simulated 150bp short reads with 1% error rate against 550MB of
+Here I'm mapping simulated 150bp short reads with 1% error rate against 550Mbp of
 viral genomes. I first build each index (where I don't care about time/space
 usage), and then count the number of matches of each fwd/rc read.
 For `genedex` and `quad`, I query batches of 32 reads at a time.

@@ -10,6 +10,8 @@ use crate::{
     },
 };
 
+use super::count4::{DOUBLE_TRANSPOSED_MID_MASKS, TRANSPOSED_MID_MASKS};
+
 #[inline(always)]
 fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
     if C::S == 0 {
@@ -1368,6 +1370,28 @@ impl BasicBlock for TriBlock2 {
         ranks -= parts >> u32x4::splat(shift);
         ranks.to_array()
     }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, c: u8) -> u32 {
+        let tri = pos / 64;
+        let [l, h]: [u64; 2] = unsafe { std::mem::transmute(self.seq[tri]) };
+        let mask = TRANSPOSED_MID_MASKS[pos % 128];
+        let c2 = !(c as u64);
+        let l = l ^ (c2 & 1).wrapping_neg();
+        let h = h ^ ((c2 >> 1) & 1).wrapping_neg();
+        let cnt = (l & h & mask).count_ones();
+
+        let mut rank = self.ranks[c as usize] >> 8;
+        let shift = (tri as u32 / 2) * 8;
+        let part = self.ranks[c as usize] & 0x00ff;
+        rank -= part >> shift;
+
+        if pos % 128 < 64 {
+            rank - cnt
+        } else {
+            rank + cnt
+        }
+    }
 }
 
 /// Like TriBlock2, but with 4 absolute u64 counts
@@ -1376,6 +1400,7 @@ impl BasicBlock for TriBlock2 {
 #[derive(mem_dbg::MemSize)]
 pub struct FullBlockTransposed {
     // 4*64 = 256 bit counts
+    // FIXME: Update to actual u64 values
     ranks: [[u32; 4]; 2],
     // 2x transposed packed sequence
     seq: [[u8; 16]; 2],
@@ -1430,6 +1455,23 @@ impl BasicBlock for FullBlockTransposed {
         // for tri=0 and tri=1, shift down by 0
         // for tri=2, shift down by 8
         ranks.to_array()
+    }
+
+    #[inline(always)]
+    fn count1(&self, pos: usize, c: u8) -> u32 {
+        let half = pos / 64;
+        let mask = TRANSPOSED_MID_MASKS[pos];
+        let [l, h]: [u64; 2] = unsafe { std::mem::transmute(self.seq[half]) };
+        let c2 = !(c as u64);
+        let l = l ^ (c2 & 1).wrapping_neg();
+        let h = h ^ ((c2 >> 1) & 1).wrapping_neg();
+        let inner_count = (l & h & mask).count_ones();
+        let rank = self.ranks[0][c as usize];
+        if pos < 64 {
+            rank - inner_count
+        } else {
+            rank + inner_count
+        }
     }
 }
 
@@ -1668,5 +1710,31 @@ impl BasicBlock for FullDouble16Inl {
         ranks += self_ranks;
 
         ranks.to_array()
+    }
+
+    #[inline(always)]
+    fn count1(&self, mut pos: usize, c: u8) -> u32 {
+        pos += 32;
+        let half = pos / 128;
+        let data: &[[u8; 16]; 2] = (self.seq[2 * half..2 * half + 2]).try_into().unwrap();
+        let masks = DOUBLE_TRANSPOSED_MID_MASKS[pos];
+        let mut cnt = 0;
+
+        for i in 0..2 {
+            let l = u64::from_le_bytes(data[i][0..8].try_into().unwrap());
+            let h = u64::from_le_bytes(data[i][8..16].try_into().unwrap());
+            let mask = masks[i];
+            // chunk &= mask;
+
+            let c2 = !(c as u64);
+            let l = l ^ (c2 & 1).wrapping_neg();
+            let h = h ^ ((c2 >> 1) & 1).wrapping_neg();
+            cnt += (l & h & mask).count_ones();
+        }
+
+        let seq_u16 = unsafe { &*(self.seq[0].as_ptr() as *const [u16; 8]) };
+        let idx = c + (c & 2);
+        let rank = seq_u16[idx as usize] as u32;
+        if pos < 128 { rank - cnt } else { rank + cnt }
     }
 }

@@ -291,40 +291,52 @@ fn bench_header(threads: usize) {
         "stream"
     );
     println!(
-        "ranker,sigma,n,bits,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12"
+        "ranker,sigma,n,bits,count4,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12"
     );
 }
 
-fn bench<R: RankerT>(packed_seq: &[usize], queries: &QS) {
-    let name = type_name::<R>();
-    let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
-        .unwrap()
-        .replace_all(name, |_: &regex::Captures| "".to_string());
-
-    eprint!("{name:<60}");
-    let n = packed_seq.len() * 64 / 2;
-    eprint!("{n:>11}");
-
+fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
     let ranker = R::new_packed(&packed_seq);
-    let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
-    eprint!("{bits:>6.3}b |");
-    print!("\"{name}\",4,{n},{bits:>.3}");
+    for count4 in [true, false] {
+        let name = type_name::<R>();
+        let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
+            .unwrap()
+            .replace_all(name, |_: &regex::Captures| "".to_string());
 
-    for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
-        time_trip(
-            &queries,
-            t,
-            |q| ranker.prefetch(q),
-            |q| std::hint::black_box(unsafe { ranker.count(q) })[0] as usize,
-            true,
-        );
-        eprint!(" |");
+        eprint!("{name:<60}");
+        let n = packed_seq.len() * 64 / 2;
+        eprint!("{n:>11}");
+
+        let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
+        eprint!("{bits:>6.3}b |");
+        print!("\"{name}\",4,{n},{bits:>.3},{}", count4 as u8);
+
+        for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
+            if count4 {
+                time_trip(
+                    &queries,
+                    t,
+                    |q| ranker.prefetch(q),
+                    |q| std::hint::black_box(unsafe { ranker.count(q) })[0] as usize,
+                    true,
+                );
+            } else {
+                time_trip(
+                    &queries,
+                    t,
+                    |q| ranker.prefetch(q),
+                    |q| std::hint::black_box(unsafe { ranker.count1(q, q as u8 & 3) }),
+                    true,
+                );
+            }
+            eprint!(" |");
+        }
+        eprintln!();
+        println!();
     }
-    eprintln!();
-    println!();
 }
 
-fn bench1<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
+fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
     let name = type_name::<R>();
     let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
         .unwrap()
@@ -337,7 +349,7 @@ fn bench1<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
     let ranker = R::new_packed(&packed_seq);
     let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
     eprint!("{bits:>6.3}b |");
-    print!("\"{name}\",2,{n},{bits:>.3}");
+    print!("\"{name}\",2,{n},{bits:>.3},0");
 
     for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
         time_trip(
@@ -366,44 +378,44 @@ fn bench_quad(seq: &[usize], queries: &QS) {
 
     bench_header(queries.len());
 
-    bench::<qwt::RSQVector256>(seq, queries);
-    bench::<qwt::RSQVector512>(seq, queries);
+    bench_one_quad::<qwt::RSQVector256>(seq, queries);
+    bench_one_quad::<qwt::RSQVector512>(seq, queries);
 
-    bench::<genedex::Flat64>(seq, queries);
-    bench::<genedex::Flat512>(seq, queries);
-    bench::<genedex::Condensed64>(seq, queries);
-    bench::<genedex::Condensed512>(seq, queries);
+    bench_one_quad::<genedex::Flat64>(seq, queries);
+    bench_one_quad::<genedex::Flat512>(seq, queries);
+    bench_one_quad::<genedex::Condensed64>(seq, queries);
+    bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench::<Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<TriBlock2, HalfSB, SimdCount11B, false>>(seq, queries);
-    bench::<Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>>(seq, queries);
+    bench_one_quad::<Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>>(seq, queries);
+    bench_one_quad::<Ranker<TriBlock2, HalfSB, SimdCount11B, false>>(seq, queries);
+    bench_one_quad::<Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>>(seq, queries);
 }
 
 #[inline(never)]
 fn bench_binary(seq: &[usize], queries: &QS) {
     bench_header(queries.len());
 
-    bench1::<qwt::RSNarrow>(seq, queries);
-    bench1::<qwt::RSWide>(seq, queries);
+    bench_one_binary::<qwt::RSNarrow>(seq, queries);
+    bench_one_binary::<qwt::RSWide>(seq, queries);
 
-    bench1::<genedex::Condensed64>(seq, queries);
-    bench1::<genedex::Condensed512>(seq, queries);
+    bench_one_binary::<genedex::Condensed64>(seq, queries);
+    bench_one_binary::<genedex::Condensed512>(seq, queries);
 
-    bench1::<bitm::RankSelect101111>(seq, queries);
-    bench1::<vers_vecs::RsVec>(seq, queries);
+    bench_one_binary::<bitm::RankSelect101111>(seq, queries);
+    bench_one_binary::<vers_vecs::RsVec>(seq, queries);
 
-    bench1::<Rank9>(seq, queries);
-    bench1::<RankSmall1>(seq, queries);
-    bench1::<RankSmall2>(seq, queries);
-    bench1::<RankSmall3>(seq, queries);
-    bench1::<RankSmall4>(seq, queries);
-    bench1::<RankSmall5>(seq, queries);
+    bench_one_binary::<Rank9>(seq, queries);
+    bench_one_binary::<RankSmall1>(seq, queries);
+    bench_one_binary::<RankSmall2>(seq, queries);
+    bench_one_binary::<RankSmall3>(seq, queries);
+    bench_one_binary::<RankSmall4>(seq, queries);
+    bench_one_binary::<RankSmall5>(seq, queries);
 
-    bench1::<binary::Ranker<BinaryBlock1, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock2, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock4, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<BinaryBlock6, HalfSB>>(seq, queries);
-    bench1::<binary::Ranker<Spider, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock1, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock2, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock4, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock6, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<Spider, HalfSB>>(seq, queries);
 }
 
 #[derive(clap::Parser)]

@@ -17,6 +17,8 @@ unit = "b" if sigma == 2 else "bp"
 df["extra_bits"] = df.bits - 1
 df["overhead"] = 100 * df.extra_bits
 
+has_count4 = "count4" in df.columns
+
 
 def get_source(name):
     if "<Plain" in name:
@@ -122,11 +124,16 @@ def plot(ax, data, r, c, rows, mode, threads):
         if marker is None:
             continue
 
+        if not has_count4 or row["count4"] == 1:
+            s = 40
+        else:
+            s = 10
+
         ax.scatter(
             row["overhead"],
             row[col],
             color=color,
-            s=40,
+            s=s,
             marker=marker,
             label=row["source"],
         )
@@ -137,7 +144,7 @@ def plot(ax, data, r, c, rows, mode, threads):
                 row["overhead"],
                 row[col2],
                 color=color,
-                s=40,
+                s=s,
                 marker=marker,
                 # label="",
                 alpha=0.1,
