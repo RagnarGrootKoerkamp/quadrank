@@ -16,16 +16,13 @@ pub use super_blocks::TrivialSB;
 pub type Ranks = [u32; 4];
 pub type LongRanks = [u64; 4];
 
-pub type QuartRank = Ranker<blocks::QuartBlock, super_blocks::NoSB, count4::SimdCount10, false>;
-pub type HexRank =
-    Ranker<blocks::HexaBlockMid4, super_blocks::TrivialSB, count4::SimdCount10, false>;
+pub type QuartRank = Ranker<blocks::QuartBlock, super_blocks::NoSB, count4::SimdCount10>;
+pub type HexRank = Ranker<blocks::HexaBlockMid4, super_blocks::TrivialSB, count4::SimdCount10>;
 pub type QwtRank = ::qwt::RSQVector256;
 
-pub type FastRank =
-    Ranker<blocks::FullBlockTransposed, super_blocks::HalfSB, count4::SimdCount11B, false>;
-pub type MidRank = Ranker<blocks::TriBlock2, super_blocks::HalfSB, count4::SimdCount11B, false>;
-pub type SmallRank =
-    Ranker<blocks::FullDouble16Inl, super_blocks::HalfSB, count4::SimdCount11B, false>;
+pub type FastRank = Ranker<blocks::FullBlockTransposed, super_blocks::HalfSB, count4::SimdCount11B>;
+pub type MidRank = Ranker<blocks::TriBlock2, super_blocks::HalfSB, count4::SimdCount11B>;
+pub type SmallRank = Ranker<blocks::FullDouble16Inl, super_blocks::HalfSB, count4::SimdCount11B>;
 
 #[inline(always)]
 fn add(a: Ranks, b: Ranks) -> Ranks {
@@ -51,7 +48,7 @@ pub trait BasicBlock: Sync {
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self;
     /// Count the number of times each character occurs before position `pos`.
-    fn count<CF: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>, const C3: bool>(
+    fn count<CF: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>>(
         &self,
         pos: usize,
     ) -> Ranks;

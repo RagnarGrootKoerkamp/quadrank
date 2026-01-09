@@ -4,7 +4,7 @@ use crate::count::{count_u8, count_u8x8};
 use crate::prefetch_index;
 use std::marker::PhantomData;
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const C3: bool> {
+pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>> {
     /// Cacheline-sized counts.
     blocks: Vec<BB>,
     /// Additional sparse counts.
@@ -14,12 +14,8 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>, const 
 
 const TARGET_BITS: usize = 40;
 
-impl<
-    BB: BasicBlock,
-    SB: SuperBlock,
-    CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>,
-    const C3: bool,
-> RankerT for Ranker<BB, SB, CF, C3>
+impl<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>>
+    RankerT for Ranker<BB, SB, CF>
 where
     [(); BB::B]:,
     [(); SB::BB]:,
@@ -130,7 +126,7 @@ where
             let mut ranks = self
                 .blocks
                 .get_unchecked(block_idx)
-                .count::<CF, C3>(block_pos)
+                .count::<CF>(block_pos)
                 .map(|x| x as u64);
             if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / Self::LONG_STRIDE;
@@ -185,12 +181,8 @@ where
         (rank0, rank1)
     }
 }
-impl<
-    BB: BasicBlock,
-    SB: SuperBlock,
-    CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>,
-    const C3: bool,
-> Ranker<BB, SB, CF, C3>
+impl<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>>
+    Ranker<BB, SB, CF>
 where
     [(); BB::B]:,
     [(); SB::BB]:,

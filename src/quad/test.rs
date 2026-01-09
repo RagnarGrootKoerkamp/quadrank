@@ -12,34 +12,34 @@ use crate::quad::super_blocks::SB8;
 
 #[test]
 fn quad() {
-    test::<quad::Ranker<Plain128, TrivialSB, WideSimdCount2, false>>();
-    test::<quad::Ranker<Plain256, TrivialSB, SimdCountSlice, false>>();
-    test::<quad::Ranker<Plain512, TrivialSB, SimdCountSlice, false>>();
-    test::<quad::Ranker<Plain512, SB8, U128Popcnt3, true>>();
-    test::<quad::Ranker<Plain512, SB8, SimdCountSlice, false>>();
-    // test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice, false>>();
-    // test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice, false>>();
-    // test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2, false>>();
-    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount8, false>>();
-    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount9, false>>();
-    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount10, false>>();
-    test::<quad::Ranker<PentaBlock, TrivialSB, SimdCount8, false>>();
-    test::<quad::Ranker<HexaBlock, TrivialSB, WideSimdCount2, false>>();
-    test::<quad::Ranker<HexaBlock2, TrivialSB, WideSimdCount2, false>>();
-    test::<quad::Ranker<HexaBlockMid, TrivialSB, SimdCount8, false>>();
-    test::<quad::Ranker<HexaBlockMid, TrivialSB, SimdCount9, false>>();
-    test::<quad::Ranker<HexaBlockMid2, TrivialSB, SimdCount9, false>>();
-    test::<quad::Ranker<HexaBlockMid2, TrivialSB, SimdCount10, false>>();
-    test::<quad::Ranker<HexaBlockMid3, TrivialSB, SimdCount10, false>>();
-    test::<quad::Ranker<HexaBlockMid4, TrivialSB, SimdCount10, false>>();
-    test::<quad::Ranker<TriBlock, TrivialSB, SimdCount11, false>>();
-    test::<quad::Ranker<TriBlock, TrivialSB, SimdCount11B, false>>();
-    test::<quad::Ranker<TriBlock2, TrivialSB, SimdCount11B, false>>();
-    test::<quad::Ranker<TriBlock2, TrivialSB, TransposedPopcount, false>>();
-    test::<quad::Ranker<FullBlockTransposed, TrivialSB, SimdCount11B, false>>();
-    test::<quad::Ranker<FullDouble32, TrivialSB, SimdCount11B, false>>();
-    test::<quad::Ranker<FullDouble16, TrivialSB, SimdCount11B, false>>();
-    test::<quad::Ranker<FullDouble16Inl, TrivialSB, SimdCount11B, false>>();
+    test::<quad::Ranker<Plain128, TrivialSB, WideSimdCount2>>();
+    test::<quad::Ranker<Plain256, TrivialSB, SimdCountSlice>>();
+    test::<quad::Ranker<Plain512, TrivialSB, SimdCountSlice>>();
+    test::<quad::Ranker<Plain512, SB8, U128Popcnt3>>();
+    test::<quad::Ranker<Plain512, SB8, SimdCountSlice>>();
+    // test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice>>();
+    // test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice>>();
+    // test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2>>();
+    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount8>>();
+    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount9>>();
+    test::<quad::Ranker<QuartBlock, TrivialSB, SimdCount10>>();
+    test::<quad::Ranker<PentaBlock, TrivialSB, SimdCount8>>();
+    test::<quad::Ranker<HexaBlock, TrivialSB, WideSimdCount2>>();
+    test::<quad::Ranker<HexaBlock2, TrivialSB, WideSimdCount2>>();
+    test::<quad::Ranker<HexaBlockMid, TrivialSB, SimdCount8>>();
+    test::<quad::Ranker<HexaBlockMid, TrivialSB, SimdCount9>>();
+    test::<quad::Ranker<HexaBlockMid2, TrivialSB, SimdCount9>>();
+    test::<quad::Ranker<HexaBlockMid2, TrivialSB, SimdCount10>>();
+    test::<quad::Ranker<HexaBlockMid3, TrivialSB, SimdCount10>>();
+    test::<quad::Ranker<HexaBlockMid4, TrivialSB, SimdCount10>>();
+    test::<quad::Ranker<TriBlock, TrivialSB, SimdCount11>>();
+    test::<quad::Ranker<TriBlock, TrivialSB, SimdCount11B>>();
+    test::<quad::Ranker<TriBlock2, TrivialSB, SimdCount11B>>();
+    test::<quad::Ranker<TriBlock2, TrivialSB, TransposedPopcount>>();
+    test::<quad::Ranker<FullBlockTransposed, TrivialSB, SimdCount11B>>();
+    test::<quad::Ranker<FullDouble32, TrivialSB, SimdCount11B>>();
+    test::<quad::Ranker<FullDouble16, TrivialSB, SimdCount11B>>();
+    test::<quad::Ranker<FullDouble16Inl, TrivialSB, SimdCount11B>>();
     test::<qwt::RSQVector256>();
     test::<qwt::RSQVector512>();
     test::<genedex::Flat64>();
@@ -47,9 +47,9 @@ fn quad() {
     test::<genedex::Condensed64>();
     test::<genedex::Condensed512>();
 
-    test1::<quad::Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>>();
-    test1::<quad::Ranker<TriBlock2, HalfSB, SimdCount11B, false>>();
-    test1::<quad::Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>>();
+    test1::<quad::Ranker<FullBlockTransposed, HalfSB, SimdCount11B>>();
+    test1::<quad::Ranker<TriBlock2, HalfSB, SimdCount11B>>();
+    test1::<quad::Ranker<FullDouble16Inl, HalfSB, SimdCount11B>>();
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());

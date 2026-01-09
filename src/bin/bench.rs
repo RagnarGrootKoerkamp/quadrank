@@ -386,9 +386,9 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<genedex::Condensed64>(seq, queries);
     bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench_one_quad::<Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>>(seq, queries);
-    bench_one_quad::<Ranker<TriBlock2, HalfSB, SimdCount11B, false>>(seq, queries);
-    bench_one_quad::<Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>>(seq, queries);
+    bench_one_quad::<Ranker<FullBlockTransposed, HalfSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<TriBlock2, HalfSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<FullDouble16Inl, HalfSB, SimdCount11B>>(seq, queries);
 }
 
 #[inline(never)]
