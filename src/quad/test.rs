@@ -1,11 +1,14 @@
 use std::sync::LazyLock;
 
+use rand::Rng;
+
 use super::blocks::*;
+use super::super_blocks::HalfSB;
 use crate::genedex;
 use crate::quad;
 use crate::quad::TrivialSB;
 use crate::quad::count4::*;
-use crate::quad::super_blocks::{NoSB, SB8};
+use crate::quad::super_blocks::SB8;
 
 #[test]
 fn quad() {
@@ -43,6 +46,10 @@ fn quad() {
     test::<genedex::Flat512>();
     test::<genedex::Condensed64>();
     test::<genedex::Condensed512>();
+
+    test1::<quad::Ranker<FullBlockTransposed, HalfSB, SimdCount11B, false>>();
+    test1::<quad::Ranker<TriBlock2, HalfSB, SimdCount11B, false>>();
+    test1::<quad::Ranker<FullDouble16Inl, HalfSB, SimdCount11B, false>>();
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
@@ -68,21 +75,35 @@ fn test<R: quad::RankerT>() {
                 a,
                 r
             );
-            // let r = ranker.count1(*q, *c) as usize;
-            // assert_eq!(
-            //     r,
-            //     *a,
-            //     "failed test: ranker {} seq len {}, query {}, want {}, got {}",
-            //     std::any::type_name::<R>(),
-            //     test.seq.len(),
-            //     q,
-            //     a,
-            //     r
-            // );
         }
     }
 }
 
+fn test1<R: quad::RankerT>() {
+    for test in &*TESTS {
+        eprintln!(
+            "testing ranker {} on len {} words for count1",
+            std::any::type_name::<R>(),
+            test.seq.len()
+        );
+        let ranker = R::new_packed(&test.seq);
+        for (q, a) in &test.queries {
+            for c in 0..4 {
+                let r = ranker.count1(*q, c) as usize;
+                assert_eq!(
+                    r,
+                    a[c as usize],
+                    "failed test: ranker {} seq len {}, query {}, want {}, got {}",
+                    std::any::type_name::<R>(),
+                    test.seq.len(),
+                    q,
+                    a[c as usize],
+                    r
+                );
+            }
+        }
+    }
+}
 struct Test {
     seq: Vec<usize>,
     queries: Vec<(usize, [usize; 4])>,
@@ -103,7 +124,7 @@ fn seqs() -> Vec<Vec<usize>> {
     // 01230123...
     let m = 0b1110010011100100111001001110010011100100111001001110010011100100;
     let mut seqs = vec![];
-    for len in 1..100 {
+    for len in 1..500 {
         seqs.push(vec![0; len]);
         seqs.push(vec![m; len]);
         seqs.push(vec![rand::random::<u64>() as usize; len]);
@@ -117,9 +138,14 @@ fn seqs() -> Vec<Vec<usize>> {
         rand::random_range(160_000_000..200_000_000),
     ] {
         eprintln!("generating seq of len {}", len);
+        // all ones
         seqs.push(vec![usize::MAX; len]);
-        seqs.push(vec![m; len]);
-        seqs.push(vec![rand::random::<u64>() as usize; len]);
+
+        // random
+        let mut rnd = vec![0u64; len];
+        rand::rng().fill(rnd.as_mut_slice());
+        let rnd = rnd.into_iter().map(|x| x as usize).collect();
+        seqs.push(rnd);
     }
 
     seqs
@@ -128,14 +154,15 @@ fn seqs() -> Vec<Vec<usize>> {
 fn queries(seq: &Vec<usize>) -> Vec<(usize, [usize; 4])> {
     let n = seq.len() * usize::BITS as usize / 2;
     let mut queries = vec![];
-    if n <= 10000 {
-        for i in 0..n {
+    if n <= 1000 {
+        for i in 0..=n {
             queries.push(i);
         }
     } else {
         queries.push(0);
         queries.push(n - 1);
-        for _ in 0..2000 {
+        queries.push(n);
+        for _ in 0..10000 {
             queries.push(rand::random_range(0..n));
         }
     }

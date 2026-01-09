@@ -66,10 +66,13 @@ pub trait SuperBlock: Sync {
     /// Bit-width of the basic block ranks.
     const W: usize;
 
+    /// This many low bits are shifted out.
+    const SHIFT: usize;
+
     fn new(ranks: [LongRanks; Self::BB]) -> Self;
     fn get(&self, idx: usize) -> LongRanks;
-    fn get1(&self, idx: usize) -> usize {
-        self.get(idx)[0] as usize
+    fn get1(&self, idx: usize, c: u8) -> usize {
+        self.get(idx)[c as usize] as usize
     }
 }
 

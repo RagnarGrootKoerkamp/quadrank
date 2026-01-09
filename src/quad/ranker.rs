@@ -1,5 +1,5 @@
 use super::count4::CountFn;
-use super::{BasicBlock, LongRanks, RankerT, Ranks, SuperBlock};
+use super::{BasicBlock, LongRanks, RankerT, SuperBlock};
 use crate::count::{count_u8, count_u8x8};
 use crate::prefetch_index;
 use std::marker::PhantomData;
@@ -42,7 +42,12 @@ where
                     l_ranks[i] += ranks[i] as u64;
                 }
                 block_ranks.push(l_ranks);
-                ranks = [0; 4];
+
+                let mask = (1 << SB::SHIFT) - 1;
+                for i in 0..4 {
+                    ranks[i] &= mask;
+                    l_ranks[i] &= !(mask as u64);
+                }
             }
             blocks.push(BB::new(ranks, chunk));
 
@@ -148,12 +153,12 @@ where
             let block_idx = pos / BB::N;
             let block_pos = pos % BB::N;
             let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c) as usize;
-            if (BB::W) < 32 {
+            if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / Self::LONG_STRIDE;
                 let long_rank = self
                     .super_blocks
                     .get_unchecked(long_pos / SB::BB)
-                    .get1(long_pos % SB::BB);
+                    .get1(long_pos % SB::BB, c);
                 rank += long_rank;
             }
             rank
@@ -169,11 +174,11 @@ where
             self.blocks[block_idx0].count1x2(&self.blocks[block_idx1], block_pos0, block_pos1, c);
         let mut rank0 = rank0 as usize;
         let mut rank1 = rank1 as usize;
-        if (BB::W) < 32 {
+        if (BB::W) < TARGET_BITS {
             let long_pos0 = block_idx0 / Self::LONG_STRIDE;
             let long_pos1 = block_idx1 / Self::LONG_STRIDE;
-            let long_ranks0 = self.super_blocks[long_pos0 / SB::BB].get1(long_pos0 % SB::BB);
-            let long_ranks1 = self.super_blocks[long_pos1 / SB::BB].get1(long_pos1 % SB::BB);
+            let long_ranks0 = self.super_blocks[long_pos0 / SB::BB].get1(long_pos0 % SB::BB, c);
+            let long_ranks1 = self.super_blocks[long_pos1 / SB::BB].get1(long_pos1 % SB::BB, c);
             rank0 += long_ranks0;
             rank1 += long_ranks1;
         }

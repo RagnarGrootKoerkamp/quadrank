@@ -8,6 +8,7 @@ pub struct NoSB;
 impl SuperBlock for NoSB {
     const BB: usize = 1;
     const W: usize = 32;
+    const SHIFT: usize = 0;
     #[inline(always)]
     fn new(_ranks: [LongRanks; 1]) -> Self {
         Self
@@ -27,6 +28,7 @@ pub struct TrivialSB {
 impl SuperBlock for TrivialSB {
     const BB: usize = 1;
     const W: usize = 0;
+    const SHIFT: usize = 0;
     #[inline(always)]
     fn new(ranks: [LongRanks; 1]) -> Self {
         Self { block: ranks[0] }
@@ -47,6 +49,7 @@ pub struct HalfSB {
 impl SuperBlock for HalfSB {
     const BB: usize = 1;
     const W: usize = 0;
+    const SHIFT: usize = 8;
     #[inline(always)]
     fn new(ranks: [LongRanks; 1]) -> Self {
         Self {
@@ -73,6 +76,7 @@ pub struct SB8 {
 impl SuperBlock for SB8 {
     const BB: usize = 8;
     const W: usize = 0;
+    const SHIFT: usize = 0;
 
     #[inline(always)]
     fn new(ranks: [LongRanks; 8]) -> Self {
