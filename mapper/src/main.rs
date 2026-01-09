@@ -16,7 +16,7 @@ use genedex::text_with_rank_support::{
     Block64, Block512, CondensedTextWithRankSupport, FlatTextWithRankSupport, TextWithRankSupport,
 };
 use mem_dbg::MemSize;
-use quadrank::quad::{HexRank, QuartRank, QwtRank, RankerT};
+use quadrank::quad::*;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::{Path, PathBuf},
@@ -510,7 +510,7 @@ fn main() {
         bwt(&args.reference, bwt_path);
     }
     let bwt = std::fs::read(bwt_path).unwrap();
-    let bwt: BWT = bincode::decode_from_slice(&bwt, bincode::config::legacy())
+    let mut bwt: BWT = bincode::decode_from_slice(&bwt, bincode::config::legacy())
         .unwrap()
         .0;
 
@@ -541,13 +541,16 @@ fn main() {
         );
     }
 
+    map::<SmallRank>(&bwt, &reads);
+    map::<MidRank>(&bwt, &reads);
+    map::<FastRank>(&bwt, &reads);
     map::<QuartRank>(&bwt, &reads);
     map::<HexRank>(&bwt, &reads);
     map::<QwtRank>(&bwt, &reads);
+    map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
+    map_genedex::<CondensedTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
+    map_genedex::<FlatTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
+    map_genedex::<CondensedTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
     // map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
-    // map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
-    // map_genedex::<CondensedTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
-    // map_genedex::<FlatTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
-    // map_genedex::<CondensedTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
 }

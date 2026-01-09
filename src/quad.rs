@@ -21,6 +21,12 @@ pub type HexRank =
     Ranker<blocks::HexaBlockMid4, super_blocks::TrivialSB, count4::SimdCount10, false>;
 pub type QwtRank = ::qwt::RSQVector256;
 
+pub type FastRank =
+    Ranker<blocks::FullBlockTransposed, super_blocks::HalfSB, count4::SimdCount11B, false>;
+pub type MidRank = Ranker<blocks::TriBlock2, super_blocks::HalfSB, count4::SimdCount11B, false>;
+pub type SmallRank =
+    Ranker<blocks::FullDouble16Inl, super_blocks::HalfSB, count4::SimdCount11B, false>;
+
 #[inline(always)]
 fn add(a: Ranks, b: Ranks) -> Ranks {
     from_fn(|c| a[c] + b[c])

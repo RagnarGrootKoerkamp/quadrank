@@ -1,13 +1,13 @@
 name,bit/bp,k reads/s,color,lookup
 fm_index,3.14,575,black,0
 
-genedex::Flat64,6.7,3041,red,0
+genedex::Flat64,6.7,3360,red,0
  ,6.86,3772,black,10
 genedex::Condensed64,4.25,2061,red,0
  ,4.45,2320,black,10
-genedex::Flat512,5.19,2080,red,0
+genedex::Flat512,5.19,2160,red,0
  ,5.36,1930,black,10
-genedex::Condensed512,3.18,950,red,0
+genedex::Condensed512,3.18,1262,red,0
  ,3.35,1030,black,10
 
 qwt::RSQVector256,2.25,3059,brown,0
@@ -17,3 +17,8 @@ QuartBlock,4.0,7510,#ffc107,0
  ,4.0,8052,black,8
 HexBlockMid,2.67,5874,#ffc107,0
  ,2.67,6654,black,8
+
+Small,2.295,5448,#ffc107,0
+Mid,2.674,6278,#ffc107,0
+Fast,4.007,7337,#ffc107,0
+Qwt,2.261,3774,brown,0
