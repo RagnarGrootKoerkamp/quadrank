@@ -5,6 +5,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIter
 
 #[derive(bincode::Encode, bincode::Decode, PartialEq)]
 pub struct BWT {
+    /// A vector of u8 encoded values 0/1/2/3.
     pub bwt: Vec<u8>,
     pub sentinel: usize,
 }

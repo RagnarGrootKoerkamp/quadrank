@@ -10,16 +10,16 @@ type Rank = qwt::RSQVector256;
 
 pub struct FM<Rank: RankerT = HexRank> {
     n: usize,
-    rank: Rank,
+    ranker: Rank,
     sentinel: usize,
     occ: Vec<usize>,
     prefix: usize,
     prefix_lookup: Vec<(u32, u32)>,
 }
 
-impl<Rank: RankerT> FM<Rank> {
+impl<Ranker: RankerT> FM<Ranker> {
     pub fn size(&self) -> usize {
-        self.rank.size()
+        self.ranker.size()
             + std::mem::size_of_val(self.occ.as_slice())
             + std::mem::size_of_val(self.prefix_lookup.as_slice())
     }
@@ -30,15 +30,25 @@ impl<Rank: RankerT> FM<Rank> {
     pub fn new_with_prefix(bwt: &BWT, prefix: usize) -> Self {
         let n = bwt.bwt.len();
 
-        let dna_bwt = bwt
+        let mut packed_bwt = bwt
             .bwt
-            .iter()
-            .map(|&c| b"ACTG"[c as usize])
-            .collect::<Vec<_>>();
-        // eprintln!("bwt: {:?}", bwt.bwt);
-        // eprintln!("dna_bwt: {:?}", str::from_utf8(&dna_bwt).unwrap());
+            .chunks(4)
+            .map(|cc| {
+                let mut x = 0u8;
+                for (i, c) in cc.iter().enumerate() {
+                    x |= c << (i * 2);
+                }
+                x
+            })
+            .collect::<Vec<u8>>();
+        for _ in 0..128 {
+            packed_bwt.push(0);
+        }
+        let (head, mid, tail) = unsafe { packed_bwt.align_to::<usize>() };
+        assert!(head.is_empty());
+        let packed_bwt = mid;
 
-        let rank = RankerT::new(&dna_bwt);
+        let ranker = Ranker::new_packed(&packed_bwt);
         let mut occ = vec![0; 5];
         for &c in &bwt.bwt {
             occ[c as usize + 1] += 1;
@@ -48,11 +58,10 @@ impl<Rank: RankerT> FM<Rank> {
         for i in 1..5 {
             occ[i] += occ[i - 1];
         }
-        // eprintln!("sentinel: {}", bwt.sentinel);
 
         let mut fm = Self {
             n,
-            rank,
+            ranker,
             sentinel: bwt.sentinel,
             occ,
             prefix: 0,
@@ -61,7 +70,6 @@ impl<Rank: RankerT> FM<Rank> {
 
         // query every prefix of length `prefix` and store the (s, t) ranges.
         if prefix > 0 {
-            // eprintln!("Building prefix table for length {prefix}");
             assert!(prefix <= 8);
             let mut lookup = Vec::new();
             let mut done = false;
@@ -71,10 +79,6 @@ impl<Rank: RankerT> FM<Rank> {
                 let (_, (s, t)) = fm.query_range(&bases.to_le_bytes()[0..prefix]);
                 lookup.push((s, t));
             }
-            // eprintln!(
-            //     "prefix lookup size: {} kB",
-            //     std::mem::size_of_val(lookup.as_slice()) / 1024
-            // );
             fm.prefix_lookup = lookup;
             fm.prefix = prefix;
         }
@@ -89,11 +93,11 @@ impl<Rank: RankerT> FM<Rank> {
             steps += 1;
             let occ = self.occ[c as usize];
             let ranks_s = self
-                .rank
+                .ranker
                 .count1(s as usize - (s > self.sentinel) as usize, c);
             s = occ + ranks_s as usize;
             let ranks_t = self
-                .rank
+                .ranker
                 .count1(t as usize - (t > self.sentinel) as usize, c);
             t = occ + ranks_t as usize;
             if s == t {
@@ -143,9 +147,9 @@ impl<Rank: RankerT> FM<Rank> {
                     // Note: idx is not incremented here.
                     continue;
                 }
-                self.rank
+                self.ranker
                     .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
-                self.rank
+                self.ranker
                     .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
 
                 idx += 1;
@@ -164,15 +168,15 @@ impl<Rank: RankerT> FM<Rank> {
                 let occ = self.occ[c as usize];
                 if true {
                     let ranks_s = self
-                        .rank
+                        .ranker
                         .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                     s[i] = occ + ranks_s as usize;
                     let ranks_t = self
-                        .rank
+                        .ranker
                         .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                     t[i] = occ + ranks_t as usize;
                 } else {
-                    let (ranks_s, ranks_t) = self.rank.count1x2(
+                    let (ranks_s, ranks_t) = self.ranker.count1x2(
                         s[i] as usize - (s[i] > self.sentinel) as usize,
                         t[i] as usize - (t[i] > self.sentinel) as usize,
                         c,
@@ -245,15 +249,15 @@ impl<Rank: RankerT> FM<Rank> {
                 let occ = self.occ[c as usize];
                 if false {
                     let ranks_s = self
-                        .rank
+                        .ranker
                         .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                     s[i] = occ + ranks_s as usize;
                     let ranks_t = self
-                        .rank
+                        .ranker
                         .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                     t[i] = occ + ranks_t as usize;
                 } else {
-                    let (ranks_s, ranks_t) = self.rank.count1x2(
+                    let (ranks_s, ranks_t) = self.ranker.count1x2(
                         s[i] as usize - (s[i] > self.sentinel) as usize,
                         t[i] as usize - (t[i] > self.sentinel) as usize,
                         c,
@@ -265,9 +269,9 @@ impl<Rank: RankerT> FM<Rank> {
                 if idx > 0 {
                     let i = active[idx - 1] as usize;
                     if s[i] < t[i] && text_idx + 1 < text[i].len() {
-                        self.rank
+                        self.ranker
                             .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
-                        self.rank
+                        self.ranker
                             .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
                     }
                 }
@@ -275,9 +279,9 @@ impl<Rank: RankerT> FM<Rank> {
             {
                 let i = active[num_alive - 1] as usize;
                 if s[i] < t[i] && text_idx + 1 < text[i].len() {
-                    self.rank
+                    self.ranker
                         .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
-                    self.rank
+                    self.ranker
                         .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
                 }
             }
@@ -324,9 +328,9 @@ impl<Rank: RankerT> FM<Rank> {
                     texts[i] = &input_texts[next];
                     next += 1;
                 }
-                self.rank
+                self.ranker
                     .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
-                self.rank
+                self.ranker
                     .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
             }
 
@@ -340,11 +344,11 @@ impl<Rank: RankerT> FM<Rank> {
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
                 let ranks_s = self
-                    .rank
+                    .ranker
                     .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                 s[i] = occ + ranks_s as usize;
                 let ranks_t = self
-                    .rank
+                    .ranker
                     .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                 t[i] = occ + ranks_t as usize;
                 text_idx[i] += 1;
