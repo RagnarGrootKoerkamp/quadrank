@@ -24,15 +24,6 @@ pub type FastRank = Ranker<blocks::QuadBlock64, super_blocks::ShiftSB, count4::S
 pub type MidRank = Ranker<blocks::QuadBlock24_8, super_blocks::ShiftSB, count4::SimdCount11B>;
 pub type SmallRank = Ranker<blocks::QuadBlock16, super_blocks::ShiftSB, count4::NoCount>;
 
-#[inline(always)]
-fn add(a: Ranks, b: Ranks) -> Ranks {
-    from_fn(|c| a[c] + b[c])
-}
-#[inline(always)]
-fn strict_add(a: Ranks, b: Ranks) -> Ranks {
-    from_fn(|c| a[c].strict_add(b[c]))
-}
-
 pub trait BasicBlock: Sync {
     /// Character width. 1 for binary, 2 for DNA.
     const X: usize;

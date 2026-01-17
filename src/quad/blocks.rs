@@ -3,17 +3,19 @@
 use std::{arch::x86_64::_mm_sign_epi32, array::from_fn, simd::u32x4};
 
 use crate::{
-    count::{count_u8x8, count_u8x16, count_u64_mask, count_u64_mid_mask},
+    count::{count_u8x8, count_u64_mask, count_u64_mid_mask},
     quad::{
-        BasicBlock, Ranks, add,
-        count4::{CountFn, WideSimdCount2, count4_u8x8, double_mid},
+        BasicBlock, Ranks,
+        count4::{CountFn, count4_u8x8, double_mid},
     },
 };
 
-use super::{
-    count4::{DOUBLE_TRANSPOSED_MID_MASKS, TRANSPOSED_MID_MASKS},
-    strict_add,
-};
+use super::count4::{DOUBLE_TRANSPOSED_MID_MASKS, TRANSPOSED_MID_MASKS};
+
+#[inline(always)]
+fn strict_add(a: Ranks, b: Ranks) -> Ranks {
+    from_fn(|c| a[c].strict_add(b[c]))
+}
 
 #[inline(always)]
 fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
