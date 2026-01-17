@@ -23,11 +23,11 @@ fn binary() {
     test::<qwt::RSNarrow>();
     test::<qwt::RSWide>();
     test::<sux::Rank9>();
+    test::<sux::RankSmall0>();
     test::<sux::RankSmall1>();
     test::<sux::RankSmall2>();
     test::<sux::RankSmall3>();
     test::<sux::RankSmall4>();
-    test::<sux::RankSmall5>();
 
     test::<succinct::Rank9<Vec<u64>>>();
     test::<succinct::JacobsonRank<Vec<u64>>>();

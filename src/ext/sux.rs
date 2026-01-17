@@ -44,8 +44,8 @@ impl_rank_small!(RankSmall<1,10>);
 impl_rank_small!(RankSmall<1,11>);
 impl_rank_small!(RankSmall<3,13>);
 
-pub type RankSmall1 = RankSmall<1, 9>;
-pub type RankSmall2 = RankSmall<2, 9>;
-pub type RankSmall3 = RankSmall<1, 10>;
-pub type RankSmall4 = RankSmall<1, 11>;
-pub type RankSmall5 = RankSmall<3, 13>;
+pub type RankSmall0 = RankSmall<1, 9>;
+pub type RankSmall1 = RankSmall<2, 9>;
+pub type RankSmall2 = RankSmall<1, 10>;
+pub type RankSmall3 = RankSmall<1, 11>;
+pub type RankSmall4 = RankSmall<3, 13>;

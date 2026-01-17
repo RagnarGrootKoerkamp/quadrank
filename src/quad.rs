@@ -28,6 +28,10 @@ pub type SmallRank = Ranker<blocks::QuadBlock16, super_blocks::HalfSB, count4::N
 fn add(a: Ranks, b: Ranks) -> Ranks {
     from_fn(|c| a[c] + b[c])
 }
+#[inline(always)]
+fn strict_add(a: Ranks, b: Ranks) -> Ranks {
+    from_fn(|c| a[c].strict_add(b[c]))
+}
 
 pub trait BasicBlock: Sync {
     /// Character width. 1 for binary, 2 for DNA.

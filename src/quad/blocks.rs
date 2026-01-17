@@ -10,7 +10,10 @@ use crate::{
     },
 };
 
-use super::count4::{DOUBLE_TRANSPOSED_MID_MASKS, TRANSPOSED_MID_MASKS};
+use super::{
+    count4::{DOUBLE_TRANSPOSED_MID_MASKS, TRANSPOSED_MID_MASKS},
+    strict_add,
+};
 
 #[inline(always)]
 fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
@@ -132,7 +135,8 @@ impl BasicBlock for QuadBlock32x2P {
         // count first half.
         for chunk in &data.as_chunks::<8>().0[0..2] {
             for c in 0..4 {
-                half_ranks[c as usize] += count_u8x8(chunk, c) as u32;
+                half_ranks[c as usize] =
+                    half_ranks[c as usize].strict_add(count_u8x8(chunk, c) as u32);
             }
         }
         QuadBlock32x2P {
@@ -292,12 +296,12 @@ impl BasicBlock for QuadBlock7_18_7P {
         let mut bs = [[0u32; 4]; 6];
         // count each part half.
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
-            bs[i] = add(bs[i], count4_u8x8(*chunk));
+            bs[i] = strict_add(bs[i], count4_u8x8(*chunk));
         }
         // global ranks are to the middle
-        ranks = add(add(ranks, bs[0]), add(bs[1], bs[2]));
-        let p1 = add(bs[1], bs[2]);
-        let p2 = add(bs[3], bs[4]);
+        ranks = strict_add(strict_add(ranks, bs[0]), strict_add(bs[1], bs[2]));
+        let p1 = strict_add(bs[1], bs[2]);
+        let p2 = strict_add(bs[3], bs[4]);
         let part_ranks: Ranks = from_fn(|c| (p1[c] << 7) | p2[c]);
         Self {
             ranks: from_fn(|c| (ranks[c] << 14) | part_ranks[c]),
@@ -447,12 +451,12 @@ impl BasicBlock for QuadBlock24_8 {
         let mut sum = [0u32; 4];
         // count each part half.
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
-            bs[i] = add(bs[i], count4_u8x8(*chunk));
-            sum = add(sum, bs[i]);
+            bs[i] = strict_add(bs[i], count4_u8x8(*chunk));
+            sum = strict_add(sum, bs[i]);
         }
         // global ranks are to block
-        ranks = add(ranks, sum);
-        let part_rank = add(add(bs[2], bs[3]), add(bs[4], bs[5]));
+        ranks = strict_add(ranks, sum);
+        let part_rank = strict_add(strict_add(bs[2], bs[3]), strict_add(bs[4], bs[5]));
         Self {
             ranks: from_fn(|c| (ranks[c] << 8) | part_rank[c]),
             seq: from_fn(|i| unsafe {
@@ -535,11 +539,11 @@ impl BasicBlock for QuadBlock64 {
         let mut sum = [0u32; 4];
         // count each part half.
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
-            bs[i] = add(bs[i], count4_u8x8(*chunk));
-            sum = add(sum, bs[i]);
+            bs[i] = strict_add(bs[i], count4_u8x8(*chunk));
+            sum = strict_add(sum, bs[i]);
         }
         // global ranks are to block
-        ranks = add(ranks, add(bs[0], bs[1]));
+        ranks = strict_add(ranks, strict_add(bs[0], bs[1]));
         Self {
             ranks: [ranks; 2],
             seq: from_fn(|i| unsafe {
@@ -611,12 +615,12 @@ impl BasicBlock for QuadBlock32 {
         let mut bs = [[0u32; 4]; 6];
         // count each part half.
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
-            bs[i] = add(bs[i], count4_u8x8(*chunk));
+            bs[i] = strict_add(bs[i], count4_u8x8(*chunk));
         }
         // global ranks are to block
         unsafe {
             let mut seq = [[0u64; 2]; 4];
-            ranks = add(ranks, add(bs[0], bs[1]));
+            ranks = strict_add(ranks, strict_add(bs[0], bs[1]));
             seq[0] = std::mem::transmute(ranks);
             for i in 0..3 {
                 seq[i + 1] = std::mem::transmute(transpose_bits(
@@ -674,7 +678,7 @@ impl BasicBlock for QuadBlock16 {
         // Counts before each u64 block.
         // count each part half.
         for chunk in data[0..24].as_chunks::<8>().0 {
-            ranks = add(ranks, count4_u8x8(*chunk));
+            ranks = strict_add(ranks, count4_u8x8(*chunk));
         }
         // global ranks are to block
         unsafe {
@@ -683,14 +687,14 @@ impl BasicBlock for QuadBlock16 {
             let [low, high] = transpose_bits(&data[0..16].try_into().unwrap());
 
             seq[0] = [
-                ranks[0] as u16,
-                ranks[1] as u16,
-                low as u16,
-                (low >> 16) as u16,
-                ranks[2] as u16,
-                ranks[3] as u16,
-                high as u16,
-                (high >> 16) as u16,
+                ranks[0].try_into().unwrap(),
+                ranks[1].try_into().unwrap(),
+                low.try_into().unwrap(),
+                (low >> 16).try_into().unwrap(),
+                ranks[2].try_into().unwrap(),
+                ranks[3].try_into().unwrap(),
+                high.try_into().unwrap(),
+                (high >> 16).try_into().unwrap(),
             ];
             for i in 0..3 {
                 seq[i + 1] = std::mem::transmute(transpose_bits(

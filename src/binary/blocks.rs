@@ -64,12 +64,11 @@ impl BasicBlock for BinaryBlock32x2 {
     const W: usize = 32;
 
     fn new(rank: u64, data: &[u8; Self::B]) -> Self {
-        let rank = rank as u32;
         // Counts in each u64 block.
         let mut bs = [0; 8];
         // count each part half.
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
-            bs[i] = u64::from_le_bytes(*chunk).count_ones();
+            bs[i] = u64::from_le_bytes(*chunk).count_ones() as u64;
         }
         // partial ranks after 1 and 3 blocks
         let ranks = [
@@ -77,7 +76,7 @@ impl BasicBlock for BinaryBlock32x2 {
             rank + bs[0] + bs[1] + bs[2] + bs[3] + bs[4] + bs[5],
         ];
         Self {
-            ranks,
+            ranks: [ranks[0].try_into().unwrap(), ranks[1].try_into().unwrap()],
             seq: unsafe { std::mem::transmute(*data) },
         }
     }
@@ -200,7 +199,7 @@ impl BasicBlock for BinaryBlock16x2 {
         // partial ranks after 1 and 3 blocks
         let rank = rank + bs[0] + bs[1];
         let delta = bs[2] + bs[3] + bs[4] + bs[5];
-        let ranks = [rank as u16, rank as u16 + delta as u16];
+        let ranks = [rank.try_into().unwrap(), (rank + delta).try_into().unwrap()];
         Self { seq: *data, ranks }
     }
 
@@ -252,11 +251,10 @@ impl BasicBlock for BinaryBlock32 {
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
             bs[i] = u64::from_le_bytes(*chunk).count_ones() as u64;
         }
-        // partial ranks after 1 and 3 blocks
         let rank = rank + bs[0] + bs[1] + bs[2] + bs[3];
         Self {
             seq: *data,
-            rank: rank as u32,
+            rank: rank.try_into().unwrap(),
         }
     }
 
@@ -302,8 +300,9 @@ impl BasicBlock for BinaryBlock16 {
         for (i, chunk) in data.as_chunks::<8>().0.iter().enumerate() {
             bs[i] = u64::from_le_bytes(*chunk).count_ones() as u64;
         }
+        assert!(rank < u16::MAX as u64, "{rank}");
         // partial ranks after 1 and 3 blocks
-        let rank = (rank + bs[0] + bs[1] + bs[2] + bs[3]) as u16;
+        let rank = (rank + bs[0] + bs[1] + bs[2] + bs[3]).try_into().unwrap();
         Self { seq: *data, rank }
     }
 

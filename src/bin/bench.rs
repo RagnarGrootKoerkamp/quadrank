@@ -403,11 +403,11 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<vers_vecs::RsVec>(seq, queries);
 
     bench_one_binary::<Rank9>(seq, queries);
+    bench_one_binary::<RankSmall0>(seq, queries);
     bench_one_binary::<RankSmall1>(seq, queries);
     bench_one_binary::<RankSmall2>(seq, queries);
     bench_one_binary::<RankSmall3>(seq, queries);
     bench_one_binary::<RankSmall4>(seq, queries);
-    bench_one_binary::<RankSmall5>(seq, queries);
 
     bench_one_binary::<binary::Ranker<BinaryBlock64x2, HalfSB>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock32x2, HalfSB>>(seq, queries);

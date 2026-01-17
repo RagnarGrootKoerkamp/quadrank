@@ -28,12 +28,12 @@ where
         let mut array_chunk: [u8; BB::B];
         for (i, chunk) in chunks.enumerate() {
             if ((BB::W) < TARGET_BITS) && i % Self::LONG_STRIDE == 0 {
-                l_rank += rank;
+                l_rank = l_rank.strict_add(rank);
                 // returns the actual stored rank value
                 let (super_block, new_l_rank) = SB::new(l_rank);
                 super_blocks.push(super_block);
                 // 'leftover' rank that was not stored in the super block
-                rank = l_rank - new_l_rank;
+                rank = l_rank.strict_sub(new_l_rank);
                 // update l_rank to last stored value
                 l_rank = new_l_rank;
             }
@@ -45,9 +45,18 @@ where
                 array_chunk[..chunk.len()].copy_from_slice(chunk);
                 &array_chunk
             };
+            if BB::W < 64 {
+                assert!(
+                    rank + (BB::N as u64) < (1u64 << BB::W),
+                    "rank {rank} + bits {} is too large for block width {} (max {})",
+                    BB::N,
+                    BB::W,
+                    (1u64 << BB::W)
+                );
+            }
             blocks.push(BB::new(rank, array_chunk));
             for byte in chunk {
-                rank += byte.count_ones() as u64;
+                rank = rank.strict_add(byte.count_ones() as u64);
             }
         }
 
