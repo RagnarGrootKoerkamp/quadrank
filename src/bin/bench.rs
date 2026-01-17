@@ -409,11 +409,11 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<RankSmall3>(seq, queries);
     bench_one_binary::<RankSmall4>(seq, queries);
 
-    bench_one_binary::<binary::Ranker<BinaryBlock64x2, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock32x2, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16x2, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16, HalfSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16Spider, HalfSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock64x2>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock32x2>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16x2>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16Spider>>(seq, queries);
 }
 
 #[derive(clap::Parser)]

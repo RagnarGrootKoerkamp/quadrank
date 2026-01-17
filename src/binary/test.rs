@@ -4,8 +4,6 @@ use crate::binary::{self, blocks::*};
 use crate::genedex;
 use crate::sux;
 
-use super::super_blocks::HalfSB;
-
 #[test]
 fn binary() {
     test::<binary::Ranker<BinaryBlock64x2>>();
@@ -14,7 +12,6 @@ fn binary() {
     test::<binary::Ranker<BinaryBlock16x2>>();
     test::<binary::Ranker<BinaryBlock32>>();
     test::<binary::Ranker<BinaryBlock16>>();
-    test::<binary::Ranker<BinaryBlock16, HalfSB>>();
     test::<binary::Ranker<BinaryBlock16Spider>>();
     test::<genedex::Flat64>();
     test::<genedex::Flat512>();
