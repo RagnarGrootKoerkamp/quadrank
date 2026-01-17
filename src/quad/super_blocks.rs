@@ -42,11 +42,11 @@ impl SuperBlock for TrivialSB {
 
 #[repr(align(16))]
 #[derive(mem_dbg::MemSize)]
-pub struct HalfSB {
+pub struct ShiftSB {
     block: Ranks,
 }
 
-impl SuperBlock for HalfSB {
+impl SuperBlock for ShiftSB {
     const BB: usize = 1;
     const W: usize = 0;
     const SHIFT: usize = 8;

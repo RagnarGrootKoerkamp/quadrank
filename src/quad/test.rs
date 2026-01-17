@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use rand::Rng;
 
 use super::blocks::*;
-use super::super_blocks::HalfSB;
+use super::super_blocks::ShiftSB;
 use crate::genedex;
 use crate::quad;
 use crate::quad::TrivialSB;
@@ -36,9 +36,9 @@ fn quad() {
     test::<genedex::Condensed64>();
     test::<genedex::Condensed512>();
 
-    test1::<quad::Ranker<QuadBlock64, HalfSB, SimdCount11B>>();
-    test1::<quad::Ranker<QuadBlock24_8, HalfSB, SimdCount11B>>();
-    test1::<quad::Ranker<QuadBlock16, HalfSB, NoCount>>();
+    test1::<quad::Ranker<QuadBlock64, ShiftSB, SimdCount11B>>();
+    test1::<quad::Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>();
+    test1::<quad::Ranker<QuadBlock16, ShiftSB, NoCount>>();
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());

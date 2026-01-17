@@ -1,8 +1,8 @@
 use crate::prefetch_index;
 
-use super::{BasicBlock, RankerT, SuperBlock, super_blocks::HalfSB};
+use super::{BasicBlock, RankerT, SuperBlock, super_blocks::ShiftSB};
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock = HalfSB> {
+pub struct Ranker<BB: BasicBlock, SB: SuperBlock = ShiftSB> {
     basic_blocks: Vec<BB>,
     super_blocks: Vec<SB>,
 }

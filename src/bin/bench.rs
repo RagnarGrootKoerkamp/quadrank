@@ -15,7 +15,7 @@ use quadrank::{
             BinaryBlock16, BinaryBlock16Spider, BinaryBlock16x2, BinaryBlock23_9, BinaryBlock32,
             BinaryBlock32x2, BinaryBlock64x2,
         },
-        super_blocks::HalfSB,
+        super_blocks::ShiftSB,
     },
     genedex, prefetch_index,
     quad::{
@@ -372,7 +372,7 @@ fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
 
 #[inline(never)]
 fn bench_quad(seq: &[usize], queries: &QS) {
-    use quadrank::quad::super_blocks::HalfSB;
+    use quadrank::quad::super_blocks::ShiftSB;
 
     bench_header(queries.len());
 
@@ -384,9 +384,9 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<genedex::Condensed64>(seq, queries);
     bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench_one_quad::<Ranker<QuadBlock64, HalfSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock24_8, HalfSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock16, HalfSB, NoCount>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock64, ShiftSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock16, ShiftSB, NoCount>>(seq, queries);
 }
 
 #[inline(never)]

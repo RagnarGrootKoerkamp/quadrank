@@ -18,13 +18,13 @@ impl SuperBlock for TrivialSB {
 
 /// Store the high 32 bits of `x>>11`.
 #[derive(mem_dbg::MemSize)]
-pub struct HalfSB {
+pub struct ShiftSB {
     rank: u32,
 }
 
 const SHIFT: usize = 11;
 
-impl SuperBlock for HalfSB {
+impl SuperBlock for ShiftSB {
     #[inline(always)]
     fn new(rank: u64) -> (Self, u64) {
         let rank = rank >> SHIFT;
