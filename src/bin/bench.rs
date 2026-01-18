@@ -84,18 +84,12 @@ fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
 
 const BATCH: usize = 32;
 
-fn time_latency(
-    queries: &QS,
-    t: Threading,
-    prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> usize + Sync + Copy,
-) {
+fn time_latency(queries: &QS, t: Threading, f: impl Fn(usize) -> usize + Sync + Copy) {
     time_fn(queries, t, |queries| {
         let mut acc = 0;
         for &q in queries {
             // Make query depend on previous result.
             let q = q ^ acc;
-            prefetch(q);
             let rank = f(q);
             acc ^= (rank & 1) as usize;
         }
@@ -156,7 +150,7 @@ fn time_trip(
     f: impl Fn(usize) -> usize + Sync + Copy,
     stream: bool,
 ) {
-    time_latency(queries, t, prefetch, f);
+    time_latency(queries, t, f);
     time_loop(queries, t, f);
     if stream {
         time_stream(queries, t, prefetch, f);
