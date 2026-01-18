@@ -46,20 +46,22 @@ pub struct ShiftSB {
     block: Ranks,
 }
 
+const SHIFT: usize = 13;
+
 impl SuperBlock for ShiftSB {
     const BB: usize = 1;
     const W: usize = 0;
-    const SHIFT: usize = 8;
+    const SHIFT: usize = SHIFT;
     #[inline(always)]
     fn new(ranks: [LongRanks; 1]) -> Self {
         Self {
-            block: ranks[0].map(|x| (x >> 8) as u32),
+            block: ranks[0].map(|x| (x >> SHIFT) as u32),
         }
     }
     #[inline(always)]
     fn get(&self, idx: usize) -> LongRanks {
         debug_assert!(idx == 0);
-        self.block.map(|x| (x as u64) << 8)
+        self.block.map(|x| (x as u64) << SHIFT)
     }
 }
 

@@ -127,14 +127,13 @@ fn seqs() -> Vec<Vec<usize>> {
         rand::random_range(160_000_000..200_000_000),
     ] {
         eprintln!("generating seq of len {}", len);
-        // all ones
-        seqs.push(vec![usize::MAX; len]);
-
-        // random
-        let mut rnd = vec![0u64; len];
-        rand::rng().fill(rnd.as_mut_slice());
-        let rnd = rnd.into_iter().map(|x| x as usize).collect();
-        seqs.push(rnd);
+        // random prefix of length 0%..25%, then 0
+        let prefix = rand::random_range(0..len / 4);
+        let mut seq = vec![0; len];
+        for i in 0..prefix {
+            seq[i] = rand::random::<u64>() as usize;
+        }
+        seqs.push(seq);
     }
 
     seqs

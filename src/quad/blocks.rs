@@ -691,12 +691,12 @@ impl BasicBlock for QuadBlock16 {
             seq[0] = [
                 ranks[0].try_into().unwrap(),
                 ranks[1].try_into().unwrap(),
-                low.try_into().unwrap(),
-                (low >> 16).try_into().unwrap(),
+                low as u16,
+                (low >> 16) as u16,
                 ranks[2].try_into().unwrap(),
                 ranks[3].try_into().unwrap(),
-                high.try_into().unwrap(),
-                (high >> 16).try_into().unwrap(),
+                high as u16,
+                (high >> 16) as u16,
             ];
             for i in 0..3 {
                 seq[i + 1] = std::mem::transmute(transpose_bits(
