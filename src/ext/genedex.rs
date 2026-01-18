@@ -63,14 +63,14 @@ macro_rules! impl_rank {
             }
 
             #[inline(always)]
-            fn count(&self, pos: usize) -> LongRanks {
+            fn rank4(&self, pos: usize) -> LongRanks {
                 std::array::from_fn(|c| unsafe {
                     TextWithRankSupport::rank_unchecked(self, c as u8, pos) as u64
                 })
             }
 
             #[inline(always)]
-            fn count1(&self, pos: usize, c: u8) -> usize {
+            fn rank1(&self, pos: usize, c: u8) -> usize {
                 unsafe { TextWithRankSupport::rank_unchecked(self, c, pos) as usize }
             }
         }

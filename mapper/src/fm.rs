@@ -94,11 +94,11 @@ impl<Ranker: RankerT> FM<Ranker> {
             let occ = self.occ[c as usize];
             let ranks_s = self
                 .ranker
-                .count1(s as usize - (s > self.sentinel) as usize, c);
+                .rank1(s as usize - (s > self.sentinel) as usize, c);
             s = occ + ranks_s as usize;
             let ranks_t = self
                 .ranker
-                .count1(t as usize - (t > self.sentinel) as usize, c);
+                .rank1(t as usize - (t > self.sentinel) as usize, c);
             t = occ + ranks_t as usize;
             if s == t {
                 return (steps, (s as u32, t as u32));
@@ -169,11 +169,11 @@ impl<Ranker: RankerT> FM<Ranker> {
                 if true {
                     let ranks_s = self
                         .ranker
-                        .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                        .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                     s[i] = occ + ranks_s as usize;
                     let ranks_t = self
                         .ranker
-                        .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                        .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                     t[i] = occ + ranks_t as usize;
                 } else {
                     let (ranks_s, ranks_t) = self.ranker.count1x2(
@@ -250,11 +250,11 @@ impl<Ranker: RankerT> FM<Ranker> {
                 if false {
                     let ranks_s = self
                         .ranker
-                        .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                        .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                     s[i] = occ + ranks_s as usize;
                     let ranks_t = self
                         .ranker
-                        .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                        .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                     t[i] = occ + ranks_t as usize;
                 } else {
                     let (ranks_s, ranks_t) = self.ranker.count1x2(
@@ -345,11 +345,11 @@ impl<Ranker: RankerT> FM<Ranker> {
                 let occ = self.occ[c as usize];
                 let ranks_s = self
                     .ranker
-                    .count1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                    .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                 s[i] = occ + ranks_s as usize;
                 let ranks_t = self
                     .ranker
-                    .count1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                    .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                 t[i] = occ + ranks_t as usize;
                 text_idx[i] += 1;
             }

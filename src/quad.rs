@@ -93,12 +93,12 @@ pub trait RankerT: Sync + Sized {
     fn prefetch(&self, pos: usize);
     fn size(&self) -> usize;
     /// Count the number of times each character occurs before position `pos`.
-    fn count(&self, pos: usize) -> LongRanks;
+    fn rank4(&self, pos: usize) -> LongRanks;
     /// Count the number of times character `c` occurs before position `pos`.
-    fn count1(&self, pos: usize, c: u8) -> usize;
+    fn rank1(&self, pos: usize, c: u8) -> usize;
     #[inline(always)]
     fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
-        (self.count1(pos0, c), self.count1(pos1, c))
+        (self.rank1(pos0, c), self.rank1(pos1, c))
     }
 
     #[inline(always)]
@@ -106,7 +106,7 @@ pub trait RankerT: Sync + Sized {
         self.prefetch(pos);
         #[inline(always)]
         #[coroutine]
-        move || self.count(pos)
+        move || self.rank4(pos)
     }
     #[inline(always)]
     fn count_coro2(&self, pos: usize) -> impl Coroutine<Yield = (), Return = LongRanks> + Unpin {
@@ -115,7 +115,7 @@ pub trait RankerT: Sync + Sized {
         move || {
             self.prefetch(pos);
             yield;
-            self.count(pos)
+            self.rank4(pos)
         }
     }
 }

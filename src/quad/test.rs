@@ -52,7 +52,7 @@ fn test<R: quad::RankerT>() {
         );
         let ranker = R::new_packed(&test.seq);
         for (q, a) in &test.queries {
-            let r = ranker.count(*q);
+            let r = ranker.rank4(*q);
             let r = r.map(|x| x as usize);
             assert_eq!(
                 r,
@@ -78,7 +78,7 @@ fn test1<R: quad::RankerT>() {
         let ranker = R::new_packed(&test.seq);
         for (q, a) in &test.queries {
             for c in 0..4 {
-                let r = ranker.count1(*q, c) as usize;
+                let r = ranker.rank1(*q, c) as usize;
                 assert_eq!(
                     r,
                     a[c as usize],

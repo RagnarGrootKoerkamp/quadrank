@@ -118,7 +118,7 @@ where
 
     /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
-    fn count(&self, pos: usize) -> LongRanks {
+    fn rank4(&self, pos: usize) -> LongRanks {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;
@@ -143,7 +143,7 @@ where
     }
     /// Count the number of times character `c` occurs before position `pos`.
     #[inline(always)]
-    fn count1(&self, pos: usize, c: u8) -> usize {
+    fn rank1(&self, pos: usize, c: u8) -> usize {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;

@@ -34,12 +34,12 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    fn count(&self, pos: usize) -> LongRanks {
+    fn rank4(&self, pos: usize) -> LongRanks {
         std::array::from_fn(|c| unsafe { self.rank_unchecked(c as u8, pos) as u64 })
     }
 
     #[inline(always)]
-    fn count1(&self, pos: usize, c: u8) -> usize {
+    fn rank1(&self, pos: usize, c: u8) -> usize {
         unsafe { self.rank_unchecked(c, pos) as usize }
     }
 }
@@ -76,12 +76,12 @@ impl RankerT for RSQVector512 {
     }
 
     #[inline(always)]
-    fn count(&self, pos: usize) -> LongRanks {
+    fn rank4(&self, pos: usize) -> LongRanks {
         std::array::from_fn(|c| unsafe { self.rank_unchecked(c as u8, pos) as u64 })
     }
 
     #[inline(always)]
-    fn count1(&self, pos: usize, c: u8) -> usize {
+    fn rank1(&self, pos: usize, c: u8) -> usize {
         unsafe { self.rank_unchecked(c, pos) as usize }
     }
 }

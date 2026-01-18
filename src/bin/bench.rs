@@ -315,7 +315,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
                     &queries,
                     t,
                     |q| ranker.prefetch(q),
-                    |q| std::hint::black_box(unsafe { ranker.count(q) })[0] as usize,
+                    |q| std::hint::black_box(unsafe { ranker.rank4(q) })[0] as usize,
                     true,
                 );
             } else {
@@ -323,7 +323,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
                     &queries,
                     t,
                     |q| ranker.prefetch(q),
-                    |q| std::hint::black_box(unsafe { ranker.count1(q, q as u8 & 3) }),
+                    |q| std::hint::black_box(unsafe { ranker.rank1(q, q as u8 & 3) }),
                     true,
                 );
             }
