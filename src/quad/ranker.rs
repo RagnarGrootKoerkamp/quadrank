@@ -126,7 +126,7 @@ where
             let mut ranks = self
                 .blocks
                 .get_unchecked(block_idx)
-                .count::<CF>(block_pos)
+                .count4::<CF>(block_pos)
                 .map(|x| x as u64);
             if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / Self::LONG_STRIDE;

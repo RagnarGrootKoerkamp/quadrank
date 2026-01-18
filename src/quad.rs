@@ -43,7 +43,7 @@ pub trait BasicBlock: Sync {
 
     fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self;
     /// Count the number of times each character occurs before position `pos`.
-    fn count<CF: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>>(
+    fn count4<CF: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>>(
         &self,
         pos: usize,
     ) -> Ranks;

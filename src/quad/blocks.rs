@@ -50,7 +50,7 @@ impl BasicBlock for Basic512 {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>>(
+    fn count4<C: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>>(
         &self,
         pos: usize,
     ) -> Ranks {
@@ -80,7 +80,7 @@ impl BasicBlock for Basic256 {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<{ Self::C }>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<{ Self::C }>>(&self, pos: usize) -> Ranks {
         let mut ranks = C::count(&self.seq, pos);
         ranks[0] -= extra_counted::<_, C>(pos);
         ranks
@@ -107,7 +107,7 @@ impl BasicBlock for Basic128 {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<{ Self::C }>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<{ Self::C }>>(&self, pos: usize) -> Ranks {
         let mut ranks = C::count(&self.seq, pos);
         ranks[0] -= extra_counted::<_, C>(pos);
         ranks
@@ -148,7 +148,7 @@ impl BasicBlock for QuadBlock32x2P {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
 
         // 0 or 1 for left or right half
@@ -211,7 +211,7 @@ impl BasicBlock for QuadBlock32_8_8_8FP {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<8>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<8>>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
 
         let quart = pos / 32;
@@ -312,7 +312,7 @@ impl BasicBlock for QuadBlock7_18_7P {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<8>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<8>>(&self, pos: usize) -> Ranks {
         assert!(C::S == 0);
         let mut ranks = u32x4::splat(0);
 
@@ -474,7 +474,7 @@ impl BasicBlock for QuadBlock24_8 {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
         assert!(C::S == 0);
         let mut ranks = u32x4::splat(0);
 
@@ -563,7 +563,7 @@ impl BasicBlock for QuadBlock64 {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
         assert!(C::S == 0);
         let mut ranks = u32x4::splat(0);
 
@@ -642,7 +642,7 @@ impl BasicBlock for QuadBlock32 {
     }
 
     #[inline(always)]
-    fn count<C: CountFn<0>>(&self, mut pos: usize) -> Ranks {
+    fn count4<C: CountFn<0>>(&self, mut pos: usize) -> Ranks {
         let mut ranks = u32x4::splat(0);
 
         // correct for 128bits of ranks
@@ -716,17 +716,19 @@ impl BasicBlock for QuadBlock16 {
     }
 
     #[inline(always)]
-    fn count<CF: CountFn<0, TRANSPOSED = true>>(&self, mut pos: usize) -> Ranks {
+    fn count4<CF: CountFn<0, TRANSPOSED = true>>(&self, mut pos: usize) -> Ranks {
         let mut ranks = u32x4::splat(0);
 
         // correct for 128bits of ranks
         pos += 32;
 
         let half = pos / 128;
+        // FIXME: Avoid convertion from u64x4 to u32x4 and then back.
         let inner_counts = double_mid(&self.seq[2 * half..2 * half + 2].try_into().unwrap(), pos);
 
         use std::mem::transmute as t;
         let sign = (pos as u32).wrapping_sub(128);
+        // FIXME: Is there a u64x4 equivalent of this?
         ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
 
         let u16s: &[u16; 8] = unsafe { t(&self.seq[0]) };
