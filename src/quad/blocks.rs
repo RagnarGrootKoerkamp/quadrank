@@ -425,6 +425,10 @@ fn transpose_bits(data: &[u8; 16]) -> [u64; 2] {
     }
     out
 }
+fn negate_and_transpose_bits(data: &[u8; 16]) -> [u64; 2] {
+    let [l, h] = transpose_bits(data);
+    [!l, !h]
+}
 
 /// Store four 24 bit offsets to 1/3th, and an 8 bit deltas to the end.
 /// Then count the previous or next 64bp.
@@ -517,6 +521,8 @@ impl BasicBlock for QuadBlock24_8 {
 }
 
 /// Store four 64 bit offsets to the middle, then count 64 bp.
+///
+/// Like BWA-MEM.
 #[repr(align(64))]
 #[derive(mem_dbg::MemSize)]
 pub struct QuadBlock64 {
@@ -625,7 +631,7 @@ impl BasicBlock for QuadBlock32 {
             ranks = strict_add(ranks, strict_add(bs[0], bs[1]));
             seq[0] = std::mem::transmute(ranks);
             for i in 0..3 {
-                seq[i + 1] = std::mem::transmute(transpose_bits(
+                seq[i + 1] = std::mem::transmute(negate_and_transpose_bits(
                     &data[i * 16..i * 16 + 16].try_into().unwrap(),
                 ))
             }
@@ -686,7 +692,7 @@ impl BasicBlock for QuadBlock16 {
         unsafe {
             let mut seq = [[0u16; 8]; 4];
 
-            let [low, high] = transpose_bits(&data[0..16].try_into().unwrap());
+            let [low, high] = negate_and_transpose_bits(&data[0..16].try_into().unwrap());
 
             seq[0] = [
                 ranks[0].try_into().unwrap(),
@@ -699,7 +705,7 @@ impl BasicBlock for QuadBlock16 {
                 (high >> 16) as u16,
             ];
             for i in 0..3 {
-                seq[i + 1] = std::mem::transmute(transpose_bits(
+                seq[i + 1] = std::mem::transmute(negate_and_transpose_bits(
                     &data[8 + i * 16..8 + i * 16 + 16].try_into().unwrap(),
                 ))
             }
@@ -750,9 +756,8 @@ impl BasicBlock for QuadBlock16 {
             let mask = masks[i];
             // chunk &= mask;
 
-            let c2 = !(c as u64);
-            let l = l ^ (c2 & 1).wrapping_neg();
-            let h = h ^ ((c2 >> 1) & 1).wrapping_neg();
+            let l = l ^ (c as u64 & 1).wrapping_neg();
+            let h = h ^ ((c as u64) >> 1).wrapping_neg();
             cnt += (l & h & mask).count_ones();
         }
 

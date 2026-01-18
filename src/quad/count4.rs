@@ -1921,8 +1921,8 @@ pub fn double_mid(data: &[[u8; 16]; 2], pos: usize) -> Ranks {
         let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
         // bits of the 4 chars
         // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-        const CL: u64x4 = u64x4::from_array([!0, 0, !0, 0]);
-        const CH: u64x4 = u64x4::from_array([!0, !0, 0, 0]);
+        const CL: u64x4 = u64x4::from_array([0, !0, 0, !0]);
+        const CH: u64x4 = u64x4::from_array([0, 0, !0, !0]);
 
         let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
 
