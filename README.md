@@ -11,12 +11,12 @@ impl QuadRank {
     pub fn new(seq: &[u8]) -> Self;
     
     /// Count the number of A, C, G, *and* T characters before the given position.
-    pub fn count4(&self, pos: usize) -> [u32; 4];
+    pub fn rank4(&self, pos: usize) -> [u32; 4];
 }
 ```
 
 ## Small FM-index evaluation 
-In `mapper/` there is a count-only FM-index implementation using `QuadRank`.
+In `fm-index/` there is a count-only FM-index implementation using `QuadRank`.
 
 Here I'm mapping simulated 150bp short reads with 1% error rate against 550Mbp of
 viral genomes. I first build each index (where I don't care about time/space
@@ -31,4 +31,4 @@ All results are multithreaded (12 threads, on my 6-core i7-10750H) via `rayon::p
 - `genedex`: https://github.com/feldroop/genedex, supports batching
 - `RSQVector256`: Rank structure of https://github.com/rossanoventurini/qwt
 
-![Comparison plot, showing that quadrank smaller and faster than others.](mapper/comparison.png)
+![Comparison plot, showing that quadrank smaller and faster than others.](fm-index/comparison.png)

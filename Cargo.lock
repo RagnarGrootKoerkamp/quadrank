@@ -927,6 +927,28 @@ dependencies = [
 
 [[package]]
 name = "fm-index"
+version = "0.1.0"
+dependencies = [
+ "awry",
+ "bincode 2.0.1",
+ "caps-sa-rs",
+ "clap",
+ "fm-index 0.3.0",
+ "genedex",
+ "libsais",
+ "mem_dbg 0.3.3",
+ "needletail",
+ "quadrank",
+ "qwt 0.3.1",
+ "rand 0.9.2",
+ "rand_distr 0.5.1",
+ "rayon",
+ "simple-saca",
+ "small-bwt",
+]
+
+[[package]]
+name = "fm-index"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29f414f92b6c5fbe90f2b2861482bfd75fd5452dcb80ca23d5f8fee05ad5bf15"
@@ -1361,28 +1383,6 @@ name = "log"
 version = "0.4.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
-
-[[package]]
-name = "mapper"
-version = "0.1.0"
-dependencies = [
- "awry",
- "bincode 2.0.1",
- "caps-sa-rs",
- "clap",
- "fm-index",
- "genedex",
- "libsais",
- "mem_dbg 0.3.3",
- "needletail",
- "quadrank",
- "qwt 0.3.1",
- "rand 0.9.2",
- "rand_distr 0.5.1",
- "rayon",
- "simple-saca",
- "small-bwt",
-]
 
 [[package]]
 name = "matrixmultiply"
