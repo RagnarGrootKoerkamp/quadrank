@@ -103,7 +103,7 @@ where
 
     /// Prefetch the cacheline for the given position.
     #[inline(always)]
-    fn prefetch(&self, pos: usize) {
+    fn prefetch1(&self, pos: usize, _c: u8) {
         let block_idx = pos / BB::N;
         prefetch_index(&self.blocks, block_idx);
         if BB::W < TARGET_BITS - 12 {

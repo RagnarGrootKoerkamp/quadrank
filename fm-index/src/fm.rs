@@ -113,14 +113,14 @@ impl<Ranker: RankerT> FM<Ranker> {
     }
 
     #[inline(always)]
-    pub fn query_batch<const B: usize>(&self, text: &[Vec<u8>; B]) -> [(usize, usize); B] {
+    pub fn query_batch<const B: usize>(&self, texts: &[Vec<u8>; B]) -> [(usize, usize); B] {
         let mut s = [0; B];
         let mut t = [self.n + 1; B];
         let mut steps = [0; B];
 
         if self.prefix > 0 {
             for i in 0..B {
-                let suffix = text[i].last_chunk().unwrap();
+                let suffix = texts[i].last_chunk().unwrap();
                 let val = u64::from_le_bytes(*suffix);
                 let index = unsafe { _pext_u64(val, 0x0303030303030303) };
                 let (ss, tt) = self.prefix_lookup[index as usize];
@@ -139,7 +139,7 @@ impl<Ranker: RankerT> FM<Ranker> {
             while idx < num_alive {
                 let i = active[idx] as usize;
 
-                if s[i] == t[i] || text_idx >= text[i].len() {
+                if s[i] == t[i] || text_idx >= texts[i].len() {
                     // swappop index i
                     active[idx] = active[num_alive - 1];
                     num_alive -= 1;
@@ -147,10 +147,15 @@ impl<Ranker: RankerT> FM<Ranker> {
                     // Note: idx is not incremented here.
                     continue;
                 }
+                let c = unsafe {
+                    *texts
+                        .get_unchecked(i)
+                        .get_unchecked(texts[i].len() - 1 - text_idx)
+                };
                 self.ranker
-                    .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                    .prefetch1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                 self.ranker
-                    .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                    .prefetch1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
 
                 idx += 1;
             }
@@ -162,7 +167,11 @@ impl<Ranker: RankerT> FM<Ranker> {
             for idx in 0..num_alive {
                 let i = active[idx] as usize;
 
-                let c = text[i][text[i].len() - 1 - text_idx];
+                let c = unsafe {
+                    *texts
+                        .get_unchecked(i)
+                        .get_unchecked(texts[i].len() - 1 - text_idx)
+                };
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
@@ -193,7 +202,7 @@ impl<Ranker: RankerT> FM<Ranker> {
     #[inline(always)]
     pub fn query_batch_interleaved<const B: usize>(
         &self,
-        text: &[Vec<u8>; B],
+        texts: &[Vec<u8>; B],
     ) -> [(usize, usize); B] {
         let mut s = [0; B];
         let mut t = [self.n + 1; B];
@@ -201,7 +210,7 @@ impl<Ranker: RankerT> FM<Ranker> {
 
         if self.prefix > 0 {
             for i in 0..B {
-                let suffix = text[i].last_chunk().unwrap();
+                let suffix = texts[i].last_chunk().unwrap();
                 let val = u64::from_le_bytes(*suffix);
                 let index = unsafe { _pext_u64(val, 0x0303030303030303) };
                 let (ss, tt) = self.prefix_lookup[index as usize];
@@ -220,7 +229,7 @@ impl<Ranker: RankerT> FM<Ranker> {
             while idx < num_alive {
                 let i = active[idx] as usize;
 
-                if s[i] == t[i] || text_idx >= text[i].len() {
+                if s[i] == t[i] || text_idx >= texts[i].len() {
                     // swappop index i
                     active[idx] = active[num_alive - 1];
                     num_alive -= 1;
@@ -243,7 +252,11 @@ impl<Ranker: RankerT> FM<Ranker> {
             for idx in 0..num_alive {
                 let i = active[idx] as usize;
 
-                let c = text[i][text[i].len() - 1 - text_idx];
+                let c = unsafe {
+                    *texts
+                        .get_unchecked(i)
+                        .get_unchecked(texts[i].len() - 1 - text_idx)
+                };
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
@@ -268,21 +281,31 @@ impl<Ranker: RankerT> FM<Ranker> {
 
                 if idx > 0 {
                     let i = active[idx - 1] as usize;
-                    if s[i] < t[i] && text_idx + 1 < text[i].len() {
+                    if s[i] < t[i] && text_idx + 1 < texts[i].len() {
+                        let c = unsafe {
+                            *texts
+                                .get_unchecked(i)
+                                .get_unchecked(texts[i].len() - 1 - text_idx)
+                        };
                         self.ranker
-                            .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                            .prefetch1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                         self.ranker
-                            .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                            .prefetch1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                     }
                 }
             }
             {
                 let i = active[num_alive - 1] as usize;
-                if s[i] < t[i] && text_idx + 1 < text[i].len() {
+                if s[i] < t[i] && text_idx + 1 < texts[i].len() {
+                    let c = unsafe {
+                        *texts
+                            .get_unchecked(i)
+                            .get_unchecked(texts[i].len() - 1 - text_idx)
+                    };
                     self.ranker
-                        .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                        .prefetch1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                     self.ranker
-                        .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                        .prefetch1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
                 }
             }
             text_idx += 1;
@@ -328,10 +351,15 @@ impl<Ranker: RankerT> FM<Ranker> {
                     texts[i] = &input_texts[next];
                     next += 1;
                 }
+                let c = unsafe {
+                    *texts
+                        .get_unchecked(i)
+                        .get_unchecked(texts[i].len() - 1 - text_idx[i])
+                };
                 self.ranker
-                    .prefetch(s[i] as usize - (s[i] > self.sentinel) as usize);
+                    .prefetch1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
                 self.ranker
-                    .prefetch(t[i] as usize - (t[i] > self.sentinel) as usize);
+                    .prefetch1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
             }
 
             for i in 0..B {
@@ -339,7 +367,11 @@ impl<Ranker: RankerT> FM<Ranker> {
                     continue;
                 }
 
-                let c = texts[i][texts[i].len() - 1 - text_idx[i]];
+                let c = unsafe {
+                    *texts
+                        .get_unchecked(i)
+                        .get_unchecked(texts[i].len() - 1 - text_idx[i])
+                };
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];

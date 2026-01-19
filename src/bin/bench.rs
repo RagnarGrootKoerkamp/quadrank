@@ -308,7 +308,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
                 time_trip(
                     &queries,
                     t,
-                    |q| ranker.prefetch(q),
+                    |q| ranker.prefetch4(q),
                     |q| std::hint::black_box(unsafe { ranker.rank4(q) })[0] as usize,
                     true,
                 );
@@ -316,7 +316,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
                 time_trip(
                     &queries,
                     t,
-                    |q| ranker.prefetch(q),
+                    |q| ranker.prefetch1(q, q as u8 & 3),
                     |q| std::hint::black_box(unsafe { ranker.rank1(q, q as u8 & 3) }),
                     true,
                 );

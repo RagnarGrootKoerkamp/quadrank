@@ -53,8 +53,13 @@ macro_rules! impl_rank {
             }
 
             #[inline(always)]
-            fn prefetch(&self, pos: usize) {
-                TextWithRankSupport::prefetch(self, 1, pos);
+            fn prefetch1(&self, pos: usize, c: u8) {
+                TextWithRankSupport::prefetch(self, c, pos);
+            }
+
+            #[inline(always)]
+            fn prefetch4(&self, pos: usize) {
+                TextWithRankSupport::prefetch_all(self, pos);
             }
 
             #[inline(always)]

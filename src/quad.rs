@@ -89,8 +89,12 @@ pub trait RankerT: Sync + Sized {
     }
     /// Construct from bitpacked data.
     fn new_packed(seq: &[usize]) -> Self;
-    /// Prefetch the cacheline for the given position.
-    fn prefetch(&self, pos: usize);
+    /// Prefetch the cachelines for the given position and character.
+    fn prefetch1(&self, pos: usize, c: u8);
+    /// Prefetch the cachelines for all characters for the given position.
+    fn prefetch4(&self, pos: usize) {
+        self.prefetch1(pos, 0);
+    }
     fn size(&self) -> usize;
     /// Count the number of times each character occurs before position `pos`.
     fn rank4(&self, pos: usize) -> LongRanks;
@@ -103,7 +107,7 @@ pub trait RankerT: Sync + Sized {
 
     #[inline(always)]
     fn count_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = LongRanks> + Unpin {
-        self.prefetch(pos);
+        self.prefetch4(pos);
         #[inline(always)]
         #[coroutine]
         move || self.rank4(pos)
@@ -113,7 +117,7 @@ pub trait RankerT: Sync + Sized {
         #[inline(always)]
         #[coroutine]
         move || {
-            self.prefetch(pos);
+            self.prefetch4(pos);
             yield;
             self.rank4(pos)
         }

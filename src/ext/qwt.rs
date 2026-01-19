@@ -23,7 +23,7 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    fn prefetch(&self, pos: usize) {
+    fn prefetch1(&self, pos: usize, _c: u8) {
         self.prefetch_data(pos);
         self.prefetch_info(pos);
     }
@@ -65,7 +65,7 @@ impl RankerT for RSQVector512 {
     }
 
     #[inline(always)]
-    fn prefetch(&self, pos: usize) {
+    fn prefetch1(&self, pos: usize, _c: u8) {
         self.prefetch_data(pos);
         self.prefetch_info(pos);
     }
