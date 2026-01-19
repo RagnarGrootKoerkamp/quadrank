@@ -7,7 +7,6 @@ pub mod test;
 
 use crate::quad::count4::CountFn;
 use packed_seq::{PackedSeqVec, SeqVec};
-use std::array::from_fn;
 use std::ops::Coroutine;
 
 pub use ranker::Ranker;
