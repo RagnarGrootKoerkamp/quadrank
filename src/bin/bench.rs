@@ -8,6 +8,7 @@ use std::{
 };
 
 use clap::Parser;
+use prefetch_index::prefetch_index;
 use quadrank::{
     binary::{
         self,
@@ -17,7 +18,7 @@ use quadrank::{
         },
         super_blocks::ShiftSB,
     },
-    genedex, prefetch_index,
+    genedex,
     quad::{
         LongRanks, Ranker, RankerT,
         blocks::{

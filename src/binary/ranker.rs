@@ -1,4 +1,4 @@
-use crate::prefetch_index;
+use prefetch_index::prefetch_index;
 
 use super::{BasicBlock, RankerT, SuperBlock, super_blocks::ShiftSB};
 

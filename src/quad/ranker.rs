@@ -1,7 +1,7 @@
 use super::count4::CountFn;
 use super::{BasicBlock, LongRanks, RankerT, SuperBlock};
 use crate::count::{count_u8, count_u8x8};
-use crate::prefetch_index;
+use prefetch_index::prefetch_index;
 use std::marker::PhantomData;
 
 pub struct Ranker<BB: BasicBlock, SB: SuperBlock, CF: CountFn<{ BB::C }>> {

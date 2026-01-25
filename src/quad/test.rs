@@ -1,7 +1,5 @@
 use std::sync::LazyLock;
 
-use rand::Rng;
-
 use super::blocks::*;
 use super::super_blocks::ShiftSB;
 use crate::genedex;
