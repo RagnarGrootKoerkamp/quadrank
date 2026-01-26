@@ -55,12 +55,15 @@ fn time_fn_mt(queries: &[Vec<usize>], f: impl Fn(&[usize]) + Sync + Copy) -> f64
     start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64
 }
 
-/// Take the minimum of 3 runs.
+/// Take the median of 3 runs.
+/// Exclude max: it might be slow.
+/// Exclude min: it might too fast from short-term boost frequency.
 fn time_fn(queries: &QS, t: usize, f: impl Fn(&[usize]) + Sync + Copy) {
-    let ns = (0..REPEATS)
+    let mut nss = (0..REPEATS)
         .map(|_| time_fn_mt(&queries[0..t], f))
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+        .collect::<Vec<_>>();
+    nss.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let ns = nss[1];
     eprint!(" {ns:>8.3}");
     print!(",{ns:.5}");
 }
