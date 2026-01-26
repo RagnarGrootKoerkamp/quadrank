@@ -37,12 +37,7 @@ use sux::prelude::Rank9;
 
 type QS = Vec<Vec<usize>>;
 
-#[derive(Clone, Copy)]
-enum Threading {
-    Single,
-    Multi,
-    Hyper,
-}
+type Threading = usize;
 
 fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
     let mut times: Vec<_> = queries
