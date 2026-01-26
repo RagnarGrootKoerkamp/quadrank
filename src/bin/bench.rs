@@ -39,23 +39,10 @@ type QS = Vec<Vec<usize>>;
 
 type Threading = usize;
 
-fn time_fn_median(queries: &QS, f: impl Fn(&[usize])) {
-    let mut times: Vec<_> = queries
-        .iter()
-        .take(5)
-        .map(|queries| {
-            let start = std::time::Instant::now();
-            f(&queries);
-            start.elapsed().as_nanos()
-        })
-        .collect();
-    times.sort();
-    let ns = times[2] as f64 / queries[0].len() as f64;
-    eprint!(" {ns:>7.2}");
-    print!(",{ns:.2}");
-}
+const THREADS: &[usize] = &[1, 3, 6, 12];
+const REPEATS: usize = 3;
 
-fn time_fn_mt(queries: &[Vec<usize>], f: impl Fn(&[usize]) + Sync + Copy) {
+fn time_fn_mt(queries: &[Vec<usize>], f: impl Fn(&[usize]) + Sync + Copy) -> f64 {
     let start = std::time::Instant::now();
     std::thread::scope(|scope| {
         queries.iter().for_each(|queries| {
@@ -65,17 +52,17 @@ fn time_fn_mt(queries: &[Vec<usize>], f: impl Fn(&[usize]) + Sync + Copy) {
             });
         });
     });
-    let ns = start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64;
-    eprint!(" {ns:>7.2}");
-    print!(",{ns:.2}");
+    start.elapsed().as_nanos() as f64 / (queries.len() * queries[0].len()) as f64
 }
 
+/// Take the minimum of 3 runs.
 fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
-    match t {
-        Threading::Single => time_fn_median(queries, f),
-        Threading::Multi => time_fn_mt(&queries[0..6], f),
-        Threading::Hyper => time_fn_mt(&queries[0..12], f),
-    }
+    let ns = (0..REPEATS)
+        .map(|_| time_fn_mt(&queries[0..t], f))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+    eprint!(" {ns:>7.2}");
+    print!(",{ns:.2}");
 }
 
 const BATCH: usize = 32;
@@ -161,7 +148,7 @@ fn time_coro2_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = LongRanks> + Unpin,
 {
-    time_fn(queries, Threading::Single, |queries| {
+    time_fn(queries, 1, |queries| {
         for batch in queries.as_chunks::<32>().0 {
             let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
 
@@ -184,7 +171,7 @@ fn time_coro2_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = LongRanks> + Unpin,
 {
-    time_fn(queries, Threading::Single, |queries| {
+    time_fn(queries, 1, |queries| {
         let mut funcs: [F; 32] = from_fn(|i| {
             let mut func = f(queries[i]);
             pin!(&mut func).resume(());
@@ -211,7 +198,7 @@ fn time_coro_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = LongRanks> + Unpin,
 {
-    time_fn(queries, Threading::Single, |queries| {
+    time_fn(queries, 1, |queries| {
         for batch in queries.as_chunks::<BATCH>().0 {
             let mut funcs: [_; BATCH] = from_fn(|i| f(batch[i]));
 
@@ -230,7 +217,7 @@ fn time_coro_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
 where
     F: Coroutine<Return = LongRanks> + Unpin,
 {
-    time_fn(queries, Threading::Single, |queries| {
+    time_fn(queries, 1, |queries| {
         let mut funcs: [F; BATCH] = from_fn(|i| f(queries[i]));
 
         for i in 0..queries.len() - BATCH {
@@ -247,40 +234,22 @@ where
     });
 }
 
-fn bench_header(threads: usize) {
-    eprintln!(
-        "{:<60} {:>11} {:>6} | {:>7} {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>7} {:>7} {:>7} |",
-        "Ranker",
-        "n",
-        "bits",
-        "1t",
-        "",
-        "",
-        format!("{}t", threads / 2),
-        "",
-        "",
-        format!("{}t", threads),
-        "",
-        ""
-    );
-    eprintln!(
-        "{:<60} {:>11} {:>6} | {:>7} {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>7} {:>7} {:>7} |",
-        "",
-        "",
-        "",
-        "latncy",
-        "loop",
-        "stream",
-        "latncy",
-        "loop",
-        "stream",
-        "latncy",
-        "loop",
-        "stream"
-    );
-    println!(
-        "ranker,sigma,n,bits,count4,latency_1,loop_1,stream_1,latency_6,loop_6,stream_6,latency_12,loop_12,stream_12"
-    );
+fn bench_header() {
+    eprint!("{:<60} {:>11} {:>6} |", "Ranker", "n", "size",);
+    for t in THREADS {
+        eprint!(" {:>6}t {:>7} {:>7} |", t, "", "");
+    }
+    eprintln!();
+    eprint!("{:<60} {:>11} {:>6} |", "", "", "");
+    for t in THREADS {
+        eprint!(" {:>7} {:>7} {:>7} |", "latncy", "loop", "stream",);
+    }
+    eprintln!();
+    print!("ranker,sigma,n,rel_size,count4");
+    for t in THREADS {
+        print!(",latency_{},loop_{},stream_{}", t, t, t);
+    }
+    println!();
 }
 
 fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
@@ -291,15 +260,15 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
             .unwrap()
             .replace_all(name, |_: &regex::Captures| "".to_string());
 
-        eprint!("{name:<60}");
+        eprint!("{name:<60} ");
         let n = packed_seq.len() * 64 / 2;
-        eprint!("{n:>11}");
+        eprint!("{n:>11} ");
 
-        let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
-        eprint!("{bits:>6.3}b |");
-        print!("\"{name}\",4,{n},{bits:>.3},{}", count4 as u8);
+        let rel_size = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
+        eprint!("{rel_size:>5.3}x |");
+        print!("\"{name}\",4,{n},{rel_size:>.3},{}", count4 as u8);
 
-        for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
+        for &t in THREADS {
             if count4 {
                 time_trip(
                     &queries,
@@ -330,16 +299,16 @@ fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
         .unwrap()
         .replace_all(name, |_: &regex::Captures| "".to_string());
 
-    eprint!("{name:<60}");
+    eprint!("{name:<60} ");
     let n = packed_seq.len() * 64;
-    eprint!("{n:>11}");
+    eprint!("{n:>11} ");
 
     let ranker = R::new_packed(&packed_seq);
-    let bits = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
-    eprint!("{bits:>6.3}b |");
-    print!("\"{name}\",2,{n},{bits:>.3},0");
+    let rel_size = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
+    eprint!("{rel_size:>5.3}x |");
+    print!("\"{name}\",2,{n},{rel_size:>.3},0");
 
-    for t in [Threading::Single, Threading::Multi, Threading::Hyper] {
+    for &t in THREADS {
         time_trip(
             &queries,
             t,
@@ -364,7 +333,7 @@ fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
 fn bench_quad(seq: &[usize], queries: &QS) {
     use quadrank::quad::super_blocks::ShiftSB;
 
-    bench_header(queries.len());
+    bench_header();
 
     bench_one_quad::<qwt::RSQVector256>(seq, queries);
     bench_one_quad::<qwt::RSQVector512>(seq, queries);
@@ -381,7 +350,7 @@ fn bench_quad(seq: &[usize], queries: &QS) {
 
 #[inline(never)]
 fn bench_binary(seq: &[usize], queries: &QS) {
-    bench_header(queries.len());
+    bench_header();
 
     bench_one_binary::<qwt::RSNarrow>(seq, queries);
     bench_one_binary::<qwt::RSWide>(seq, queries);
@@ -456,7 +425,7 @@ fn main() {
 
         if args.binary {
             let n = size * 8;
-            let queries = (0..12)
+            let queries = (0..*THREADS.last().unwrap())
                 .map(|_| (0..q).map(|_| rand::random_range(2..n)).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
@@ -464,7 +433,7 @@ fn main() {
         }
         if args.quad {
             let n = size * 4;
-            let queries = (0..12)
+            let queries = (0..*THREADS.last().unwrap())
                 .map(|_| (0..q).map(|_| rand::random_range(2..n)).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
