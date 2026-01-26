@@ -5,6 +5,7 @@ use std::{
     array::from_fn,
     ops::{Coroutine, CoroutineState::Complete},
     pin::pin,
+    sync::OnceLock,
 };
 
 use clap::Parser;
@@ -37,9 +38,8 @@ use sux::prelude::Rank9;
 
 type QS = Vec<Vec<usize>>;
 
-type Threading = usize;
+static THREADS: OnceLock<Vec<usize>> = OnceLock::new();
 
-const THREADS: &[usize] = &[1, 3, 6, 12];
 const REPEATS: usize = 3;
 
 fn time_fn_mt(queries: &[Vec<usize>], f: impl Fn(&[usize]) + Sync + Copy) -> f64 {
@@ -56,7 +56,7 @@ fn time_fn_mt(queries: &[Vec<usize>], f: impl Fn(&[usize]) + Sync + Copy) -> f64
 }
 
 /// Take the minimum of 3 runs.
-fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
+fn time_fn(queries: &QS, t: usize, f: impl Fn(&[usize]) + Sync + Copy) {
     let ns = (0..REPEATS)
         .map(|_| time_fn_mt(&queries[0..t], f))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
@@ -67,7 +67,7 @@ fn time_fn(queries: &QS, t: Threading, f: impl Fn(&[usize]) + Sync + Copy) {
 
 const BATCH: usize = 32;
 
-fn time_latency(queries: &QS, t: Threading, f: impl Fn(usize) -> usize + Sync + Copy) {
+fn time_latency(queries: &QS, t: usize, f: impl Fn(usize) -> usize + Sync + Copy) {
     time_fn(queries, t, |queries| {
         let mut acc = 0;
         for &q in queries {
@@ -79,7 +79,7 @@ fn time_latency(queries: &QS, t: Threading, f: impl Fn(usize) -> usize + Sync + 
     });
 }
 
-fn time_loop(queries: &QS, t: Threading, f: impl Fn(usize) -> usize + Sync + Copy) {
+fn time_loop(queries: &QS, t: usize, f: impl Fn(usize) -> usize + Sync + Copy) {
     time_fn(queries, t, |queries| {
         for &q in queries {
             f(q);
@@ -89,7 +89,7 @@ fn time_loop(queries: &QS, t: Threading, f: impl Fn(usize) -> usize + Sync + Cop
 
 fn time_batch(
     queries: &QS,
-    t: Threading,
+    t: usize,
     prefetch: impl Fn(usize) + Sync,
     f: impl Fn(usize) -> usize + Sync,
 ) {
@@ -108,7 +108,7 @@ fn time_batch(
 
 fn time_stream(
     queries: &QS,
-    t: Threading,
+    t: usize,
     prefetch: impl Fn(usize) + Sync,
     f: impl Fn(usize) -> usize + Sync,
 ) {
@@ -128,7 +128,7 @@ fn time_stream(
 
 fn time_trip(
     queries: &QS,
-    t: Threading,
+    t: usize,
     prefetch: impl Fn(usize) + Sync + Copy,
     f: impl Fn(usize) -> usize + Sync + Copy,
     stream: bool,
@@ -236,17 +236,17 @@ where
 
 fn bench_header() {
     eprint!("{:<60} {:>11} {:>6} |", "Ranker", "n", "size",);
-    for t in THREADS {
+    for t in THREADS.wait() {
         eprint!(" {:>6}t {:>7} {:>7} |", t, "", "");
     }
     eprintln!();
     eprint!("{:<60} {:>11} {:>6} |", "", "", "");
-    for t in THREADS {
+    for t in THREADS.wait() {
         eprint!(" {:>7} {:>7} {:>7} |", "latncy", "loop", "stream",);
     }
     eprintln!();
     print!("ranker,sigma,n,rel_size,count4");
-    for t in THREADS {
+    for t in THREADS.wait() {
         print!(",latency_{},loop_{},stream_{}", t, t, t);
     }
     println!();
@@ -268,7 +268,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
         eprint!("{rel_size:>5.3}x |");
         print!("\"{name}\",4,{n},{rel_size:>.3},{}", count4 as u8);
 
-        for &t in THREADS {
+        for &t in THREADS.wait() {
             if count4 {
                 time_trip(
                     &queries,
@@ -308,7 +308,7 @@ fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
     eprint!("{rel_size:>5.3}x |");
     print!("\"{name}\",2,{n},{rel_size:>.3},0");
 
-    for &t in THREADS {
+    for &t in THREADS.wait() {
         time_trip(
             &queries,
             t,
@@ -376,6 +376,9 @@ fn bench_binary(seq: &[usize], queries: &QS) {
 
 #[derive(clap::Parser)]
 struct Args {
+    /// Max number of threads
+    #[clap(short = 'j')]
+    threads: Option<usize>,
     #[clap(short = 'n')]
     n: Option<usize>,
     #[clap(short = 'b')]
@@ -385,16 +388,10 @@ struct Args {
 }
 
 fn main() {
-    #[cfg(debug_assertions)]
-    let q = 10_000;
-    #[cfg(not(debug_assertions))]
+    // queries per thread
     let q = 10_000_000;
 
-    // n: size in bytes
-
-    #[cfg(debug_assertions)]
-    let mut sizes = vec![100_000];
-    #[cfg(not(debug_assertions))]
+    // size in bytes
     #[rustfmt::skip]
     let mut sizes = vec![
         128_000, // L2
@@ -407,6 +404,21 @@ fn main() {
     let mut sizes = (13..=32).map(|i| 1usize << i).collect::<Vec<_>>();
 
     let args = Args::parse();
+
+    THREADS.set({
+        let mut ts = vec![];
+        let mut t = args.threads.unwrap_or(12);
+        loop {
+            ts.push(t);
+            if t == 1 {
+                break;
+            }
+            t /= 2;
+        }
+        ts.reverse();
+        ts
+    });
+
     if let Some(n) = args.n {
         sizes = vec![n];
     }
@@ -425,7 +437,7 @@ fn main() {
 
         if args.binary {
             let n = size * 8;
-            let queries = (0..*THREADS.last().unwrap())
+            let queries = (0..*THREADS.wait().last().unwrap())
                 .map(|_| (0..q).map(|_| rand::random_range(2..n)).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
@@ -433,7 +445,7 @@ fn main() {
         }
         if args.quad {
             let n = size * 4;
-            let queries = (0..*THREADS.last().unwrap())
+            let queries = (0..*THREADS.wait().last().unwrap())
                 .map(|_| (0..q).map(|_| rand::random_range(2..n)).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
