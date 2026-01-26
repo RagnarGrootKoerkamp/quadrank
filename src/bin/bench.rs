@@ -61,8 +61,8 @@ fn time_fn(queries: &QS, t: usize, f: impl Fn(&[usize]) + Sync + Copy) {
         .map(|_| time_fn_mt(&queries[0..t], f))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
-    eprint!(" {ns:>7.2}");
-    print!(",{ns:.2}");
+    eprint!(" {ns:>8.3}");
+    print!(",{ns:.5}");
 }
 
 const BATCH: usize = 32;
@@ -138,8 +138,8 @@ fn time_trip(
     if stream {
         time_stream(queries, t, prefetch, f);
     } else {
-        eprint!(" {:>7.2}", 0);
-        print!(",{:.2}", 0);
+        eprint!(" {:>8.3}", 0);
+        print!(",{:.5}", 0);
     }
 }
 
@@ -237,12 +237,12 @@ where
 fn bench_header() {
     eprint!("{:<60} {:>11} {:>6} |", "Ranker", "n", "size",);
     for t in THREADS.wait() {
-        eprint!(" {:>6}t {:>7} {:>7} |", t, "", "");
+        eprint!(" {:>7}t {:>8} {:>8} |", t, "", "");
     }
     eprintln!();
     eprint!("{:<60} {:>11} {:>6} |", "", "", "");
     for t in THREADS.wait() {
-        eprint!(" {:>7} {:>7} {:>7} |", "latncy", "loop", "stream",);
+        eprint!(" {:>8} {:>8} {:>8} |", "latncy", "loop", "stream",);
     }
     eprintln!();
     print!("ranker,sigma,n,rel_size,count4");
