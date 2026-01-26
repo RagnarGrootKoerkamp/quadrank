@@ -379,6 +379,8 @@ struct Args {
     /// Max number of threads
     #[clap(short = 'j')]
     threads: Option<usize>,
+    #[clap(long)]
+    to: Option<usize>,
     #[clap(short = 'n')]
     n: Option<usize>,
     #[clap(short = 'b')]
@@ -388,6 +390,8 @@ struct Args {
 }
 
 fn main() {
+    let args = Args::parse();
+
     // queries per thread
     let q = 10_000_000;
 
@@ -401,9 +405,9 @@ fn main() {
         // 16_000_000_000, // RAM
     ];
 
-    let mut sizes = (13..=32).map(|i| 1usize << i).collect::<Vec<_>>();
-
-    let args = Args::parse();
+    let mut sizes = (13..=args.to.unwrap_or(32))
+        .map(|i| 1usize << i)
+        .collect::<Vec<_>>();
 
     THREADS.set({
         let mut ts = vec![];
