@@ -395,7 +395,6 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<genedex::Condensed512>(seq, queries);
 
     bench_one_binary::<bitm::RankSelect101111>(seq, queries);
-    bench_one_binary::<vers_vecs::RsVec>(seq, queries);
 
     bench_one_binary::<Rank9>(seq, queries);
     bench_one_binary::<RankSmall0>(seq, queries);
