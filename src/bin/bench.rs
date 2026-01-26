@@ -435,10 +435,12 @@ fn main() {
     let mut sizes = vec![
         128_000, // L2
         // 8_000_000, // L3
-        4_000_000_000, // RAM
+        4_000_000_000usize, // RAM
         // 8_000_000_000, // RAM
         // 16_000_000_000, // RAM
     ];
+
+    let mut sizes = (13..=32).map(|i| 1usize << i).collect::<Vec<_>>();
 
     let args = Args::parse();
     if let Some(n) = args.n {
