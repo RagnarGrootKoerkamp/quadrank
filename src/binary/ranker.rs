@@ -84,7 +84,11 @@ where
     fn prefetch(&self, pos: usize) {
         let block_idx = pos / BB::N;
         prefetch_index(&self.basic_blocks, block_idx);
-        if BB::W < TARGET_BITS - 12 {
+        // -3 to count bytes instead of bits, and to avoid 1<<64.
+        let max_superblocks: u64 =
+            (1u64 << (TARGET_BITS - 3)).div_ceil(SB::BYTES_PER_SUPERBLOCK as u64);
+        // Prefetch superblocks if they (potentially) do not fit in L1.
+        if max_superblocks > 4096 {
             let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
             prefetch_index(&self.super_blocks, long_pos);
         }

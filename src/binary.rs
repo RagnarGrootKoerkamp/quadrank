@@ -7,7 +7,9 @@ pub mod test;
 pub use ranker::Ranker;
 pub use super_blocks::TrivialSB;
 
-const TARGET_BITS: usize = 40;
+/// By default, the library works for arrays with up to `2^43 = 1 TiB` of `1` bits.
+/// This controls whether superblocks are used and/or prefetched.
+pub const TARGET_BITS: usize = 43;
 
 /// A basic block covers one cache line of bits.
 pub trait BasicBlock: Send + Sync {
