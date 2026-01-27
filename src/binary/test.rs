@@ -131,6 +131,7 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, usize)> {
         }
     }
     queries.sort_unstable();
+    queries.dedup();
 
     let mut qa = vec![];
     let mut i = 0;

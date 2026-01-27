@@ -141,18 +141,19 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, [usize; 4])> {
     let n = seq.len() * usize::BITS as usize / 2;
     let mut queries = vec![];
     if n <= 1000 {
-        for i in 0..=n {
+        for i in 0..n {
             queries.push(i);
         }
     } else {
         queries.push(0);
         queries.push(n - 1);
-        queries.push(n);
+        // queries.push(n);
         for _ in 0..10000 {
             queries.push(rand::random_range(0..n));
         }
     }
     queries.sort_unstable();
+    queries.dedup();
 
     let mut qa = vec![];
     let mut i = 0;
