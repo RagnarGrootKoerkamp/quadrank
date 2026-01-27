@@ -1,20 +1,20 @@
-use crate::quad::SuperBlock;
+use crate::quad::{SuperBlock, count4::count4_u8};
 
-use super::{LongRanks, Ranks};
+use super::{BasicBlock, LongRanks, Ranks};
 
 #[derive(mem_dbg::MemSize)]
 pub struct NoSB;
 
-impl SuperBlock for NoSB {
-    const BB: usize = 1;
+impl<BB: BasicBlock> SuperBlock<BB> for NoSB {
+    const NBB: usize = 1;
     const W: usize = 32;
     const SHIFT: usize = 0;
     #[inline(always)]
-    fn new(_ranks: [LongRanks; 1]) -> Self {
+    fn new(_ranks: [LongRanks; <Self as SuperBlock<BB>>::NBB], _data: &[u8]) -> Self {
         Self
     }
     #[inline(always)]
-    fn get(&self, _idx: usize) -> LongRanks {
+    fn get(&self, _idx: usize, _block_idx: usize) -> LongRanks {
         [0; 4]
     }
 }
@@ -25,16 +25,16 @@ pub struct TrivialSB {
     block: LongRanks,
 }
 
-impl SuperBlock for TrivialSB {
-    const BB: usize = 1;
+impl<BB: BasicBlock> SuperBlock<BB> for TrivialSB {
+    const NBB: usize = 1;
     const W: usize = 0;
     const SHIFT: usize = 0;
     #[inline(always)]
-    fn new(ranks: [LongRanks; 1]) -> Self {
+    fn new(ranks: [LongRanks; <Self as SuperBlock<BB>>::NBB], _data: &[u8]) -> Self {
         Self { block: ranks[0] }
     }
     #[inline(always)]
-    fn get(&self, idx: usize) -> LongRanks {
+    fn get(&self, idx: usize, _block_idx: usize) -> LongRanks {
         debug_assert!(idx == 0);
         self.block
     }
@@ -48,18 +48,18 @@ pub struct ShiftSB {
 
 const SHIFT: usize = 13;
 
-impl SuperBlock for ShiftSB {
-    const BB: usize = 1;
+impl<BB: BasicBlock> SuperBlock<BB> for ShiftSB {
+    const NBB: usize = 1;
     const W: usize = 0;
     const SHIFT: usize = SHIFT;
     #[inline(always)]
-    fn new(ranks: [LongRanks; 1]) -> Self {
+    fn new(ranks: [LongRanks; <Self as SuperBlock<BB>>::NBB], _data: &[u8]) -> Self {
         Self {
             block: ranks[0].map(|x| (x >> SHIFT) as u32),
         }
     }
     #[inline(always)]
-    fn get(&self, idx: usize) -> LongRanks {
+    fn get(&self, idx: usize, _block_idx: usize) -> LongRanks {
         debug_assert!(idx == 0);
         self.block.map(|x| (x as u64) << SHIFT)
     }
@@ -75,13 +75,13 @@ pub struct SB8 {
     blocks: [u128; 4],
 }
 
-impl SuperBlock for SB8 {
-    const BB: usize = 8;
+impl<BB: BasicBlock> SuperBlock<BB> for SB8 {
+    const NBB: usize = 8;
     const W: usize = 0;
     const SHIFT: usize = 0;
 
     #[inline(always)]
-    fn new(ranks: [LongRanks; 8]) -> Self {
+    fn new(ranks: [LongRanks; <Self as SuperBlock<BB>>::NBB], _data: &[u8]) -> Self {
         Self {
             blocks: std::array::from_fn(|c| {
                 // Super block offset
@@ -99,7 +99,7 @@ impl SuperBlock for SB8 {
     }
 
     #[inline(always)]
-    fn get(&self, idx: usize) -> LongRanks {
+    fn get(&self, idx: usize, _block_idx: usize) -> LongRanks {
         std::array::from_fn(|c| {
             let x = self.blocks[c];
             let base = (x as u32 as u64) << 8;

@@ -23,7 +23,11 @@ pub type FastRank = Ranker<blocks::QuadBlock64, super_blocks::ShiftSB, count4::S
 pub type MidRank = Ranker<blocks::QuadBlock24_8, super_blocks::ShiftSB, count4::SimdCount11B>;
 pub type SmallRank = Ranker<blocks::QuadBlock16, super_blocks::ShiftSB, count4::NoCount>;
 
-pub trait BasicBlock: Sync {
+/// By default, the library works for arrays with counts up to `2^45`, corresponding to `8 TiB` of data.
+/// This controls whether superblocks are used and/or prefetched.
+pub const TARGET_BITS: usize = 45;
+
+pub trait BasicBlock: Sync + Send {
     /// Character width. 1 for binary, 2 for DNA.
     const X: usize;
 
@@ -57,20 +61,34 @@ pub trait BasicBlock: Sync {
     }
 }
 
-pub trait SuperBlock: Sync {
+pub trait SuperBlock<BB: BasicBlock>: Sync + Send {
     /// Number of basic blocks.
-    const BB: usize;
+    const NBB: usize;
     /// Bit-width of the basic block ranks.
     const W: usize;
 
     /// This many low bits are shifted out.
     const SHIFT: usize;
 
-    fn new(ranks: [LongRanks; Self::BB]) -> Self;
-    fn get(&self, idx: usize) -> LongRanks;
-    fn get1(&self, idx: usize, c: u8) -> usize {
-        self.get(idx)[c as usize] as usize
+    fn new(ranks: [LongRanks; Self::NBB], data: &[u8]) -> Self;
+    fn get(&self, idx: usize, block_idx: usize) -> LongRanks;
+    fn get1(&self, idx: usize, block_idx: usize, c: u8) -> usize {
+        self.get(idx, block_idx)[c as usize] as usize
     }
+
+    /// Store a new superblock every this-many blocks.
+    ///
+    /// For `N` bits/block and `x` blocks, each superblock spans `N*x`
+    /// characters with `N*x + N < 2^32`, and `x` fast to compute.
+    /// => `x < 2^32 / N - 1`
+    const BLOCKS_PER_SUPERBLOCK: usize = if BB::W == 0 {
+        1
+    } else if BB::W >= TARGET_BITS {
+        usize::MAX
+    } else {
+        (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2
+    };
+    const BYTES_PER_SUPERBLOCK: usize = Self::BLOCKS_PER_SUPERBLOCK.saturating_mul(BB::B);
 }
 
 pub trait RankerT: Sync + Sized {

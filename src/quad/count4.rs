@@ -12,6 +12,12 @@ use crate::{
     quad::Ranks,
 };
 
+pub fn count4_u8(data: u8) -> Ranks {
+    Naive::count(&data.to_ne_bytes(), 4)
+}
+pub fn count4_u64(data: u64) -> Ranks {
+    SimdCount7::count(&data.to_ne_bytes(), 32)
+}
 pub fn count4_u8x8(data: [u8; 8]) -> Ranks {
     SimdCount7::count(&data, 32)
 }
@@ -51,7 +57,7 @@ impl<const B: usize> CountFn<B> for Naive {
                 counts[c as usize] += 1;
             }
         }
-        {
+        if pos % 4 != 0 {
             let byte = data[pos / 4];
             for i in 0..(pos % 4) {
                 let c = (byte >> (i * 2)) & 0b11;

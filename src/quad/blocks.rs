@@ -464,7 +464,7 @@ impl BasicBlock for QuadBlock24_8 {
         ranks = strict_add(ranks, sum);
         let part_rank = strict_add(strict_add(bs[2], bs[3]), strict_add(bs[4], bs[5]));
         Self {
-            ranks: from_fn(|c| (ranks[c] << 8) | part_rank[c]),
+            ranks: from_fn(|c| ranks[c].strict_shl(8).strict_add(part_rank[c])),
             seq: from_fn(|i| unsafe {
                 std::mem::transmute(transpose_bits(
                     &data[i * 16..i * 16 + 16].try_into().unwrap(),
