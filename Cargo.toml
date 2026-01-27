@@ -38,6 +38,7 @@ bitm = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "
 # dyn_size_of.path = "../forks/bsuccinct-rs/dyn_size_of"
 dyn_size_of = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
 prefetch-index = "0.1.0"
+rayon = "1.11.0"
 
 [profile.release]
 debug = true

@@ -5,7 +5,8 @@
     coroutines,
     coroutine_trait,
     exact_div,
-    associated_const_equality
+    associated_const_equality,
+    slice_as_array
 )]
 
 pub mod binary;

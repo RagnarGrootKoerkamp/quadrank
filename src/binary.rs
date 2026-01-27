@@ -7,8 +7,10 @@ pub mod test;
 pub use ranker::Ranker;
 pub use super_blocks::TrivialSB;
 
+const TARGET_BITS: usize = 40;
+
 /// A basic block covers one cache line of bits.
-pub trait BasicBlock: Sync {
+pub trait BasicBlock: Send + Sync {
     /// Number of bits per basic block.
     /// We assume N is a multiple of 8.
     const N: usize;
@@ -35,10 +37,25 @@ pub trait BasicBlock: Sync {
 /// A single super block stores ranks for 1 basic block.
 ///
 /// (We don't do delta compression here for now.)
-pub trait SuperBlock: Sync + Sized {
+pub trait SuperBlock<BB: BasicBlock>: Sync + Send + Sized {
     /// Return the block and the stored value.
-    fn new(ranks: u64) -> (Self, u64);
-    fn get(&self) -> u64;
+    fn new(ranks: u64, data: &[u8]) -> Self;
+    /// Get the offset for basic block `idx` inside this super block.
+    fn get(&self, block_idx: usize) -> u64;
+
+    /// Store a new superblock every this-many blocks.
+    ///
+    /// For `N` bits/block and `x` blocks, each superblock spans `N*x`
+    /// characters with `N*x + N < 2^32`, and `x` fast to compute.
+    /// => `x < 2^32 / N - 1`
+    const BLOCKS_PER_SUPERBLOCK: usize = if BB::W == 0 {
+        1
+    } else if BB::W >= TARGET_BITS {
+        usize::MAX
+    } else {
+        (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2
+    };
+    const BYTES_PER_SUPERBLOCK: usize = Self::BLOCKS_PER_SUPERBLOCK.saturating_mul(BB::B);
 }
 
 pub trait RankerT: Sync + Sized {

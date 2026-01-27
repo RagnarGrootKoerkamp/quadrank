@@ -4,15 +4,24 @@ use crate::binary::{self, blocks::*};
 use crate::genedex;
 use crate::sux;
 
+use super::super_blocks::ShiftPairedSB;
+
 #[test]
 fn binary() {
     test::<binary::Ranker<BinaryBlock64x2>>();
     test::<binary::Ranker<BinaryBlock32x2>>();
     test::<binary::Ranker<BinaryBlock23_9>>();
     test::<binary::Ranker<BinaryBlock16x2>>();
-    test::<binary::Ranker<BinaryBlock32>>();
+    test::<binary::Ranker<BinaryBlock32x2>>();
     test::<binary::Ranker<BinaryBlock16>>();
     test::<binary::Ranker<BinaryBlock16Spider>>();
+
+    test::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>();
+    test::<binary::Ranker<BinaryBlock23_9, ShiftPairedSB>>();
+    test::<binary::Ranker<BinaryBlock32, ShiftPairedSB>>();
+    test::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>();
+    test::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>();
+
     test::<genedex::Flat64>();
     test::<genedex::Flat512>();
     test::<genedex::Condensed64>();
