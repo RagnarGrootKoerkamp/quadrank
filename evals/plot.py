@@ -5,52 +5,6 @@ import matplotlib.ticker as ticker
 from math import log
 
 
-def get_source(name):
-    if "<Plain" in name:
-        return "skip"
-    if "FullDouble" in name:
-        return "quadrank"
-    if "TriBlock" in name:
-        return "quadrank"
-    if "Transposed" in name:
-        return "quadrank"
-    if "Spider" in name:
-        return "spider"
-    if "Ranker" in name:
-        if "Block3" in name:
-            return "skip"
-        if "Block5" in name:
-            return "skip"
-        return "quadrank"
-    if "RS" in name:
-        return "qwt"
-    if "Rank9Sel" in name:
-        return "skip"
-    if "Rank9<Vec" in name:
-        return "skip"
-    if "Rank9" in name:
-        return "rank9"
-    if "RankSmall" in name:
-        return "ranksmall"
-    # if "FlatTextWithRank" in name:
-    #     return "skip"
-    if "TextWithRankSupport" in name:
-        return "genedex"
-    if "Jacobson" in name:
-        return "skip"
-    if "RsDict" in name:
-        return "skip"
-    if "RankSelect10" in name:
-        return "bitm"
-    if "RsVec" in name:
-        return "skip"
-    if "RankSelect" in name:
-        return "skip"
-    if "RankSimple" in name:
-        return "skip"
-    return name
-
-
 # Return (crate, name, symbol, oder)
 def get_shortname(name):
     if sigma == 4:
@@ -113,17 +67,6 @@ def get_shortname(name):
 
 # TODO: use * symbol
 
-cols = {
-    "latency_1": ["Latency, 1 thread", "blue", 1],
-    "loop_1": ["Loop, 1 thread", "green", 1],
-    "stream_1": ["Loop + prefetch, 1 thread", "red", 1],
-    "latency_6": ["Latency, 6 threads", "blue", 6],
-    "loop_6": ["Loop, 6 threads", "green", 6],
-    "stream_6": ["Loop + prefetch, 6 threads", "red", 6],
-    "latency_12": ["Latency, 12 threads", "blue", 12],
-    "loop_12": ["Loop, 12 threads", "green", 12],
-    "stream_12": ["Loop + prefetch, 12 threads", "red", 12],
-}
 blogyellow = "#fcc007"
 styles = {
     "binary": ["x", "black"],
@@ -163,7 +106,9 @@ def format(x):
 
 def plot(ax, data, r, c, rows, mode, threads, plotn=False):
     col = f"{mode}_{threads}"
-    plotlabel, _color, _t = cols[col]
+    plotlabel = {"latency": "Latency", "loop": "Loop", "stream": "Loop + prefetch"}[
+        mode
+    ] + f", {threads} thread{'s' if threads > 1 else ''}"
 
     maxn = data.n.max()
 
@@ -302,7 +247,8 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
     ax.tick_params(axis="y", which="major", labelleft=True)
     ax.grid(True, which="major", ls="-", lw=0.3, axis="y")
     # Make sure all printed y-ax labels are integers.
-    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:g}"))
+    # TODO: format integers as normal (128) and decimals up to two periods (.2)
+    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3g}"))
     if r == 0 and c == 0 and rows > 1:
 
         if sigma == 4:
@@ -349,7 +295,11 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
         else:
             ax.legend(ncols=2, fontsize=8)
 
-    # draw hline
+    if server:
+        return
+    # cache sizes and throughputs are tuned for laptop only.
+
+    # draw hline for latency/throughput limit
     if mode == "latency":
         lim = 80 / threads
         ls = ":"
@@ -358,6 +308,7 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
         lim = 7.5 if r == 0 else 2.5
         ls = "--" if r == 0 else "-"
         lw = 0.5 if r == 0 else 0.5
+
     ax.axhline(
         y=lim,
         color="blue",
@@ -422,7 +373,10 @@ def plot_small(plotn=False):
     plot(ax, sub_df, 0, 0, 1, "loop", 1, plotn=plotn)
 
     infix = "n" if plotn else "st"
-    fig.savefig(f"plot-{infix}-{sigma}-small.png", bbox_inches="tight", dpi=300)
+    srv = "server" if server else "laptop"
+    fig.savefig(
+        f"plots/plot-{srv}-{infix}-{sigma}-small.png", bbox_inches="tight", dpi=300
+    )
 
 
 def plot_grid(plotn=False):
@@ -437,12 +391,14 @@ def plot_grid(plotn=False):
         size_bytes = n * bits_per_symbol // 8
         sub_df = df[df.n == n]
 
-    fig, ax = plt.subplots(3, 3, sharey="row", figsize=(15, 10))
+    fig, ax = plt.subplots(
+        len(threads), 3, sharey="row", figsize=(15, 3.33 * len(threads))
+    )
     fig.tight_layout(pad=1.5)
 
     # Set title
     if plotn:
-        fig.suptitle(f"Query throughput for σ={sigma}", fontsize=20, y=1.03)
+        fig.suptitle(f"Inverse query throughput for σ={sigma}", fontsize=20, y=1.03)
     else:
         fig.suptitle(
             f"Space-time trade-off for σ={sigma}, n={format(n)}{unit}, size={format(size_bytes)}B",
@@ -451,19 +407,29 @@ def plot_grid(plotn=False):
         )
 
     for c, mode in enumerate(["latency", "loop", "stream"]):
-        for r, threads in enumerate([1, 6, 12]):
-            plot(ax[r][c], sub_df, r, c, 3, mode, threads, plotn=plotn)
+        for r, t in enumerate(threads):
+            plot(ax[r][c], sub_df, r, c, len(threads), mode, t, plotn=plotn)
 
     if plotn:
         sizelabel = ""
     else:
         sizelabel = "-large"
     infix = "n" if plotn else "st"
-    fig.savefig(f"plot-{infix}-{sigma}{sizelabel}.png", bbox_inches="tight", dpi=300)
+    srv = "server" if server else "laptop"
+    fig.savefig(
+        f"plots/plot-{srv}-{infix}-{sigma}{sizelabel}.png", bbox_inches="tight", dpi=300
+    )
 
 
-df_all = pd.read_csv(f"scaling-n.csv")
-for sigma in [4]:
+# df_all = pd.read_csv(f"scaling-n.csv")
+df_all = pd.read_csv(f"server.csv")
+
+server = "latency_96" in df_all.columns
+if server:
+    threads = [1, 48, 96, 192]
+else:
+    threads = [1, 6, 12]
+for sigma in [2, 4]:
     df = df_all[df_all.sigma == sigma].copy()
 
     assert df.sigma.unique() == [sigma]
@@ -471,7 +437,7 @@ for sigma in [4]:
     unit = "b" if sigma == 2 else "bp"
 
     df["size"] = df["n"] * bits_per_symbol // 8
-    df["overhead"] = 100 * (df.bits - 1)
+    df["overhead"] = 100 * (df.rel_size - 1)
     df["order"] = df["ranker"].apply(lambda name: get_shortname(name)[3])
 
     # sort by order
