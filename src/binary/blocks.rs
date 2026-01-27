@@ -371,8 +371,10 @@ impl BasicBlock for BinaryBlock16Spider {
         unsafe {
             if last_uint > 0 {
                 pop_val += (words.read() & BIT_MASK).count_ones();
+                assert_unchecked(last_uint < 8);
                 for i in 1..last_uint {
                     pop_val += words.add(i).read().count_ones();
+                    std::hint::black_box(());
                 }
 
                 // FIXME: Why does the original have >> here.
@@ -384,6 +386,55 @@ impl BasicBlock for BinaryBlock16Spider {
             let rank = words.cast::<u16>().read() as u64;
             let inner_count = pop_val + final_x.count_ones();
             // FIXME: Add inclusive vs exclusive generic.
+            rank + inner_count as u64
+        }
+    }
+}
+
+/// Like Spider above, but the offset is at the end and we reduce branches.
+#[repr(align(64))]
+#[repr(C)]
+#[derive(mem_dbg::MemSize)]
+pub struct BinaryBlock16Spider2 {
+    /// *Last* 2 bytes are rank offset.
+    /// The rest bits.
+    seq: [u8; 64],
+}
+
+impl BasicBlock for BinaryBlock16Spider2 {
+    const B: usize = 62;
+    const N: usize = 496;
+    const W: usize = 16;
+    const INCLUSIVE: bool = true;
+
+    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+        let mut seq = [0; 64];
+        seq[..62].copy_from_slice(&data[0..62]);
+        seq[62] = (rank & 0xff) as u8;
+        seq[63] = ((rank >> 8) & 0xff) as u8;
+        Self { seq }
+    }
+
+    /// `pos` is in [0, 512) and right-inclusive here.
+    #[inline(always)]
+    unsafe fn rank_unchecked(&self, pos: usize) -> u64 {
+        // Pad for the first 16 bits.
+        unsafe { assert_unchecked(pos < 512 - 16) };
+        let words = self.seq.as_ptr().cast::<u64>();
+        let last_uint = pos / 64;
+        let mut pop_val = 0;
+
+        unsafe {
+            assert_unchecked(last_uint < 8);
+            for i in 0..last_uint {
+                pop_val += words.add(i).read().count_ones();
+                // prevent auto-vectorization
+                std::hint::black_box(());
+            }
+            let final_x = words.add(last_uint).read() << (63 - (pos % 64));
+            // Read u16 from end of block.
+            let rank = words.cast::<u16>().add(31).read() as u64;
+            let inner_count = pop_val + final_x.count_ones();
             rank + inner_count as u64
         }
     }

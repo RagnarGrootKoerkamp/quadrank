@@ -14,10 +14,10 @@ use quadrank::{
     binary::{
         self,
         blocks::{
-            BinaryBlock16, BinaryBlock16Spider, BinaryBlock16x2, BinaryBlock23_9, BinaryBlock32,
-            BinaryBlock32x2, BinaryBlock64x2,
+            BinaryBlock16, BinaryBlock16Spider, BinaryBlock16Spider2, BinaryBlock16x2,
+            BinaryBlock23_9, BinaryBlock32, BinaryBlock32x2, BinaryBlock64x2,
         },
-        super_blocks::ShiftSB,
+        super_blocks::{ShiftPairedSB, ShiftSB},
     },
     genedex,
     quad::{
@@ -375,6 +375,10 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<binary::Ranker<BinaryBlock16x2>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16Spider>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16Spider2>>(seq, queries);
+
+    bench_one_binary::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(seq, queries);
+    bench_one_binary::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(seq, queries);
 }
 
 #[derive(clap::Parser)]

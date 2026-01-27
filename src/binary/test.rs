@@ -15,6 +15,7 @@ fn binary() {
     test::<binary::Ranker<BinaryBlock32x2>>();
     test::<binary::Ranker<BinaryBlock16>>();
     test::<binary::Ranker<BinaryBlock16Spider>>();
+    test::<binary::Ranker<BinaryBlock16Spider2>>();
 
     test::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>();
     test::<binary::Ranker<BinaryBlock23_9, ShiftPairedSB>>();
