@@ -334,6 +334,7 @@ fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
 
 #[inline(never)]
 fn bench_quad(seq: &[usize], queries: &QS) {
+    use quadrank::quad::super_blocks::ShiftPairedSB;
     use quadrank::quad::super_blocks::ShiftSB;
 
     bench_header();
@@ -349,6 +350,9 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<Ranker<QuadBlock64, ShiftSB, SimdCount11B>>(seq, queries);
     bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>(seq, queries);
     bench_one_quad::<Ranker<QuadBlock16, ShiftSB, NoCount>>(seq, queries);
+
+    bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock16, ShiftPairedSB, NoCount>>(seq, queries);
 }
 
 #[inline(never)]
@@ -377,6 +381,7 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<binary::Ranker<BinaryBlock16Spider>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16Spider2>>(seq, queries);
 
+    bench_one_binary::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(seq, queries);
 }

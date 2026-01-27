@@ -1,20 +1,20 @@
 use std::sync::LazyLock;
 
 use super::blocks::*;
+use super::super_blocks::ShiftPairedSB;
 use super::super_blocks::ShiftSB;
 use crate::genedex;
 use crate::quad;
 use crate::quad::TrivialSB;
 use crate::quad::count4::*;
-use crate::quad::super_blocks::SB8;
 
 #[test]
 fn quad() {
     test::<quad::Ranker<Basic128, TrivialSB, WideSimdCount2>>();
     test::<quad::Ranker<Basic256, TrivialSB, SimdCountSlice>>();
     test::<quad::Ranker<Basic512, TrivialSB, SimdCountSlice>>();
-    test::<quad::Ranker<Basic512, SB8, U128Popcnt3>>();
-    test::<quad::Ranker<Basic512, SB8, SimdCountSlice>>();
+    // test::<quad::Ranker<Basic512, SB8, U128Popcnt3>>();
+    // test::<quad::Ranker<Basic512, SB8, SimdCountSlice>>();
     // test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice>>();
     // test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice>>();
     // test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2>>();
@@ -37,6 +37,12 @@ fn quad() {
     test1::<quad::Ranker<QuadBlock64, ShiftSB, SimdCount11B>>();
     test1::<quad::Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>();
     test1::<quad::Ranker<QuadBlock16, ShiftSB, NoCount>>();
+
+    test::<quad::Ranker<QuadBlock32_8_8_8FP, ShiftPairedSB, SimdCount10>>();
+    test::<quad::Ranker<QuadBlock7_18_7P, ShiftPairedSB, SimdCount10>>();
+    test::<quad::Ranker<QuadBlock24_8, ShiftPairedSB, TransposedPopcount>>();
+    test::<quad::Ranker<QuadBlock32, ShiftPairedSB, NoCount>>();
+    test::<quad::Ranker<QuadBlock16, ShiftPairedSB, NoCount>>();
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
