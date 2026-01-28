@@ -6,61 +6,105 @@ use crate::sux;
 
 use super::super_blocks::ShiftPairedSB;
 
+enum Support {
+    All,
+    // can't query 0
+    NoN,
+    // can't query n
+    NoZero,
+    // can't query when answer > u32::MAX
+    U32NoN,
+    // seq must not be empty
+    NotEmptyNoZero,
+}
+
 #[test]
 fn binary() {
-    test::<binary::Ranker<BinaryBlock64x2>>();
-    test::<binary::Ranker<BinaryBlock32x2>>();
-    test::<binary::Ranker<BinaryBlock23_9>>();
-    test::<binary::Ranker<BinaryBlock16x2>>();
-    test::<binary::Ranker<BinaryBlock32x2>>();
-    test::<binary::Ranker<BinaryBlock16>>();
-    test::<binary::Ranker<BinaryBlock16Spider>>();
-    test::<binary::Ranker<BinaryBlock16Spider2>>();
+    use Support::*;
+    test::<binary::Ranker<BinaryBlock64x2>>(All);
+    test::<binary::Ranker<BinaryBlock32x2>>(All);
+    test::<binary::Ranker<BinaryBlock23_9>>(All);
+    test::<binary::Ranker<BinaryBlock16x2>>(All);
+    test::<binary::Ranker<BinaryBlock32x2>>(All);
+    test::<binary::Ranker<BinaryBlock16>>(All);
+    test::<binary::Ranker<BinaryBlock16Spider>>(All);
+    test::<binary::Ranker<BinaryBlock16Spider2>>(All);
 
-    test::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>();
-    test::<binary::Ranker<BinaryBlock23_9, ShiftPairedSB>>();
-    test::<binary::Ranker<BinaryBlock32, ShiftPairedSB>>();
-    test::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>();
-    test::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>();
+    test::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>(All);
+    test::<binary::Ranker<BinaryBlock23_9, ShiftPairedSB>>(All);
+    test::<binary::Ranker<BinaryBlock32, ShiftPairedSB>>(All);
+    test::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(All);
+    test::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(All);
 
-    test::<genedex::Flat64>();
-    test::<genedex::Flat512>();
-    test::<genedex::Condensed64>();
-    test::<genedex::Condensed512>();
-    test::<qwt::RSNarrow>();
-    test::<qwt::RSWide>();
-    test::<sux::Rank9>();
-    test::<sux::RankSmall0>();
-    test::<sux::RankSmall1>();
-    test::<sux::RankSmall2>();
-    test::<sux::RankSmall3>();
-    test::<sux::RankSmall4>();
+    test::<genedex::Flat64>(All);
+    test::<genedex::Flat512>(All);
+    test::<genedex::Condensed64>(All);
+    test::<genedex::Condensed512>(All);
+    test::<qwt::RSNarrow>(All);
+    test::<qwt::RSWide>(All);
+    test::<sux::Rank9>(NoN);
+    test::<sux::RankSmall0>(NoN);
+    test::<sux::RankSmall1>(NoN);
+    test::<sux::RankSmall2>(NoN);
+    test::<sux::RankSmall3>(NoN);
+    test::<sux::RankSmall4>(NoN);
 
-    test::<succinct::Rank9<Vec<u64>>>();
-    test::<succinct::JacobsonRank<Vec<u64>>>();
-    test::<sucds::bit_vectors::Rank9Sel>();
-    test::<rsdict::RsDict>();
-    test::<bio::data_structures::rank_select::RankSelect>();
-    test::<vers_vecs::RsVec>();
-    // test::<bitm::RankSimple>(); // only up to 2^32 bits
-    test::<bitm::RankSelect101111>();
+    test::<succinct::Rank9<Vec<u64>>>(NoZero);
+    test::<succinct::JacobsonRank<Vec<u64>>>(NotEmptyNoZero);
+    test::<sucds::bit_vectors::Rank9Sel>(All);
+    test::<rsdict::RsDict>(NoN);
+    test::<bio::data_structures::rank_select::RankSelect>(NoZero);
+    test::<vers_vecs::RsVec>(All);
+    test::<bitm::RankSimple>(U32NoN);
+    test::<bitm::RankSelect101111>(NoN);
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
 
-fn test<R: binary::RankerT>() {
+fn test<R: binary::RankerT>(support: Support) {
     for test in &*TESTS {
+        let n = test.seq.len() * usize::BITS as usize;
         eprintln!(
-            "testing ranker {} on len {}",
+            "testing ranker {} on len {} n={n}",
             std::any::type_name::<R>(),
             test.seq.len()
         );
+        if let Support::NotEmptyNoZero = support {
+            if n == 0 {
+                continue;
+            }
+        }
+
         let ranker = R::new_packed(&test.seq);
-        for (q, a) in &test.queries {
-            let r = unsafe { ranker.rank_unchecked(*q) as usize };
+        for &(q, a) in &test.queries {
+            match support {
+                Support::NoN => {
+                    if q == n {
+                        continue;
+                    }
+                }
+                Support::NoZero => {
+                    if a == 0 {
+                        continue;
+                    }
+                }
+                Support::U32NoN => {
+                    if a > u32::MAX as usize || q == n {
+                        continue;
+                    }
+                }
+                Support::All => {}
+                Support::NotEmptyNoZero => {
+                    if q == 0 {
+                        continue;
+                    }
+                }
+            }
+
+            let r = unsafe { ranker.rank_unchecked(q) as usize };
             assert_eq!(
                 r,
-                *a,
+                a,
                 "failed test: ranker {} seq len {}, query {}, want {}, got {}",
                 std::any::type_name::<R>(),
                 test.seq.len(),
@@ -90,12 +134,27 @@ fn tests() -> Vec<Test> {
 
 fn seqs() -> Vec<Vec<usize>> {
     let mut seqs = vec![];
-    for len in 1..100 {
+    for len in 0..100 {
         seqs.push(vec![0; len]);
         seqs.push(vec![usize::MAX; len]);
         seqs.push(vec![rand::random::<u64>() as usize; len]);
     }
     for len in [
+        // block and superblock sizes
+        48,
+        56,
+        60,
+        62,
+        7680 / 8,
+        7936 / 8,
+        15360 / 8,
+        15872 / 8,
+        983040 / 8,
+        1966080 / 8,
+        // 469762048 / 8,
+        // 939524096 / 8,
+        // 1_006_632_960 / 8,
+        // some random
         rand::random_range(1000..10000),
         rand::random_range(10_000..100_000),
         rand::random_range(100_000..1_000_000),
@@ -120,12 +179,13 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, usize)> {
     let n = seq.len() * usize::BITS as usize;
     let mut queries = vec![];
     if n <= 10000 {
-        for i in 1..n {
+        for i in 0..=n {
             queries.push(i);
         }
     } else {
-        // queries.push(0);
+        queries.push(0);
         queries.push(n - 1);
+        queries.push(n);
         for _ in 0..10000 {
             queries.push(rand::random_range(1..n));
         }
