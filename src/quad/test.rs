@@ -115,14 +115,28 @@ fn tests() -> Vec<Test> {
 
 fn seqs() -> Vec<Vec<usize>> {
     // 01230123...
-    let m = 0b1110010011100100111001001110010011100100111001001110010011100100;
+    let m = 0b1110010011100100111001001110010011100100111001001110010011100100usize;
     let mut seqs = vec![];
-    for len in 1..500 {
+    for len in 1..2 {
         seqs.push(vec![0; len]);
         seqs.push(vec![m; len]);
         seqs.push(vec![rand::random::<u64>() as usize; len]);
     }
     for len in [
+        // specific sizes matching an exact super block
+        48usize / 8,
+        56 / 8,
+        14336 / 8,
+        28672 / 8,
+        49152 / 8,
+        98304 / 8,
+        3145728 / 8,
+        6291456 / 8,
+        536_870_912 / 8,
+        805_306_368 / 8,
+        1_073_741_824 / 8,
+        1_610_612_736 / 8,
+        // some random stuff
         rand::random_range(1000..10000),
         rand::random_range(10_000..100_000),
         rand::random_range(100_000..1_000_000),
@@ -147,15 +161,15 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, [usize; 4])> {
     let n = seq.len() * usize::BITS as usize / 2;
     let mut queries = vec![];
     if n <= 1000 {
-        for i in 0..n {
+        for i in 0..=n {
             queries.push(i);
         }
     } else {
         queries.push(0);
         queries.push(n - 1);
-        // queries.push(n);
+        queries.push(n);
         for _ in 0..10000 {
-            queries.push(rand::random_range(0..n));
+            queries.push(rand::random_range(0..=n));
         }
     }
     queries.sort_unstable();
