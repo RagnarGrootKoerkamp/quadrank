@@ -362,6 +362,7 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<qwt::RSNarrow>(seq, queries);
     bench_one_binary::<qwt::RSWide>(seq, queries);
 
+    bench_one_binary::<genedex::Flat512>(seq, queries);
     bench_one_binary::<genedex::Condensed64>(seq, queries);
     bench_one_binary::<genedex::Condensed512>(seq, queries);
 
