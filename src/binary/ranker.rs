@@ -18,13 +18,21 @@ where
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
         assert!(head.is_empty());
         assert!(tail.is_empty());
-        let n_blocks = seq.len().div_ceil(BB::B);
+
+        let add_block = seq.len() % BB::B == 0;
+        let add_superblock = seq.len() % (SB::BYTES_PER_SUPERBLOCK) == 0;
+
+        let n_blocks = seq.len().div_ceil(BB::B) + (add_block as usize);
 
         // 1. Count ones in each superblock.
         let mut sb_offsets: Vec<u64> = seq
             .par_chunks(SB::BYTES_PER_SUPERBLOCK)
             .map(|slice| slice.iter().map(|&b| b.count_ones() as u64).sum())
             .collect();
+
+        if add_superblock {
+            sb_offsets.push(0);
+        }
 
         // 2. Accumulate to get superblock offsets.
         {
@@ -41,16 +49,17 @@ where
         blocks.resize_with(n_blocks, MaybeUninit::<BB>::uninit);
 
         let sb_chunks = seq.par_chunks(SB::BYTES_PER_SUPERBLOCK);
-        let super_blocks = sb_chunks
-            .zip(sb_offsets)
+        let mut super_blocks = sb_chunks
+            .zip(&sb_offsets)
             .zip(blocks.par_chunks_mut(SB::BLOCKS_PER_SUPERBLOCK))
-            .map(|((sb_chunk, sb_offset), blocks)| {
+            .map(|((sb_chunk, &sb_offset), blocks)| {
                 let sb = SB::new(sb_offset, sb_chunk);
 
                 let bb_chunks = sb_chunk.chunks(BB::B);
+                let num_chunks = bb_chunks.len();
                 let mut delta = 0u64;
 
-                for (i, (block, bb_chunk)) in zip(blocks, bb_chunks).enumerate() {
+                for (i, (block, bb_chunk)) in zip(blocks.iter_mut(), bb_chunks).enumerate() {
                     // This must be wrapping since `get_for_block` can return negative values.
                     let remaining_delta = (sb_offset + delta).wrapping_sub(sb.get(i));
 
@@ -67,9 +76,30 @@ where
                     delta += count;
                 }
 
+                // If this is the last (incomplete) superblock, and it spans
+                // exactly a full number of blocks, add one extra block.
+                if blocks.len() > num_chunks {
+                    assert_eq!(blocks.len(), num_chunks + 1);
+                    let i = num_chunks;
+                    let remaining_delta = (sb_offset + delta).wrapping_sub(sb.get(i));
+                    blocks[i].write(BB::new(remaining_delta, &[0u8; BB::B]));
+                }
+
                 sb
             })
             .collect::<Vec<_>>();
+
+        // Handle edge case where we need to push an additional superblock and block to handle queries exactly at the end.
+        if add_superblock {
+            let sb_offset = *sb_offsets.last().unwrap();
+            super_blocks.push(SB::new(sb_offset, &[]));
+            let sb = super_blocks.last().unwrap();
+            let remaining_delta = sb_offset.wrapping_sub(sb.get(0));
+            blocks
+                .last_mut()
+                .unwrap()
+                .write(BB::new(remaining_delta, &[0u8; BB::B]));
+        }
 
         Self {
             basic_blocks: unsafe { std::mem::transmute::<Vec<MaybeUninit<BB>>, Vec<BB>>(blocks) },
