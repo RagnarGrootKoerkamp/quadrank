@@ -15,7 +15,8 @@ def get_shortname(name):
         if "FlatText" in name:
             if "512" in name:
                 return ("genedex", "genedex::Flat512", "o", 7)
-            return ("genedex", "genedex::Flat256", "s", 8)
+            if "64" in name:
+                return ("genedex", "genedex::Flat64", "s", 8)
         if "Condensed" in name:
             if "512" in name:
                 return ("genedex", "genedex::Condensed512", "*", 1)
@@ -35,7 +36,8 @@ def get_shortname(name):
         if "Condensed" in name:
             if "512" in name:
                 return ("genedex", "genedex::Condensed512", "x", 9)
-            return ("genedex", "genedex::Condensed256", "s", 16)
+            if "64" in name:
+                return ("genedex", "genedex::Condensed64", "s", 16)
         if name == "RankSelect101111":
             return ("bitm", "bitm::RankSelect101111", "*", 5)
         if name == "Rank9":
