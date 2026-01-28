@@ -37,8 +37,11 @@ where
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
         assert!(head.is_empty());
         assert!(tail.is_empty());
-        // +1 so we can do `rank(len)`.
-        let n_blocks = seq.len().div_ceil(BB::B);
+
+        let add_block = seq.len() % BB::B == 0;
+        let add_superblock = seq.len() % (SB::BYTES_PER_SUPERBLOCK) == 0;
+
+        let n_blocks = seq.len().div_ceil(BB::B) + (add_block as usize);
 
         // 1. Count ones in each superblock.
         let mut sb_offsets: Vec<LongRanks> = seq_usize
@@ -50,6 +53,10 @@ where
                     .fold([0; 4], strict_add)
             })
             .collect();
+
+        if add_superblock {
+            sb_offsets.push([0; 4]);
+        }
 
         // 2. Accumulate to get superblock offsets.
         {
@@ -66,7 +73,7 @@ where
         blocks.resize_with(n_blocks, MaybeUninit::<BB>::uninit);
 
         let sb_chunks = seq.par_chunks(SB::BYTES_PER_SUPERBLOCK);
-        let super_blocks = sb_chunks
+        let mut super_blocks = sb_chunks
             .zip(&sb_offsets)
             .zip(blocks.par_chunks_mut(SB::BLOCKS_PER_SUPERBLOCK))
             .map(|((sb_chunk, &sb_offset), blocks)| {
@@ -75,9 +82,10 @@ where
                 let sb = SB::new([sb_offset; SB::NBB], sb_chunk);
 
                 let bb_chunks = sb_chunk.chunks(BB::B);
+                let num_chunks = bb_chunks.len();
                 let mut delta = [0u64; 4];
 
-                for (i, (block, bb_chunk)) in zip(blocks, bb_chunks).enumerate() {
+                for (i, (block, bb_chunk)) in zip(blocks.iter_mut(), bb_chunks).enumerate() {
                     // This must be wrapping since `get_for_block` can return negative values.
                     let a = strict_add(sb_offset, delta);
                     let b = sb.get(0, i);
@@ -99,9 +107,32 @@ where
                     delta = strict_add(delta, count);
                 }
 
+                if blocks.len() > num_chunks {
+                    assert_eq!(blocks.len(), num_chunks + 1);
+                    let i = num_chunks;
+                    let a = strict_add(sb_offset, delta);
+                    let b = sb.get(0, i);
+                    let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
+                    blocks[i].write(BB::new(remaining_delta, &[0u8; BB::B]));
+                }
+
                 sb
             })
             .collect::<Vec<_>>();
+
+        if add_superblock {
+            let sb_offset = *sb_offsets.last().unwrap();
+            assert_eq!(sb_offset.iter().sum::<u64>(), seq.len() as u64 * 4);
+            super_blocks.push(SB::new([sb_offset; SB::NBB], &[]));
+            let sb = super_blocks.last().unwrap();
+            let a = sb_offset;
+            let b = sb.get(0, 0);
+            let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
+            blocks
+                .last_mut()
+                .unwrap()
+                .write(BB::new(remaining_delta, &[0u8; BB::B]));
+        }
 
         Self {
             blocks: unsafe { std::mem::transmute::<Vec<MaybeUninit<BB>>, Vec<BB>>(blocks) },
