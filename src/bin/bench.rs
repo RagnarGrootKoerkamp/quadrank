@@ -418,9 +418,9 @@ fn main() {
         // 16_000_000_000, // RAM
     ];
 
-    let mut sizes = (13..=args.to.unwrap_or(32))
-        .map(|i| 1usize << i)
-        .collect::<Vec<_>>();
+    // let mut sizes = (13..=args.to.unwrap_or(32))
+    //     .map(|i| 1usize << i)
+    //     .collect::<Vec<_>>();
 
     THREADS.set({
         let mut ts = vec![];
