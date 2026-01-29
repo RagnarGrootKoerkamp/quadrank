@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import colorsys
 from math import log
 
 
 # Return (crate, name, symbol, oder)
-def get_shortname(name):
+def get_shortname(name, sigma):
     if sigma == 4:
         if "RSQ" in name:
             if "512" in name:
@@ -71,7 +73,6 @@ def get_shortname(name):
 
 blogyellow = "#fcc007"
 styles = {
-    "binary": ["x", "black"],
     "quadrank": ["o", blogyellow],
     "tri": ["o", "blue"],
     "fulltrans": ["o", "green"],
@@ -83,7 +84,6 @@ styles = {
     "spider": ["*", "purple"],
     "bitm": ["v", "teal"],
     "skip": [None, None],
-    "other": ["*", "black"],
 }
 
 
@@ -106,18 +106,33 @@ def format(x):
     return str(x)
 
 
-def plot(ax, data, r, c, rows, mode, threads, plotn=False):
+def scale_lightness(color, scale_l):
+    rgb = matplotlib.colors.ColorConverter.to_rgb(color)
+    # convert rgb to hls
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    # manipulate h, l, s values and return as rgb
+    return colorsys.hls_to_rgb(h, min(1, l * scale_l), s=s)
+
+
+def plot(ax, data, r, c, rows, mode, threads, plotn=False, small=False):
     col = f"{mode}_{threads}"
     plotlabel = {"latency": "Latency", "loop": "Loop", "stream": "Loop + prefetch"}[
         mode
     ] + f", {threads} thread{'s' if threads > 1 else ''}"
+
+    if small:
+        plotlabel = (
+            "Server (EPYC 9684X @ 3.6 GHz)"
+            if server
+            else "Laptop (i7-10750H @ 3.0 GHz)"
+        )
 
     maxn = data.n.max()
 
     groups = data.groupby(["ranker", "count4"], sort=False)
 
     for (ranker, count4), group in groups:
-        (crate, shortname, marker, _order) = get_shortname(ranker)
+        (crate, shortname, marker, _order) = get_shortname(ranker, sigma)
         color = styles[crate][1]
         label = shortname
 
@@ -128,10 +143,11 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
         if plotn and count4 == 1:
             continue
 
-        s = 40
+        s = 60
         if sigma == 4 and not plotn and count4 == 0:
             label = None
-            s = 10
+            s = 25
+            color = scale_lightness(color, 0.8)
 
         if color == blogyellow:
             s *= 1.5
@@ -247,57 +263,12 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
         ax.set_xticks(xticks)
         ax.xaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3g}"))
     ax.tick_params(axis="y", which="major", labelleft=True)
-    ax.grid(True, which="major", ls="-", lw=0.3, axis="y")
+    ax.grid(True, which="major", ls="-", lw=0.5, axis="y", color="black", alpha=0.5)
     # Make sure all printed y-ax labels are integers.
     # TODO: format integers as normal (128) and decimals up to two periods (.2)
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3g}"))
-    if r == 0 and c == 0 and rows > 1:
 
-        if sigma == 4:
-            # Legend handle for small dot
-            handles = [
-                plt.Line2D(
-                    [],
-                    [],
-                    color="black",
-                    marker="o",
-                    linestyle="",
-                    markersize=40**0.5,
-                    label="rank_all",
-                ),
-                plt.Line2D(
-                    [],
-                    [],
-                    color="black",
-                    marker="o",
-                    linestyle="",
-                    markersize=10**0.5,
-                    label="rank_one",
-                ),
-            ]
-            if plotn:
-                # only rank_one
-                handles = [
-                    plt.Line2D(
-                        [],
-                        [],
-                        color="black",
-                        marker="o",
-                        linestyle="",
-                        markersize=40**0.5,
-                        label="rank_one",
-                    ),
-                ]
-            extra_legend = ax.legend(
-                handles=handles,
-                loc="lower left" if plotn else "lower right",
-            )
-            ax.legend()
-            ax.add_artist(extra_legend)
-        else:
-            ax.legend(ncols=2, fontsize=8)
-
-    if server:
+    if small or server:
         return
     # cache sizes and throughputs are tuned for laptop only.
 
@@ -313,7 +284,7 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
 
     ax.axhline(
         y=lim,
-        color="blue",
+        color="red",
         linestyle=ls,
         linewidth=lw,
     )
@@ -353,31 +324,61 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False):
             )
 
 
-def plot_small(plotn=False):
-    fig, ax = plt.subplots(1, 1, figsize=(5, 3.33))
-    fig.tight_layout(pad=3.0)
+def add_legend(axs, plotn, small=False):
+    if sigma == 4:
+        # Legend handle for small dot
+        handles = [
+            plt.Line2D(
+                [],
+                [],
+                color="black",
+                marker="o",
+                linestyle="",
+                markersize=60**0.5,
+                label="$\\mathsf{rank_4}$",
+            ),
+            plt.Line2D(
+                [],
+                [],
+                color="black",
+                marker="o",
+                linestyle="",
+                markersize=25**0.5,
+                label="$\\mathsf{rank_1}$",
+            ),
+        ]
+        if plotn:
+            # only rank_one
+            handles = [
+                plt.Line2D(
+                    [],
+                    [],
+                    color="black",
+                    marker="o",
+                    linestyle="",
+                    markersize=60**0.5,
+                    label="rank_one",
+                ),
+            ]
+        axs[-1][0].legend(
+            handles=handles,
+            loc="lower right" if plotn else "lower left",
+        )
 
-    if plotn:
-        sub_df = df
+    # Add legend below all subplots
+    fig = axs[0][0].get_figure()
+    handles, labels = axs[0][0].get_legend_handles_labels()
+    rows = 3 if sigma == 4 else 4
+    if small:
+        pos = (0.5, -0.19) if sigma == 4 else (0.5, -0.25)
     else:
-        n = 2**20 // bits_per_symbol
-        size_bytes = n * bits_per_symbol // 8
-        sub_df = df[df.n == n]
-
-    # Set title
-    fig.suptitle(
-        f"σ={sigma}"
-        + ("" if plotn else f", n={format(n)}{unit}, size={format(size_bytes)}B"),
-        fontsize=15,
-        y=1.01,
-    )
-
-    plot(ax, sub_df, 0, 0, 1, "loop", 1, plotn=plotn)
-
-    infix = "n" if plotn else "st"
-    srv = "server" if server else "laptop"
-    fig.savefig(
-        f"plots/plot-{srv}-{infix}-{sigma}-small.png", bbox_inches="tight", dpi=300
+        pos = (0.5, -0.12) if sigma == 4 else (0.5, -0.15)
+    fig.legend(
+        handles,
+        labels,
+        loc="lower center",
+        ncol=(len(handles) + rows - 1) // rows,
+        bbox_to_anchor=pos,
     )
 
 
@@ -393,8 +394,9 @@ def plot_grid(plotn=False):
         size_bytes = n * bits_per_symbol // 8
         sub_df = df[df.n == n]
 
+    scale = 0.7
     fig, ax = plt.subplots(
-        len(threads), 3, sharey="row", figsize=(15, 3.33 * len(threads))
+        len(threads), 3, sharey="row", figsize=(15 * scale, 3.33 * len(threads) * scale)
     )
     fig.tight_layout(pad=1.5)
 
@@ -402,15 +404,17 @@ def plot_grid(plotn=False):
     if plotn:
         fig.suptitle(f"Inverse query throughput for σ={sigma}", fontsize=20, y=1.03)
     else:
+        unit = "b" if sigma == 2 else "bp"
         fig.suptitle(
             f"Space-time trade-off for σ={sigma}, n={format(n)}{unit}, size={format(size_bytes)}B",
-            fontsize=20,
+            fontsize=15,
             y=1.03,
         )
 
     for c, mode in enumerate(["latency", "loop", "stream"]):
         for r, t in enumerate(threads):
             plot(ax[r][c], sub_df, r, c, len(threads), mode, t, plotn=plotn)
+    add_legend(ax, plotn)
 
     if plotn:
         sizelabel = ""
@@ -423,30 +427,92 @@ def plot_grid(plotn=False):
     )
 
 
-# df_all = pd.read_csv(f"scaling-n.csv")
-df_all = pd.read_csv(f"server.csv")
+threads = None
+sigma = None
+server = None
+df = None
+bits_per_symbol = None
 
-server = "latency_96" in df_all.columns
-if server:
-    threads = [1, 48, 96, 192]
-else:
-    threads = [1, 6, 12]
-for sigma in [2, 4]:
-    df = df_all[df_all.sigma == sigma].copy()
 
-    assert df.sigma.unique() == [sigma]
-    bits_per_symbol = 2 if sigma == 4 else 1
-    unit = "b" if sigma == 2 else "bp"
+def plot_st():
+    global threads, sigma, server, df, bits_per_symbol
+    for cpu in ["laptop", "server"]:
+        df_all = pd.read_csv(f"{cpu}.csv")
 
-    df["size"] = df["n"] * bits_per_symbol // 8
-    df["overhead"] = 100 * (df.rel_size - 1)
-    df["order"] = df["ranker"].apply(lambda name: get_shortname(name)[3])
+        server = "latency_96" in df_all.columns
+        if server:
+            threads = [1, 48, 96]
+        else:
+            threads = [1, 6, 12]
+        for sigma in [2, 4]:
+            df = df_all[df_all.sigma == sigma].copy()
 
-    # sort by order
-    df = df.sort_values(by=["order", "n"])
+            assert df.sigma.unique() == [sigma]
+            bits_per_symbol = 2 if sigma == 4 else 1
 
-    df = df[df["size"] >= 2**13]
+            df["size"] = df["n"] * bits_per_symbol // 8
+            df["overhead"] = 100 * (df.rel_size - 1)
+            df["order"] = df["ranker"].apply(lambda name: get_shortname(name, sigma)[3])
 
-    plot_small()
-    plot_grid()
-    plot_grid(plotn=True)
+            # small count1 dots on top
+            df = df.sort_values(by=["count4"], ascending=False)
+            df = df.sort_values(by=["order", "n"])
+
+            df = df[df["size"] >= 2**13]
+
+            plot_grid()
+            # Omitted from paper after all;
+            # no interesting takeaway from it.
+            # plot_grid(plotn=True)
+
+
+plot_st()
+
+
+def plot_small():
+    global sigma, bits_per_symbol, server
+    df_laptop = pd.read_csv("laptop.csv")
+    df_server = pd.read_csv("server.csv")
+    df_laptop["cpu"] = "laptop"
+    df_server["cpu"] = "server"
+    df_all = pd.concat([df_laptop, df_server], ignore_index=True)
+
+    df_all["size"] = (
+        df_all["n"] * df_all["sigma"].apply(lambda sigma: 2 if sigma == 4 else 1) // 8
+    )
+    df_all["overhead"] = 100 * (df_all.rel_size - 1)
+    df_all["order"] = df_all.apply(
+        lambda row: get_shortname(row["ranker"], row["sigma"])[3], axis=1
+    )
+
+    df_all = df_all.sort_values(by=["count4"], ascending=False)
+    df_all = df_all.sort_values(by=["order", "n"])
+
+    for sigma in [2, 4]:
+        bits_per_symbol = 2 if sigma == 4 else 1
+
+        fig, ax = plt.subplots(1, 2, figsize=(5 * 2, 3.33), sharey="row")
+        fig.tight_layout(pad=3.0)
+
+        n = 2**20 // bits_per_symbol
+        size_bytes = n * bits_per_symbol // 8
+        sub_df = df_all[(df_all["size"] == 1024 * 1024) & (df_all["sigma"] == sigma)]
+
+        # Set title
+        unit = "b" if sigma == 2 else "bp"
+        fig.suptitle(
+            f"σ={sigma}, n={format(n)}{unit}, size={format(size_bytes)}B, loop, 1 thread",
+            fontsize=15,
+            y=1.01,
+        )
+
+        for i, cpu in enumerate(["laptop", "server"]):
+            server = cpu == "server"
+            df_cpu = sub_df[sub_df.cpu == cpu]
+            plot(ax[i], df_cpu, 0, 0, 1, "loop", 1, plotn=False, small=True)
+        add_legend([ax], plotn=False, small=True)
+
+        fig.savefig(f"plots/plot-st-{sigma}-small.png", bbox_inches="tight", dpi=300)
+
+
+plot_small()
