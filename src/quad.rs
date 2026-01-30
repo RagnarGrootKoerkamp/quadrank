@@ -91,7 +91,7 @@ pub trait SuperBlock<BB: BasicBlock>: Sync + Send {
     const BYTES_PER_SUPERBLOCK: usize = Self::BLOCKS_PER_SUPERBLOCK.saturating_mul(BB::B);
 }
 
-pub trait RankerT: Sync + Sized {
+pub trait RankerT: Sync + Send + Sized {
     /// Construct from ASCII DNA input.
     fn new(seq: &[u8]) -> Self {
         // let mut packed_seq = seq.to_vec();

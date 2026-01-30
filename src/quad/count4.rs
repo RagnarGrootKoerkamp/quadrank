@@ -22,7 +22,7 @@ pub fn count4_u8x8(data: [u8; 8]) -> Ranks {
     SimdCount7::count(&data, 32)
 }
 
-pub trait CountFn<const B: usize>: Sync {
+pub trait CountFn<const B: usize>: Sync + Send {
     /// The number of bytes processed at a time.
     /// Used to compute the overshoot.
     const S: usize;
