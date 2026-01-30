@@ -17,7 +17,7 @@ use quadrank::{
             BinaryBlock16, BinaryBlock16Spider, BinaryBlock16Spider2, BinaryBlock16x2,
             BinaryBlock23_9, BinaryBlock32, BinaryBlock32x2, BinaryBlock64x2,
         },
-        super_blocks::{ShiftPairedSB, ShiftSB},
+        super_blocks::ShiftSB,
     },
     genedex,
     quad::{
@@ -351,8 +351,8 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>(seq, queries);
     bench_one_quad::<Ranker<QuadBlock16, ShiftSB, NoCount>>(seq, queries);
 
-    bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock16, ShiftPairedSB, NoCount>>(seq, queries);
+    // bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);
+    // bench_one_quad::<Ranker<QuadBlock16, ShiftPairedSB, NoCount>>(seq, queries);
 }
 
 #[inline(never)]
@@ -380,11 +380,11 @@ fn bench_binary(seq: &[usize], queries: &QS) {
     bench_one_binary::<binary::Ranker<BinaryBlock16x2>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16>>(seq, queries);
     bench_one_binary::<binary::Ranker<BinaryBlock16Spider>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16Spider2>>(seq, queries);
+    // bench_one_binary::<binary::Ranker<BinaryBlock16Spider2>>(seq, queries);
 
-    bench_one_binary::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(seq, queries);
+    // bench_one_binary::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>(seq, queries);
+    // bench_one_binary::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(seq, queries);
+    // bench_one_binary::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(seq, queries);
 }
 
 #[derive(clap::Parser)]
@@ -409,13 +409,9 @@ fn main() {
     let q = 10_000_000;
 
     // size in bytes
-    #[rustfmt::skip]
     let mut sizes = vec![
-        128_000, // L2
-        // 8_000_000, // L3
-        4_000_000_000usize, // RAM
-        // 8_000_000_000, // RAM
-        // 16_000_000_000, // RAM
+        (1 << 17), // L2, 128 KiB
+        (1 << 32), // RAM, 4 GiB
     ];
 
     // let mut sizes = (13..=args.to.unwrap_or(32))
