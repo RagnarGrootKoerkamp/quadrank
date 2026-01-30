@@ -25,16 +25,21 @@ def get_shortname(name, sigma):
             return ("genedex", "genedex::Condensed256", "v", 5)
         if "Ranker" in name:
             if "QuadBlock64" in name:
-                return ("quadrank", "quadrank::QuadBlock64", "o", 6)
+                return ("quadrank", "QuadRank64", "o", 6)
             if "QuadBlock24_8" in name:
-                return ("quadrank", "quadrank::QuadBlock24_8", "d", 4)
+                return ("quadrank", "QuadRank24_8", "d", 4)
             if "QuadBlock16" in name:
-                return ("quadrank", "quadrank::QuadBlock16", "x", 3)
+                return ("quadrank", "QuadRank16", "x", 3)
     if sigma == 2:
         if name == "RSNarrow":
             return ("qwt", "qwt::RSNarrow", "v", 14)
         if name == "RSWide":
             return ("qwt", "qwt::RSWide", "*", 6)
+        if "Flat" in name:
+            if "512" in name:
+                return ("genedex", "genedex::Flat512", "x", 17)
+            if "64" in name:
+                return ("genedex", "genedex::Flat64", "s", 18)
         if "Condensed" in name:
             if "512" in name:
                 return ("genedex", "genedex::Condensed512", "x", 9)
@@ -57,16 +62,16 @@ def get_shortname(name, sigma):
                 return ("sux", "sux::RankSmall4", "+", 1)
         if "Ranker" in name:
             if "64x2" in name:
-                return ("quadrank", "birank::BinaryBlock64x2", "o", 15)
+                return ("quadrank", "BiRank64x2", "o", 15)
             if "32x2" in name:
-                return ("quadrank", "birank::BinaryBlock32x2", "d", 11)
+                return ("quadrank", "BiRank32x2", "d", 11)
             if "16x2" in name:
-                return ("quadrank", "birank::BinaryBlock16x2", "x", 7)
+                return ("quadrank", "BiRank16x2", "x", 7)
             if "16>" in name:
-                return ("quadrank", "birank::BinaryBlock16", "*", 2)
+                return ("quadrank", "BiRank16", "*", 2)
             if "Spider" in name:
                 return ("spider", "birank::Spider", "*", 4)
-    assert False
+    assert False, f"unknown name {name} sigma {sigma}"
 
 
 # TODO: use * symbol
@@ -264,6 +269,13 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False, small=False):
         ax.xaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3g}"))
     ax.tick_params(axis="y", which="major", labelleft=True)
     ax.grid(True, which="major", ls="-", lw=0.5, axis="y", color="black", alpha=0.5)
+
+    # set minor y ticks in between powers of 2
+    ax.yaxis.set_minor_locator(
+        ticker.LogLocator(base=2.0**0.5, subs=[0.5], numticks=10)
+    )
+    ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.grid(True, which="minor", ls="--", lw=0.5, axis="y", color="black", alpha=0.3)
     # Make sure all printed y-ax labels are integers.
     # TODO: format integers as normal (128) and decimals up to two periods (.2)
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3g}"))
@@ -276,11 +288,11 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False, small=False):
     if mode == "latency":
         lim = 80 / threads
         ls = ":"
-        lw = 1
+        lw = 2
     else:
         lim = 7.5 if r == 0 else 2.5
         ls = "--" if r == 0 else "-"
-        lw = 0.5 if r == 0 else 0.5
+        lw = 1 if r == 0 else 1
 
     ax.axhline(
         y=lim,
@@ -344,7 +356,7 @@ def add_legend(axs, plotn, small=False):
                 marker="o",
                 linestyle="",
                 markersize=25**0.5,
-                label="$\\mathsf{rank_1}$",
+                label="$\\mathsf{rank}$",
             ),
         ]
         if plotn:
@@ -368,11 +380,12 @@ def add_legend(axs, plotn, small=False):
     # Add legend below all subplots
     fig = axs[0][0].get_figure()
     handles, labels = axs[0][0].get_legend_handles_labels()
-    rows = 3 if sigma == 4 else 4
+    rows = 2 if sigma == 4 else 4
     if small:
         pos = (0.5, -0.19) if sigma == 4 else (0.5, -0.25)
     else:
-        pos = (0.5, -0.12) if sigma == 4 else (0.5, -0.15)
+        pos = (0.5, -0.08) if sigma == 4 else (0.5, -0.15)
+        rows = 2 if sigma == 4 else 4
     fig.legend(
         handles,
         labels,
@@ -496,7 +509,9 @@ def plot_small():
 
         n = 2**20 // bits_per_symbol
         size_bytes = n * bits_per_symbol // 8
-        sub_df = df_all[(df_all["size"] == 1024 * 1024) & (df_all["sigma"] == sigma)]
+        sub_df = df_all[
+            (df_all["size"] == 1024 * 1024 / 8) & (df_all["sigma"] == sigma)
+        ]
 
         # Set title
         unit = "b" if sigma == 2 else "bp"
