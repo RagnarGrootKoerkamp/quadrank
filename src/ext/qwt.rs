@@ -1,4 +1,7 @@
-use qwt::{RSQVector256, RSQVector512, RankBin, RankQuad, WTSupport};
+use qwt::{RankBin, RankQuad, WTSupport};
+
+pub use qwt::RSQVector256;
+pub use qwt::RSQVector512;
 
 use crate::quad::{LongRanks, RankerT};
 

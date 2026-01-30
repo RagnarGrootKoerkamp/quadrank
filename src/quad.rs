@@ -15,13 +15,15 @@ pub use super_blocks::TrivialSB;
 pub type Ranks = [u32; 4];
 pub type LongRanks = [u64; 4];
 
-pub type QuartRank = Ranker<blocks::QuadBlock32_8_8_8FP, super_blocks::NoSB, count4::SimdCount10>;
-pub type HexRank = Ranker<blocks::QuadBlock7_18_7P, super_blocks::TrivialSB, count4::SimdCount10>;
+pub type QuadRank32_8_8_8 =
+    Ranker<blocks::QuadBlock32_8_8_8FP, super_blocks::ShiftSB, count4::SimdCount10>;
+pub type QuadRank7_18_7 =
+    Ranker<blocks::QuadBlock7_18_7P, super_blocks::ShiftSB, count4::SimdCount10>;
 pub type QwtRank = ::qwt::RSQVector256;
 
-pub type FastRank = Ranker<blocks::QuadBlock64, super_blocks::ShiftSB, count4::SimdCount11B>;
-pub type MidRank = Ranker<blocks::QuadBlock24_8, super_blocks::ShiftSB, count4::SimdCount11B>;
-pub type SmallRank = Ranker<blocks::QuadBlock16, super_blocks::ShiftSB, count4::NoCount>;
+pub type QuadRank64 = Ranker<blocks::QuadBlock64, super_blocks::ShiftSB, count4::SimdCount11B>;
+pub type QuadRank24_8 = Ranker<blocks::QuadBlock24_8, super_blocks::ShiftSB, count4::SimdCount11B>;
+pub type QuadRank16 = Ranker<blocks::QuadBlock16, super_blocks::ShiftSB, count4::NoCount>;
 
 /// By default, the library works for arrays with counts up to `2^45`, corresponding to `8 TiB` of data.
 /// This controls whether superblocks are used and/or prefetched.
