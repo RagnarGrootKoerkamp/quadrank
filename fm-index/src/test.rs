@@ -9,7 +9,7 @@ fn broken() {
     let bwt = build_bwt_ascii(text.to_vec());
     let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
     let fm = <fm::FM>::new(&bwt);
-    let (steps, count) = fm.query(&packed);
+    let (steps, count) = fm.count(&packed);
     eprintln!("steps: {steps}, matches: {count}");
     assert!(count > 0);
 }
@@ -56,7 +56,7 @@ fn fuzz_fm() {
             let end = rand::random_range(start..=len);
             let q = &text[start..end];
 
-            let m_cnt = mfm.query(q).1;
+            let m_cnt = mfm.count(q).1;
             let g_cnt = gfm.count(q);
             eprintln!("+ m_cnt: {}, g_cnt: {}", m_cnt, g_cnt);
             assert_eq!(m_cnt, g_cnt, "text len {}, query {:?}", len, q);
@@ -69,7 +69,7 @@ fn fuzz_fm() {
             let ql = q.len();
             q[rand::random_range(0..ql)] = rand::random_range(0..4);
 
-            let m_cnt = mfm.query(&q).1;
+            let m_cnt = mfm.count(&q).1;
             let g_cnt = gfm.count(&q);
             eprintln!("- m_cnt: {}, g_cnt: {}", m_cnt, g_cnt);
             assert_eq!(m_cnt, g_cnt, "text len {}, query {:?}", len, q);

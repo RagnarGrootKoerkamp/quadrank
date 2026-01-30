@@ -1,13 +1,59 @@
 #![allow(unused)]
 use std::sync::atomic::AtomicUsize;
 
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::{
+    iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator},
+    slice::ParallelSlice,
+};
 
 #[derive(bincode::Encode, bincode::Decode, PartialEq)]
-pub struct BWT {
+pub struct DiskBWT {
     /// A vector of u8 encoded values 0/1/2/3.
     pub bwt: Vec<u8>,
     pub sentinel: usize,
+}
+
+impl DiskBWT {
+    pub fn pack(self) -> BWT {
+        let DiskBWT { bwt, sentinel } = self;
+
+        let mut packed = bwt
+            .par_chunks(32)
+            .map(|cc| {
+                let mut x = 0usize;
+                for (i, c) in cc.iter().enumerate() {
+                    x |= (*c as usize) << (i * 2);
+                }
+                x
+            })
+            .collect::<Vec<usize>>();
+        for _ in 0..128 {
+            packed.push(0);
+        }
+        BWT {
+            bwt,
+            packed,
+            sentinel,
+        }
+    }
+}
+
+#[derive(PartialEq)]
+pub struct BWT {
+    /// A vector of u8 encoded values 0/1/2/3.
+    pub bwt: Vec<u8>,
+    /// each u8 stores 4 values.
+    pub packed: Vec<usize>,
+    pub sentinel: usize,
+}
+
+impl BWT {
+    pub fn to_disk(&self) -> DiskBWT {
+        DiskBWT {
+            bwt: self.bwt.clone(),
+            sentinel: self.sentinel,
+        }
+    }
 }
 
 fn sa_to_bwt(text: &[u8], sa: impl IntoIterator<Item = usize>) -> BWT {
@@ -41,7 +87,7 @@ fn sa_to_bwt(text: &[u8], sa: impl IntoIterator<Item = usize>) -> BWT {
     //     eprintln!("{idx:>2}: {c} | {i:>3} -> {:?}", &text[i..]);
     // }
 
-    BWT { bwt, sentinel }
+    DiskBWT { bwt, sentinel }.pack()
 }
 
 pub fn libsais(text: &[u8]) -> BWT {

@@ -9,7 +9,7 @@ mod fm;
 #[cfg(test)]
 mod test;
 
-use bwt::BWT;
+use bwt::{BWT, DiskBWT};
 use clap::Parser;
 use fm_index::SearchIndex;
 use genedex::text_with_rank_support::{
@@ -22,12 +22,18 @@ use std::{
     path::{Path, PathBuf},
     process::exit,
     sync::atomic::AtomicUsize,
+    time::Duration,
 };
 
-fn time<T>(name: &str, f: impl FnOnce() -> T) -> T {
+fn time2<T>(name: &str, f: impl FnOnce() -> T) -> (T, Duration) {
     let start = std::time::Instant::now();
     let x = f();
     let duration = start.elapsed();
+    (x, duration)
+}
+
+fn time<T>(name: &str, f: impl FnOnce() -> T) -> T {
+    let (x, duration) = time2(name, f);
     println!("{name:<10}: {duration:5.2?}");
     x
 }
@@ -36,6 +42,8 @@ fn time<T>(name: &str, f: impl FnOnce() -> T) -> T {
 struct Args {
     reference: PathBuf,
     reads: PathBuf,
+    #[clap(long)]
+    len: Option<usize>,
     #[clap(short = 'j', long)]
     threads: Option<usize>,
 }
@@ -91,89 +99,126 @@ fn bwt(input: &Path, output: &Path) {
     // write output to path.bwt:
     std::fs::write(
         output,
-        bincode::encode_to_vec(&bwt, bincode::config::legacy()).unwrap(),
+        bincode::encode_to_vec(&bwt.to_disk(), bincode::config::legacy()).unwrap(),
     )
     .unwrap();
 }
 
-fn map<Rank: RankerT>(bwt: &bwt::BWT, reads: &Vec<Vec<u8>>) {
-    let fm = time("FM build", || fm::FM::<Rank>::new_with_prefix(&bwt, 8));
+#[derive(Copy, Clone, Debug)]
+enum Mode {
+    Sequential,
+    Batch,
+    Prefetch,
+}
 
-    let bytes = fm.size();
-    eprintln!(
-        "SIZE: {} MB = {} bit/bp",
-        bytes / 1024 / 1024,
-        (8 * bytes) as f64 / bwt.bwt.len() as f64
-    );
+fn map<Rank: RankerT>(bwt: &bwt::BWT, reads: &Vec<Vec<u8>>, threads: &Vec<usize>) {
+    let (fm, build) = time2("FM build", || fm::FM::<Rank>::new_with_prefix(&bwt, 8));
 
-    // eprintln!("Reading queries");
+    for &threads in threads {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| {
+                for mode in [Mode::Prefetch, Mode::Batch, Mode::Sequential] {
+                    let name = std::any::type_name::<Rank>();
+                    let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
+                        .unwrap()
+                        .replace_all(name, |_: &regex::Captures| "".to_string());
+                    let bytes = fm.size();
 
-    let total = AtomicUsize::new(0);
-    let mapped = AtomicUsize::new(0);
-    let total_matches = AtomicUsize::new(0);
-    let total_steps = AtomicUsize::new(0);
-    let start = std::time::Instant::now();
-    // const B: usize = 1024 * 16;
-    const B: usize = 32;
-    reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
-        let mut s = 0;
-        let mut m = 0;
-        let mut mp = 0;
-        // fm.query_all::<32, B>(batch, |steps, start, end| {
-        //     let matches = end-start;
-        //     s += steps;
-        //     m += matches;
-        //     if matches > 0 {
-        //         mp += 1;
-        //     }
-        // });
-        for (steps, matches) in fm.query_batch(batch) {
-        // for (steps, matches) in fm.query_batch_interleaved(batch) {
-            s += steps;
-            m += matches;
-            if matches > 0 {
-                mp += 1;
-            }
-        }
-        let ts = total_steps.fetch_add(s, std::sync::atomic::Ordering::Relaxed);
-        let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
-        let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
-        let m = total_matches.fetch_add(
-            m,
-            std::sync::atomic::Ordering::Relaxed,
-        );
+                    eprint!(
+                        "{:<60} size: {:>4}MB = {:.3}bits/bp build: {build:.3?} mode: {:<10} ",
+                        name,
+                        bytes / 1024 / 1024,
+                        (8 * bytes) as f64 / bwt.bwt.len() as f64,
+                        format!("{:?}", mode)
+                    );
+                    let total = AtomicUsize::new(0);
+                    let mapped = AtomicUsize::new(0);
+                    let total_matches = AtomicUsize::new(0);
+                    let total_steps = AtomicUsize::new(0);
+                    let start = std::time::Instant::now();
+                    // const B: usize = 1024 * 16;
+                    const B: usize = 32;
+                    reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
+                        let mut s = 0;
+                        let mut m = 0;
+                        let mut mp = 0;
+                        match mode {
+                            Mode::Sequential => {
+                                for q in batch {
+                                    let (steps, matches) = fm.count(q);
+                                    s += steps;
+                                    m += matches;
+                                    if matches > 0 {
+                                        mp += 1;
+                                    }
+                                }
+                            }
+                            Mode::Batch => {
+                                for (steps, matches) in fm.query_range_batch::<B, false>(batch) {
+                                    // for (steps, matches) in fm.query_batch_interleaved(batch) {
+                                    s += steps;
+                                    m += matches;
+                                    if matches > 0 {
+                                        mp += 1;
+                                    }
+                                }
+                            }
+                            Mode::Prefetch => {
+                                for (steps, matches) in fm.query_range_batch::<B, true>(batch) {
+                                    // for (steps, matches) in fm.query_batch_interleaved(batch) {
+                                    s += steps;
+                                    m += matches;
+                                    if matches > 0 {
+                                        mp += 1;
+                                    }
+                                }
+                            }
+                        }
+                        let ts = total_steps.fetch_add(s, std::sync::atomic::Ordering::Relaxed);
+                        let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
+                        let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
+                        let m = total_matches.fetch_add(m, std::sync::atomic::Ordering::Relaxed);
 
-        if t % (8*1024 * 1024) == 0 {
-            let duration = start.elapsed();
-            eprint!(
-                "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
-                t,
-                ts as f64 / t as f64,
-                mp,
-                m,
-                duration,
-                t as f64 / duration.as_secs_f64() / 1e3,
-                ts as f64 / duration.as_secs_f64() / 1e6
-            );
-        }
-    });
+                        // if t % (8*1024 * 1024) == 0 {
+                        //     let duration = start.elapsed();
+                        //     eprint!(
+                        //         "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
+                        //         t,
+                        //         ts as f64 / t as f64,
+                        //         mp,
+                        //         m,
+                        //         duration,
+                        //         t as f64 / duration.as_secs_f64() / 1e3,
+                        //         ts as f64 / duration.as_secs_f64() / 1e6
+                        //     );
+                        // }
+                    });
 
-    let duration = start.elapsed();
-    let t = total.into_inner();
-    let mp = mapped.into_inner();
-    let m = total_matches.into_inner();
-    let ts = total_steps.into_inner();
+                    let duration = start.elapsed();
+                    let t = total.into_inner();
+                    let mp = mapped.into_inner();
+                    let m = total_matches.into_inner();
+                    let ts = total_steps.into_inner();
 
-    eprint!(
-        "Processed {:>8} reads ({:>8.3} steps/read, {:>8} mapped, {:>8} matches) in {:5.2?} ({:>6.2} kreads/s, {:>6.2} Mbp/s)\n",
-        t,
-        ts as f64 / t as f64,
-        mp,
-        m,
-        duration,
-        t as f64 / duration.as_secs_f64() / 1e3,
-        ts as f64 / duration.as_secs_f64() / 1e6
-    );
+                    let thrpt = t as f64 / duration.as_secs_f64();
+
+                    eprintln!(
+                        "in {duration:.3?} {:.5} Mread/s {:>8} mapped, {:>8} matches",
+                        thrpt / 1e6,
+                        mp,
+                        m,
+                    );
+                    println!(
+                        "\"{name}\",{bytes},{},{threads},{mode:?},{},{thrpt},{mp},{m}",
+                        build.as_secs_f64(),
+                        duration.as_secs_f64()
+                    );
+                }
+            });
+    }
 }
 
 fn map_fm_crate(input_path: &Path, reads_path: &Path) {
@@ -483,7 +528,7 @@ fn test() {
     println!("query");
     let query = b"TACGAA";
     let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-    let (steps, count) = fm.query(&packed);
+    let (steps, count) = fm.count(&packed);
     eprintln!("steps: {steps}, matches: {count}");
     // let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
     // let (steps, count) = fm.query(&packed_rc);
@@ -496,23 +541,16 @@ fn main() {
 
     let args = Args::parse();
 
-    // initialize rayon threads
-    if let Some(threads) = args.threads {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .build_global()
-            .unwrap();
-    }
-
     let bwt_path = &args.reference.with_added_extension("bwt");
     if !bwt_path.exists() {
         eprintln!("Building BWT at {}", bwt_path.display());
         bwt(&args.reference, bwt_path);
     }
     let bwt = std::fs::read(bwt_path).unwrap();
-    let mut bwt: BWT = bincode::decode_from_slice(&bwt, bincode::config::legacy())
+    let mut bwt: BWT = bincode::decode_from_slice::<DiskBWT, _>(&bwt, bincode::config::legacy())
         .unwrap()
-        .0;
+        .0
+        .pack();
 
     // eprintln!("Reading queries");
     let mut reader = needletail::parse_fastx_file(&args.reads).unwrap();
@@ -520,37 +558,57 @@ fn main() {
     while let Some(r) = reader.next() {
         let r = r.unwrap();
         let seq = r.seq();
+        let seq = if let Some(len) = args.len {
+            &seq[..len]
+        } else {
+            &seq
+        };
         // eprintln!("seq: {}", std::str::from_utf8(&seq).unwrap());
         let packed = seq.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
         let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
         reads.push(packed);
         reads.push(packed_rc);
+        if reads.len() == 1_000_000 {
+            break;
+        }
     }
+    eprintln!("Num reads: {}", reads.len());
 
-    // Count number of runs (r) in the BWT.
-    {
-        let r = 1 + bwt
-            .bwt
-            .array_windows()
-            .map(|[x, y]| (x != y) as usize)
-            .sum::<usize>();
-        eprintln!("Text len (n): {}", bwt.bwt.len());
-        eprintln!(
-            "BWT runs (r): {r} = {:>5.2} %",
-            100. * r as f32 / bwt.bwt.len() as f32
-        );
-    }
+    // // Count number of runs (r) in the BWT.
+    // {
+    //     let r = 1 + bwt
+    //         .bwt
+    //         .array_windows()
+    //         .map(|[x, y]| (x != y) as usize)
+    //         .sum::<usize>();
+    //     eprintln!("Text len (n): {}", bwt.bwt.len());
+    //     eprintln!(
+    //         "BWT runs (r): {r} = {:>5.2} %",
+    //         100. * r as f32 / bwt.bwt.len() as f32
+    //     );
+    // }
 
-    map::<SmallRank>(&bwt, &reads);
-    map::<MidRank>(&bwt, &reads);
-    map::<FastRank>(&bwt, &reads);
-    map::<QuartRank>(&bwt, &reads);
-    map::<HexRank>(&bwt, &reads);
-    map::<QwtRank>(&bwt, &reads);
-    map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
-    map_genedex::<CondensedTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
-    map_genedex::<FlatTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
-    map_genedex::<CondensedTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
+    let ts = &args.threads.map(|x| vec![x]).unwrap_or(vec![1, 6, 12]);
+
+    println!("name,bytes,build,threads,mode,time,reads_per_sec,mapped,matches",);
+    map::<QuadRank16>(&bwt, &reads, ts);
+    map::<QuadRank24_8>(&bwt, &reads, ts);
+    map::<QuadRank64>(&bwt, &reads, ts);
+    map::<QuadRank32_8_8_8>(&bwt, &reads, ts);
+    map::<QuadRank7_18_7>(&bwt, &reads, ts);
+    map::<quadrank::qwt::RSQVector256>(&bwt, &reads, ts);
+    map::<quadrank::qwt::RSQVector512>(&bwt, &reads, ts);
+    map::<quadrank::genedex::Flat64>(&bwt, &reads, ts);
+    map::<quadrank::genedex::Flat512>(&bwt, &reads, ts);
+    map::<quadrank::genedex::Condensed64>(&bwt, &reads, ts);
+    map::<quadrank::genedex::Condensed512>(&bwt, &reads, ts);
+    // map_genedex::<FlatTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
+    // map_genedex::<CondensedTextWithRankSupport<u32, Block64>>(&args.reference, &args.reads);
+    // map_genedex::<FlatTextWithRankSupport<u32, Block512>>(&args.reference, &args.reads);
+    // map_genedex::<CondensedTextWithRankSupport<u32, Block512>>(
+    //     &args.reference,
+    //     &args.reads,
+    // );
     // map_awry(&args.reference, &args.reads);
     // map_fm_crate(&args.reference, &args.reads);
 }

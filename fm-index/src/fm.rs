@@ -1,14 +1,15 @@
 use std::arch::x86_64::{_pext_u32, _pext_u64};
 
-use quadrank::quad::{HexRank, RankerT};
+use quadrank::quad::{QuadRank7_18_7, RankerT};
 use qwt::{RankQuad, WTSupport};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::bwt::BWT;
 
 // type Rank = quadrank::QuadRank;
 type Rank = qwt::RSQVector256;
 
-pub struct FM<Rank: RankerT = HexRank> {
+pub struct FM<Rank: RankerT = QuadRank7_18_7> {
     n: usize,
     ranker: Rank,
     sentinel: usize,
@@ -30,29 +31,17 @@ impl<Ranker: RankerT> FM<Ranker> {
     pub fn new_with_prefix(bwt: &BWT, prefix: usize) -> Self {
         let n = bwt.bwt.len();
 
-        let mut packed_bwt = bwt
+        let ranker = Ranker::new_packed(&bwt.packed);
+        eprintln!("count..");
+        let mut occ: Vec<usize> = bwt
             .bwt
-            .chunks(4)
-            .map(|cc| {
-                let mut x = 0u8;
-                for (i, c) in cc.iter().enumerate() {
-                    x |= c << (i * 2);
-                }
-                x
+            .par_iter()
+            .fold_with(vec![0usize; 5], |mut occ, c| {
+                occ[*c as usize + 1] += 1;
+                occ
             })
-            .collect::<Vec<u8>>();
-        for _ in 0..128 {
-            packed_bwt.push(0);
-        }
-        let (head, mid, tail) = unsafe { packed_bwt.align_to::<usize>() };
-        assert!(head.is_empty());
-        let packed_bwt = mid;
-
-        let ranker = Ranker::new_packed(&packed_bwt);
-        let mut occ = vec![0; 5];
-        for &c in &bwt.bwt {
-            occ[c as usize + 1] += 1;
-        }
+            .reduce(|| vec![0; 5], |a, b| (0..5).map(|i| a[i] + b[i]).collect());
+        eprintln!("done");
         // for sentinel
         occ[0] += 1;
         for i in 1..5 {
@@ -107,13 +96,16 @@ impl<Ranker: RankerT> FM<Ranker> {
         (steps, (s as u32, t as u32))
     }
 
-    pub fn query(&self, text: &[u8]) -> (usize, usize) {
+    pub fn count(&self, text: &[u8]) -> (usize, usize) {
         let (steps, (s, t)) = self.query_range(text);
         (steps, (t - s) as usize)
     }
 
     #[inline(always)]
-    pub fn query_batch<const B: usize>(&self, texts: &[Vec<u8>; B]) -> [(usize, usize); B] {
+    pub fn query_range_batch<const B: usize, const PREFETCH: bool>(
+        &self,
+        texts: &[Vec<u8>; B],
+    ) -> [(usize, usize); B] {
         let mut s = [0; B];
         let mut t = [self.n + 1; B];
         let mut steps = [0; B];
@@ -147,15 +139,17 @@ impl<Ranker: RankerT> FM<Ranker> {
                     // Note: idx is not incremented here.
                     continue;
                 }
-                let c = unsafe {
-                    *texts
-                        .get_unchecked(i)
-                        .get_unchecked(texts[i].len() - 1 - text_idx)
-                };
-                self.ranker
-                    .prefetch1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
-                self.ranker
-                    .prefetch1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                if PREFETCH {
+                    let c = unsafe {
+                        *texts
+                            .get_unchecked(i)
+                            .get_unchecked(texts[i].len() - 1 - text_idx)
+                    };
+                    self.ranker
+                        .prefetch1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                    self.ranker
+                        .prefetch1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                }
 
                 idx += 1;
             }
@@ -175,24 +169,14 @@ impl<Ranker: RankerT> FM<Ranker> {
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
-                if true {
-                    let ranks_s = self
-                        .ranker
-                        .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
-                    s[i] = occ + ranks_s as usize;
-                    let ranks_t = self
-                        .ranker
-                        .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
-                    t[i] = occ + ranks_t as usize;
-                } else {
-                    let (ranks_s, ranks_t) = self.ranker.count1x2(
-                        s[i] as usize - (s[i] > self.sentinel) as usize,
-                        t[i] as usize - (t[i] > self.sentinel) as usize,
-                        c,
-                    );
-                    s[i] = occ + ranks_s as usize;
-                    t[i] = occ + ranks_t as usize;
-                }
+                let ranks_s = self
+                    .ranker
+                    .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                s[i] = occ + ranks_s as usize;
+                let ranks_t = self
+                    .ranker
+                    .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                t[i] = occ + ranks_t as usize;
             }
             text_idx += 1;
         }
