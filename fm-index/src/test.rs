@@ -1,4 +1,6 @@
-use crate::{build_bwt_ascii, build_bwt_packed, fm};
+use quadrank::quad::QuadRank16;
+
+use crate::{FmIndex, build_bwt_packed, bwt::build_bwt_ascii, quad_fm};
 
 #[test]
 fn broken() {
@@ -6,11 +8,10 @@ fn broken() {
     // let query = b"TGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCC";
     let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
     let query = b"GGA";
-    let bwt = build_bwt_ascii(text.to_vec());
+    let bwt = build_bwt_ascii(text);
     let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-    let fm = <fm::FM>::new(&bwt);
-    let (steps, count) = fm.count(&packed);
-    eprintln!("steps: {steps}, matches: {count}");
+    let fm = <quad_fm::QuadFm<QuadRank16>>::new(text, &bwt);
+    let count = fm.count(&packed);
     assert!(count > 0);
 }
 
@@ -44,7 +45,7 @@ fn fuzz_fm() {
             .collect::<Vec<_>>();
 
         let bwt = build_bwt_packed(&mut text);
-        let mfm = <fm::FM>::new(&bwt);
+        let mfm = <quad_fm::QuadFm<QuadRank16>>::new(&text, &bwt);
 
         let gfm = genedex::FmIndexConfig::<i32>::new()
             .suffix_array_sampling_rate(16)
@@ -56,7 +57,7 @@ fn fuzz_fm() {
             let end = rand::random_range(start..=len);
             let q = &text[start..end];
 
-            let m_cnt = mfm.count(q).1;
+            let m_cnt = mfm.count(q);
             let g_cnt = gfm.count(q);
             eprintln!("+ m_cnt: {}, g_cnt: {}", m_cnt, g_cnt);
             assert_eq!(m_cnt, g_cnt, "text len {}, query {:?}", len, q);
@@ -69,7 +70,7 @@ fn fuzz_fm() {
             let ql = q.len();
             q[rand::random_range(0..ql)] = rand::random_range(0..4);
 
-            let m_cnt = mfm.count(&q).1;
+            let m_cnt = mfm.count(&q);
             let g_cnt = gfm.count(&q);
             eprintln!("- m_cnt: {}, g_cnt: {}", m_cnt, g_cnt);
             assert_eq!(m_cnt, g_cnt, "text len {}, query {:?}", len, q);

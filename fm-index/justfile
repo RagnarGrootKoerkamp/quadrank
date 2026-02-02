@@ -1,0 +1,2 @@
+run:
+   cargo run -r -- $d/chm13v2.0.fa $d/chm13v2.0.reads.fa > fm.csv

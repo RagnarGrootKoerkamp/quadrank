@@ -1,10 +1,12 @@
 #![allow(unused)]
-use std::sync::atomic::AtomicUsize;
+use std::{path::Path, sync::atomic::AtomicUsize};
 
 use rayon::{
     iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator},
     slice::ParallelSlice,
 };
+
+use crate::time;
 
 #[derive(bincode::Encode, bincode::Decode, PartialEq)]
 pub struct DiskBWT {
@@ -145,4 +147,71 @@ pub fn manual(text: &[u8]) -> BWT {
     sa.sort_unstable_by_key(|&i| &text[i..]);
 
     sa_to_bwt(text, sa)
+}
+
+pub fn build_bwt_ascii(text: &[u8]) -> BWT {
+    let mut text = text.to_vec();
+    pack_text(&mut text);
+    build_bwt_packed(&text)
+}
+#[allow(unused)]
+pub fn build_bwt_packed(text: &[u8]) -> BWT {
+    return time("libsais", || libsais(text));
+    // // return time("caps-sa", || bwt::caps_sa(text, text.len() > 800_000_000));
+    // if text.len() > 1000 {
+    //     // time("simple-saca", || bwt::simple_saca(&text))
+    //     // time("small-bwt", || bwt::small_bwt(&text))
+    //     let b1 = time("caps-sa", || bwt::caps_sa(text, false));
+    //     let b2 = time("manual", || bwt::manual(&text));
+    //     if b1 != b2 {
+    //         eprintln!("BWT mismatch!");
+    //         eprintln!("Sentinels: b1 {}, b2 {}", b1.sentinel, b2.sentinel);
+    //         eprintln!("Lens: b1 {}, b2 {}", b1.bwt.len(), b2.bwt.len());
+    //         for (i, (&c1, &c2)) in b1.bwt.iter().zip(b2.bwt.iter()).enumerate() {
+    //             if c1 != c2 {
+    //                 eprintln!("Mismatch at pos {}: b1 {}, b2 {}", i, c1, c2);
+    //                 break;
+    //             }
+    //         }
+    //         assert_eq!(b1.bwt, b2.bwt, "BWT mismatch on text len {}", text.len());
+    //     }
+    //     b1
+    // } else {
+    //     // eprintln!("text: {text:?}");
+    //     time("manual", || bwt::manual(&text))
+    //     // eprintln!("text len {}, using caps-sa", text.len());
+    //     // time("caps-sa", || bwt::caps_sa(&text, false))
+    // }
+}
+
+// text must be values in 0..4
+pub fn bwt(text: &[u8], output: &Path) {
+    let bwt = build_bwt_packed(text);
+
+    // write output to path.bwt:
+    std::fs::write(
+        output,
+        bincode::encode_to_vec(&bwt.to_disk(), bincode::config::legacy()).unwrap(),
+    )
+    .unwrap();
+}
+
+pub fn pack_text(text: &mut Vec<u8>) {
+    for x in text {
+        *x = (*x >> 1) & 3;
+    }
+}
+pub fn read_text(input: &Path) -> Vec<u8> {
+    let mut text = vec![];
+    let mut reader = needletail::parse_fastx_file(input).unwrap();
+    while let Some(record) = reader.next() {
+        let record = record.unwrap();
+        text.extend_from_slice(&record.seq());
+    }
+    // Map to 0123.
+    for x in &mut text {
+        *x = (*x >> 1) & 3;
+    }
+
+    text
 }
