@@ -1,34 +1,34 @@
 # QuadRank
 
-This is a work-in-progress implementation of a fast data structure for /rank/
-queries over a 2-bit DNA alphabet.
+This repo implements `BiRank`, `QuadRank`, and `QuadFm`, two fast rank data
+structures and a simple count-only FM-index that use batching and prefetching of queries.
 
-The main API looks like this:
+QuadFm is up to 4x faster than genedex (https://github.com/feldroop/genedex),
+which seems to be the fastest Rust-based FM-index currently.
 
-``` rust
-impl QuadRank {
-    /// Take a DNA string over ACGT characters.
-    pub fn new(seq: &[u8]) -> Self;
-    
-    /// Count the number of A, C, G, *and* T characters before the given position.
-    pub fn rank4(&self, pos: usize) -> [u32; 4];
-}
-```
+## FM-index results
 
-## Small FM-index evaluation 
-In `fm-index/` there is a count-only FM-index implementation using `QuadRank`.
-
-Here I'm mapping simulated 150bp short reads with 1% error rate against 550Mbp of
-viral genomes. I first build each index (where I don't care about time/space
-usage), and then count the number of matches of each fwd/rc read.
+Here I'm mapping simulated 150bp short reads with 1% error rate against a 3.1 Gbp human genome.
+I first build each index on the forward data (where I don't care about time/space usage),
+and then count the number of matches of each fwd/rc read.
 For `genedex` and `quad`, I query batches of 32 reads at a time.
-All results are multithreaded (12 threads, on my 6-core i7-10750H) via `rayon::par_iter`.
+I'm using 12 threads, on my 6-core i7-10750H, fixed at 3.0 GHz.
 
-- `Quad<>`: High-level rank structure: `src/ranker.rs`.
-- `QuartBlock`: simple-but-large 512bit basic block for rank.
-- `HexBlock`: small-but-intricate 512bit basic block that's a bit slower.
-- `fm_index`: https://github.com/ajalab/fm-index
-- `genedex`: https://github.com/feldroop/genedex, supports batching
-- `RSQVector256`: Rank structure of https://github.com/rossanoventurini/qwt
+- `AWRY`: https://github.com/UM-Applied-Algorithms-Lab/AWRY
+- `Genedex<>`: Genedex, with different choice of its rank structure.
+- `QuadFm<>`: The FM-index in the `fm-index` directory here.
+- `QuadRank*`: The rank structure we introduce.
+- `qwt::RSQ{256,512}`: The rank structures of https://github.com/rossanoventurini/qwt.
 
 ![Comparison plot, showing that quadrank smaller and faster than others.](fm-index/comparison.png)
+
+## Benchmarks
+
+This directory contains the `quadrank` crate implementing `BiRank` and
+`QuadRank` and variants.
+Synthetic benchmarks are run using `cargo run -r -- -j -b > evals/data.csv`.
+
+The `fm-index` directory contains `QuadFm`. It is evaluated by running `cargo
+run -r -- <human-genome>.fa <reads>.fa > ../evals/fm.csv`.
+
+Plotting code can be found in `evals/plot.py` and `evals/plot-fm.py`.
