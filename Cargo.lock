@@ -942,7 +942,7 @@ dependencies = [
  "caps-sa-rs",
  "clap",
  "fm-index 0.3.0",
- "genedex 0.2.2",
+ "genedex",
  "libsais",
  "mem_dbg 0.3.4",
  "needletail",
@@ -996,21 +996,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
-]
-
-[[package]]
-name = "genedex"
-version = "0.2.2"
-dependencies = [
- "bytemuck",
- "libsais",
- "mem_dbg 0.3.4",
- "memchr",
- "num-traits",
- "prefetch-index",
- "psacak",
- "rayon",
- "savefile",
 ]
 
 [[package]]
@@ -1912,7 +1897,7 @@ dependencies = [
  "bvrs",
  "clap",
  "dyn_size_of 0.4.5 (git+https://github.com/ragnargrootkoerkamp/bsuccinct-rs?branch=no_select)",
- "genedex 0.2.2 (git+https://github.com/ragnargrootkoerkamp/genedex?branch=prefetch)",
+ "genedex",
  "mem_dbg 0.3.4",
  "packed-seq",
  "prefetch-index",
