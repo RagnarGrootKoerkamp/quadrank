@@ -7,41 +7,52 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bv = "0.11.1"
-bvrs = "0.1.1"
-clap = { version = "4.5.51", features = ["derive"] }
 mem_dbg = "0.3.2"
 packed-seq = "4.2.0"
+prefetch-index = "0.2.0"
+rayon = "1.11.0"
+dyn_size_of = "0.4.5"
+
+# In evals
+qwt = {version="0.3.4", optional=true}
+sux = {version="0.10.3", optional=true}
+genedex = { version = "0.2.2", optional=true  }
+bitm = {version="0.5.2", optional=true}
+
+# Not in evals
+bio = {version="3.0.0", optional=true}
+bv = {version="0.11.1", optional=true}
+rsdict = {version="0.0.8", optional=true}
+succinct = {version="0.5.2", optional=true}
+sucds = {version="0.8.3", optional=true}
+vers-vecs = {version="1.8.2", optional=true}
+
+[dev-dependencies]
+clap = { version = "4.5.51", features = ["derive"] }
 rand = "0.9.2"
 regex = "1.12.2"
-rsdict = "0.0.8"
-succinct = "0.5.2"
-sucds = "0.8.3"
-vers-vecs = "1.8.2"
-
-# qwt = "0.3.1"
-# qwt.path = "../forks/qwt"
-qwt = { git = "https://github.com/ragnargrootkoerkamp/qwt", branch = "from_slice" }
-# sux = "0.9.1"
-# sux.path = "../forks/sux-rs"
-sux = { git = "https://github.com/ragnargrootkoerkamp/sux-rs", branch = "quadrank" }
-# genedex = "0.2.2"
-# genedex = { path = "../forks/genedex", features = ["mem_dbg"]}
-genedex = { git = "https://github.com/ragnargrootkoerkamp/genedex", branch = "prefetch", features = ["mem_dbg"] }
-# bio = "3.0.0"
-# bio.path = "../forks/rust-bio"
-bio = { git = "https://github.com/ragnargrootkoerkamp/rust-bio", branch = "quadrank" }
-# bitm = "0.5.2"
-# bitm.path = "../forks/bsuccinct-rs/bitm"
-bitm = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
-# dyn_size_of = "0.4.5"
-# dyn_size_of.path = "../forks/bsuccinct-rs/dyn_size_of"
-dyn_size_of = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
-prefetch-index = "0.1.0"
-rayon = "1.11.0"
 
 [profile.release]
 debug = true
 
+[features]
+ext = ["dep:qwt", "dep:sux", "dep:genedex", "dep:bitm", "dep:bio", "dep:bv", "dep:rsdict", "dep:succinct", "dep:sucds", "dep:vers-vecs"]
+
+[[example]]
+name = "bench"
+required-features = ["ext"]
+
 [patch.crates-io]
+# bio.path = "../forks/rust-bio"
+bio = { git = "https://github.com/ragnargrootkoerkamp/rust-bio", branch = "quadrank" }
+# bitm.path = "../forks/bsuccinct-rs/bitm"
+bitm = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
+# dyn_size_of.path = "../forks/bsuccinct-rs/dyn_size_of"
+dyn_size_of = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
+# genedex = { path = "../forks/genedex" }
+genedex = { git = "https://github.com/ragnargrootkoerkamp/genedex", branch = "quadrank"}
 mem_dbg = { git = "https://github.com/zommiommy/mem_dbg-rs.git", branch = "main" }
+# qwt.path = "../forks/qwt"
+qwt = { git = "https://github.com/ragnargrootkoerkamp/qwt", branch = "from_slice" }
+# sux.path = "../forks/sux-rs"
+sux = { git = "https://github.com/ragnargrootkoerkamp/sux-rs", branch = "quadrank" }

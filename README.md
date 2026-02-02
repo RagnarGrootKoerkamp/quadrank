@@ -42,7 +42,7 @@ I'm using 12 threads, on my 6-core i7-10750H, fixed at 3.0 GHz.
 
 This directory contains the `quadrank` crate implementing `BiRank` and
 `QuadRank` and variants.
-Synthetic benchmarks are run using `cargo run -r -- -j -b > evals/data.csv`.
+Synthetic benchmarks are run using `cargo run -r -F ext --example bench -- -j -b > evals/data.csv`.
 
 The `fm-index` directory contains `QuadFm`. It is evaluated by running `cargo
 run -r -- <human-genome>.fa <reads>.fa > ../evals/fm.csv`.

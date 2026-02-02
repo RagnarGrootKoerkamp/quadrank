@@ -19,7 +19,6 @@ pub type QuadRank32_8_8_8 =
     Ranker<blocks::QuadBlock32_8_8_8FP, super_blocks::ShiftSB, count4::SimdCount10>;
 pub type QuadRank7_18_7 =
     Ranker<blocks::QuadBlock7_18_7P, super_blocks::ShiftSB, count4::SimdCount10>;
-pub type QwtRank = ::qwt::RSQVector256;
 
 pub type QuadRank64 = Ranker<blocks::QuadBlock64, super_blocks::ShiftSB, count4::SimdCount11B>;
 pub type QuadRank24_8 = Ranker<blocks::QuadBlock24_8, super_blocks::ShiftSB, count4::SimdCount11B>;
