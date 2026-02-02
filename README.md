@@ -6,7 +6,13 @@ structures and a simple count-only FM-index that use batching and prefetching of
 QuadFm is up to 4x faster than genedex (https://github.com/feldroop/genedex),
 which seems to be the fastest Rust-based FM-index currently.
 
-**NOTE:** The code here is not really ready yet for consumption as a library.
+**NOTE:** The code here is not really ready yet for consumption as a library:
+- It uses a lot of nightly features (such as const generics) that make
+  development easier, but should be stripped away now. In fact, you'll have to
+  use an old nightly, e.g. `nightly-2025-11-01`.
+- Only AVX2 is supported currently.
+- The API still needs cleaning up.
+- Docs still need to be written for docs.rs.
 
 ## BiRank
 
