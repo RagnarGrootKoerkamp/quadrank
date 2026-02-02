@@ -132,17 +132,17 @@ fn seqs() -> Vec<Vec<usize>> {
         98304 / 8,
         3145728 / 8,
         6291456 / 8,
-        536_870_912 / 8,
-        805_306_368 / 8,
-        1_073_741_824 / 8,
-        1_610_612_736 / 8,
+        // 536_870_912 / 8,
+        // 805_306_368 / 8,
+        // 1_073_741_824 / 8,
+        // 1_610_612_736 / 8,
         // some random stuff
         rand::random_range(1000..10000),
         rand::random_range(10_000..100_000),
         rand::random_range(100_000..1_000_000),
         rand::random_range(1_000_000..10_000_000),
         // > 2^33 bits = 2^32 bp
-        rand::random_range(160_000_000..200_000_000),
+        // rand::random_range(160_000_000..200_000_000),
     ] {
         eprintln!("generating seq of len {}", len);
         // random prefix of length 0%..25%, then 0

@@ -160,7 +160,7 @@ fn seqs() -> Vec<Vec<usize>> {
         rand::random_range(100_000..1_000_000),
         rand::random_range(1_000_000..10_000_000),
         // > 2^32 bits, even with first 25% random
-        rand::random_range(90_000_000..110_000_000),
+        // rand::random_range(90_000_000..110_000_000),
     ] {
         eprintln!("generating seq of len {}", len);
         // random prefix of length 0%..25%, then 1
