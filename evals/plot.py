@@ -74,8 +74,6 @@ def get_shortname(name, sigma):
     assert False, f"unknown name {name} sigma {sigma}"
 
 
-# TODO: use * symbol
-
 blogyellow = "#fcc007"
 styles = {
     "quadrank": ["o", blogyellow],
