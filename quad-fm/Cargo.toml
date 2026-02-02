@@ -1,5 +1,5 @@
 [package]
-name = "fm-index"
+name = "quad-fm"
 version = "0.1.0"
 edition = "2024"
 
