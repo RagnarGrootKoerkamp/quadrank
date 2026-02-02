@@ -109,49 +109,54 @@ fn bench<F: FmIndex>(text: &[u8], bwt: &bwt::BWT, reads: &Vec<Vec<u8>>, threads:
                     let total = AtomicUsize::new(0);
                     let mapped = AtomicUsize::new(0);
                     let total_matches = AtomicUsize::new(0);
-                    let total_steps = AtomicUsize::new(0);
-                    let start = std::time::Instant::now();
-                    // const B: usize = 1024 * 16;
-                    const B: usize = 32;
-                    reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
-                        let mut m = 0;
-                        let mut mp = 0;
-                        match mode {
-                            Mode::Sequential => {
-                                for q in batch {
-                                    let matches = fm.count(q);
-                                    m += matches;
-                                    if matches > 0 {
-                                        mp += 1;
+                    let mut times = vec![];
+                    for _ in 0..3 {
+                        let start = std::time::Instant::now();
+                        const B: usize = 32;
+                        reads.as_chunks::<B>().0.par_iter().for_each(|batch| {
+                            let mut m = 0;
+                            let mut mp = 0;
+                            match mode {
+                                Mode::Sequential => {
+                                    for q in batch {
+                                        let matches = fm.count(q);
+                                        m += matches;
+                                        if matches > 0 {
+                                            mp += 1;
+                                        }
+                                    }
+                                }
+                                Mode::Batch => {
+                                    for matches in fm.count_batch::<B, false>(batch) {
+                                        m += matches;
+                                        if matches > 0 {
+                                            mp += 1;
+                                        }
+                                    }
+                                }
+                                Mode::Prefetch => {
+                                    for matches in fm.count_batch::<B, true>(batch) {
+                                        m += matches;
+                                        if matches > 0 {
+                                            mp += 1;
+                                        }
                                     }
                                 }
                             }
-                            Mode::Batch => {
-                                for matches in fm.count_batch::<B, false>(batch) {
-                                    m += matches;
-                                    if matches > 0 {
-                                        mp += 1;
-                                    }
-                                }
-                            }
-                            Mode::Prefetch => {
-                                for matches in fm.count_batch::<B, true>(batch) {
-                                    m += matches;
-                                    if matches > 0 {
-                                        mp += 1;
-                                    }
-                                }
-                            }
-                        }
-                        let t = total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
-                        let mp = mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
-                        let m = total_matches.fetch_add(m, std::sync::atomic::Ordering::Relaxed);
-                    });
+                            total.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
+                            mapped.fetch_add(mp, std::sync::atomic::Ordering::Relaxed);
+                            total_matches.fetch_add(m, std::sync::atomic::Ordering::Relaxed);
+                        });
 
-                    let duration = start.elapsed();
-                    let t = total.into_inner();
-                    let mp = mapped.into_inner();
-                    let m = total_matches.into_inner();
+                        let duration = start.elapsed();
+                        times.push(duration);
+                    }
+                    let t = total.into_inner() / 3;
+                    let mp = mapped.into_inner() / 3;
+                    let m = total_matches.into_inner() / 3;
+
+                    times.sort();
+                    let duration = times[1]; // median
 
                     let thrpt = t as f64 / duration.as_secs_f64();
 

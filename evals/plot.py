@@ -22,7 +22,7 @@ def get_shortname(name, sigma):
         if "Condensed" in name:
             if "512" in name:
                 return ("genedex", "genedex::Condensed512", "*", 1)
-            return ("genedex", "genedex::Condensed256", "v", 5)
+            return ("genedex", "genedex::Condensed64", "v", 5)
         if "Ranker" in name:
             if "QuadBlock64" in name:
                 return ("quadrank", "QuadRank64", "o", 6)

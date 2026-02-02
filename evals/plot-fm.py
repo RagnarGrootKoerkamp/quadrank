@@ -75,6 +75,8 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False, small=False):
             continue
 
         s = 60
+        if color == blogyellow:
+            s *= 1.5
 
         ax.scatter(
             group["bits_per_bp"],
