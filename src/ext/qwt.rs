@@ -1,7 +1,9 @@
 use qwt::{RankBin, RankQuad, WTSupport};
 
+pub use qwt::RSNarrow;
 pub use qwt::RSQVector256;
 pub use qwt::RSQVector512;
+pub use qwt::RSWide;
 
 use crate::quad::{LongRanks, RankerT};
 

@@ -1,6 +1,9 @@
 use crate::binary::RankerT;
 use dyn_size_of::GetSize;
 
+pub use bitm::RankSelect101111;
+pub use bitm::RankSimple;
+
 impl RankerT for bitm::RankSimple {
     fn new_packed(seq: &[u64]) -> Self {
         Self::build(seq.to_vec().into()).0

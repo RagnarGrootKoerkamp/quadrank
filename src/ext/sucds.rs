@@ -1,11 +1,8 @@
-use sucds::{
-    Serializable,
-    bit_vectors::{Rank, Rank9Sel},
-};
+use sucds::{Serializable, bit_vectors::Rank};
 
-use crate::binary::RankerT;
+pub use sucds::bit_vectors::Rank9Sel;
 
-impl RankerT for Rank9Sel {
+impl crate::binary::RankerT for Rank9Sel {
     fn new_packed(seq: &[u64]) -> Self {
         Self::from_bits(
             seq.iter()

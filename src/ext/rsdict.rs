@@ -1,5 +1,7 @@
 use crate::binary::RankerT;
 
+pub use rsdict::RsDict;
+
 impl RankerT for rsdict::RsDict {
     fn new_packed(seq: &[u64]) -> Self {
         Self::from_blocks(seq.iter().map(|x| *x))

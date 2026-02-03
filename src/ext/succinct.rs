@@ -1,6 +1,8 @@
 use crate::binary::RankerT;
 use succinct::{BitRankSupport, SpaceUsage};
 
+pub use succinct::{JacobsonRank, Rank9};
+
 impl RankerT for succinct::Rank9<Vec<u64>> {
     fn new_packed(seq: &[u64]) -> Self {
         Self::new(seq.to_vec())

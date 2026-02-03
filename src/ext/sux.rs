@@ -1,8 +1,8 @@
+use crate::binary::RankerT;
 use mem_dbg::MemSize;
-pub use sux::prelude::Rank9;
 use sux::{bits::BitVec, prelude::RankSmall, traits::RankUnchecked};
 
-use crate::binary::RankerT;
+pub use sux::prelude::Rank9;
 
 // A macro that implements RankerT for the given RankSmall parameters.
 macro_rules! impl_rank_small {
