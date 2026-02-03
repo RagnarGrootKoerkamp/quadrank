@@ -1,4 +1,4 @@
-#![allow(incomplete_features, dead_code, unused)]
+#![allow(incomplete_features, dead_code)]
 #![feature(generic_const_exprs, coroutines, coroutine_trait, stmt_expr_attributes)]
 use std::{
     any::type_name,

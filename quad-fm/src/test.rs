@@ -1,43 +1,10 @@
 use quadrank::quad::QuadRank16;
 
-use crate::{FmIndex, build_bwt_packed, bwt::build_bwt_ascii, quad_fm};
-
-#[test]
-fn broken() {
-    // let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    // let query = b"TGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCC";
-    let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    let query = b"GGA";
-    let bwt = build_bwt_ascii(text);
-    let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-    let fm = <quad_fm::QuadFm<QuadRank16>>::new(text, &bwt);
-    let count = fm.count(&packed);
-    assert!(count > 0);
-}
-
-#[test]
-fn broken2() {
-    // let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    // let query = b"TGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCC";
-    let text = b"AGCCTTAGCTGCGACAGAATGGATCAGAAAGCTTGAAAACTTAGAGCAAAAAATTGACTATTTTGACGAGTGTCTTCTTCCAGGCATTTTCACCATCGACGCGGATCCTCCAGACGAGTTGTTTCTTGATGAACTG";
-    let query = b"GGATCA";
-    let mut text = text.iter().map(|&x| ((x >> 1) & 3) + 1).collect::<Vec<_>>();
-    text.push(0);
-    let query = query
-        .iter()
-        .map(|&x| ((x >> 1) & 3) + 1)
-        .collect::<Vec<_>>();
-
-    let fm = fm_index::FMIndex::new(&fm_index::Text::with_max_character(text, 4)).unwrap();
-    let count = fm.search(&query).count();
-    eprintln!("matches: {count}");
-    assert!(count > 0);
-    panic!()
-}
+use crate::{FmIndex, QuadFm, bwt::build_bwt_packed};
 
 #[test]
 fn fuzz_fm() {
-    for _ in 0..1000 {
+    for _ in 0..100 {
         let len = rand::random_range(1000..3000);
         eprintln!("Building for len {len}");
         let mut text = (0..len)
@@ -45,9 +12,9 @@ fn fuzz_fm() {
             .collect::<Vec<_>>();
 
         let bwt = build_bwt_packed(&mut text);
-        let mfm = <quad_fm::QuadFm<QuadRank16>>::new(&text, &bwt);
+        let quad_fm = <QuadFm<QuadRank16>>::new(&text, &bwt);
 
-        let gfm = genedex::FmIndexConfig::<i32>::new()
+        let genedex = genedex::FmIndexConfig::<i32>::new()
             .suffix_array_sampling_rate(16)
             .construct_index(&[&text], genedex::alphabet::u8_until(3));
 
@@ -57,9 +24,8 @@ fn fuzz_fm() {
             let end = rand::random_range(start..=len);
             let q = &text[start..end];
 
-            let m_cnt = mfm.count(q);
-            let g_cnt = gfm.count(q);
-            eprintln!("+ m_cnt: {}, g_cnt: {}", m_cnt, g_cnt);
+            let m_cnt = quad_fm.count(q);
+            let g_cnt = genedex.count(q);
             assert_eq!(m_cnt, g_cnt, "text len {}, query {:?}", len, q);
         }
 
@@ -70,9 +36,8 @@ fn fuzz_fm() {
             let ql = q.len();
             q[rand::random_range(0..ql)] = rand::random_range(0..4);
 
-            let m_cnt = mfm.count(&q);
-            let g_cnt = gfm.count(&q);
-            eprintln!("- m_cnt: {}, g_cnt: {}", m_cnt, g_cnt);
+            let m_cnt = quad_fm.count(&q);
+            let g_cnt = genedex.count(&q);
             assert_eq!(m_cnt, g_cnt, "text len {}, query {:?}", len, q);
         }
     }

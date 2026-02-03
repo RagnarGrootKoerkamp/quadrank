@@ -1,59 +1,18 @@
-#![allow(incomplete_features, unused)]
+#![allow(incomplete_features)]
 #![feature(generic_const_exprs, array_windows, iter_next_chunk)]
 
-mod bwt;
-#[cfg(test)]
-mod caps_sa_test;
-mod quad_fm;
-#[cfg(test)]
-mod test;
-
-mod ext {
-    mod awry;
-    mod fm_crate;
-    mod genedex;
-}
-
-use bwt::{BWT, DiskBWT, build_bwt_packed, pack_text, read_text};
 use clap::Parser;
-use quad_fm::QuadFm;
+use quad_fm::bwt::{BWT, DiskBWT, build_bwt_packed, pack_text, read_text, write_bwt};
+use quad_fm::{FmIndex, QuadFm};
 use quadrank::quad::*;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{path::PathBuf, process::exit, sync::atomic::AtomicUsize, time::Duration};
-
-trait FmIndex: Sized + Sync {
-    /// text is values 0..4, one per byte.
-    fn new_with_prefix(text: &[u8], bwt: &bwt::BWT, prefix: usize) -> Self;
-    fn new(text: &[u8], bwt: &bwt::BWT) -> Self {
-        Self::new_with_prefix(text, bwt, 0)
-    }
-    fn prep_read(_read: &mut [u8]) {}
-    /// Size in bytes.
-    fn size(&self) -> usize;
-    /// Count the number of matches.
-    fn count(&self, text: &[u8]) -> usize;
-    const HAS_BATCH: bool;
-    const HAS_PREFETCH: bool;
-    /// Batch size B, and whether to PREFETCH or not.
-    fn count_batch<const B: usize, const PREFETCH: bool>(
-        &self,
-        _texts: &[Vec<u8>; B],
-    ) -> [usize; B] {
-        unimplemented!();
-    }
-}
 
 fn time2<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = std::time::Instant::now();
     let x = f();
     let duration = start.elapsed();
     (x, duration)
-}
-
-fn time<T>(name: &str, f: impl FnOnce() -> T) -> T {
-    let (x, duration) = time2(f);
-    println!("{name:<10}: {duration:5.2?}");
-    x
 }
 
 #[derive(clap::Parser)]
@@ -73,7 +32,7 @@ enum Mode {
     Prefetch,
 }
 
-fn bench<F: FmIndex>(text: &[u8], bwt: &bwt::BWT, reads: &Vec<Vec<u8>>, threads: &Vec<usize>) {
+fn bench<F: FmIndex>(text: &[u8], bwt: &BWT, reads: &Vec<Vec<u8>>, threads: &Vec<usize>) {
     let (fm, build) = time2(|| F::new_with_prefix(text, bwt, 8));
 
     let mut reads = reads.clone();
@@ -176,25 +135,6 @@ fn bench<F: FmIndex>(text: &[u8], bwt: &bwt::BWT, reads: &Vec<Vec<u8>>, threads:
     }
 }
 
-#[allow(unused)]
-fn test() {
-    let mut text = b"GCATACGTACGAAAAAAGCTTG".to_vec();
-    pack_text(&mut text);
-    println!("build bwt");
-    let bwt = build_bwt_packed(&text);
-    println!("build fm");
-    let fm = <quad_fm::QuadFm<QuadRank16>>::new(&text, &bwt);
-    println!("query");
-    let query = b"TACGAA";
-    let packed = query.iter().map(|&x| (x >> 1) & 3).collect::<Vec<_>>();
-    let count = fm.count(&packed);
-    eprintln!("matches: {count}");
-    // let packed_rc = packed.iter().rev().map(|&x| x ^ 2).collect::<Vec<_>>();
-    // let (steps, count) = fm.query(&packed_rc);
-    // eprintln!("steps: {steps}, matches: {count}");
-    exit(0);
-}
-
 fn main() {
     // test();
 
@@ -205,7 +145,7 @@ fn main() {
     let bwt_path = &args.reference.with_added_extension("bwt");
     if !bwt_path.exists() {
         eprintln!("Building BWT at {}", bwt_path.display());
-        bwt::bwt(&text, bwt_path);
+        write_bwt(&text, bwt_path);
     }
     let bwt = std::fs::read(bwt_path).unwrap();
     let bwt: BWT = bincode::decode_from_slice::<DiskBWT, _>(&bwt, bincode::config::legacy())
