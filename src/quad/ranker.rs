@@ -1,12 +1,15 @@
-use super::{BasicBlock, LongRanks, RankerT, SuperBlock};
-use crate::quad::count4::{count4_u8, count4_u64};
+use crate::quad::{
+    BasicBlock, LongRanks, RankerT, SuperBlock,
+    count4::{count4_u8, count4_u64},
+    super_blocks::ShiftSB,
+};
 use prefetch_index::prefetch_index;
 use rayon::prelude::*;
 use std::array::from_fn;
 use std::iter::zip;
 use std::mem::MaybeUninit;
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB>> {
+pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
     /// Cacheline-sized counts.
     blocks: Vec<BB>,
     /// Additional sparse counts.

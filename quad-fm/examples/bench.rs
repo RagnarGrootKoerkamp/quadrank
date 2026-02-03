@@ -1,7 +1,6 @@
 use clap::Parser;
 use quad_fm::bwt::{BWT, DiskBWT, read_text, write_bwt};
 use quad_fm::{FmIndex, QuadFm};
-use quadrank::quad::*;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{path::PathBuf, sync::atomic::AtomicUsize, time::Duration};
 
@@ -175,9 +174,9 @@ fn main() {
     let ts = &args.threads.map(|x| vec![x]).unwrap_or(vec![1, 6, 12]);
 
     println!("name,bytes,build,threads,mode,time,reads_per_sec,mapped,matches",);
-    bench::<QuadFm<QuadRank16>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<QuadRank24_8>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<QuadRank64>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::QuadRank16>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::QuadRank24_8>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::QuadRank64>>(&text, &bwt, &reads, ts);
     bench::<QuadFm<quadrank::qwt::RSQVector256>>(&text, &bwt, &reads, ts);
     bench::<QuadFm<quadrank::qwt::RSQVector512>>(&text, &bwt, &reads, ts);
     bench::<QuadFm<quadrank::genedex::Flat64>>(&text, &bwt, &reads, ts);

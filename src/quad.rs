@@ -10,15 +10,8 @@ use packed_seq::{PackedSeqVec, SeqVec};
 pub use ranker::Ranker;
 pub use super_blocks::TrivialSB;
 
-pub type Ranks = [u32; 4];
+type Ranks = [u32; 4];
 pub type LongRanks = [u64; 4];
-
-pub type QuadRank32_8_8_8 = Ranker<blocks::QuadBlock32_8_8_8FP, super_blocks::ShiftSB>;
-pub type QuadRank7_18_7 = Ranker<blocks::QuadBlock7_18_7P, super_blocks::ShiftSB>;
-
-pub type QuadRank64 = Ranker<blocks::QuadBlock64, super_blocks::ShiftSB>;
-pub type QuadRank24_8 = Ranker<blocks::QuadBlock24_8, super_blocks::ShiftSB>;
-pub type QuadRank16 = Ranker<blocks::QuadBlock16, super_blocks::ShiftSB>;
 
 /// By default, the library works for arrays with counts up to `2^45`, corresponding to `8 TiB` of data.
 /// This controls whether superblocks are used and/or prefetched.

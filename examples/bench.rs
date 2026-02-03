@@ -231,9 +231,9 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<genedex::Condensed64>(seq, queries);
     bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench_one_quad::<Ranker<QuadBlock64, ShiftSB>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock16, ShiftSB>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock64>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock24_8>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock16>>(seq, queries);
 
     // use quadrank::quad::super_blocks::ShiftPairedSB;
     // bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);

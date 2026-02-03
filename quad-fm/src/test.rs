@@ -1,4 +1,4 @@
-use quadrank::quad::QuadRank16;
+use quadrank::QuadRank16;
 
 use crate::{FmIndex, QuadFm, bwt::build_bwt_packed};
 
