@@ -6,6 +6,7 @@ pub mod super_blocks;
 pub mod test;
 
 use packed_seq::{PackedSeqVec, SeqVec};
+use std::ops::Coroutine;
 
 pub use ranker::Ranker;
 pub use super_blocks::TrivialSB;
@@ -112,5 +113,23 @@ pub trait RankerT: Sync + Send + Sized {
     #[inline(always)]
     fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
         (self.rank1(pos0, c), self.rank1(pos1, c))
+    }
+
+    #[inline(always)]
+    fn count_coro(&self, pos: usize) -> impl Coroutine<Yield = (), Return = LongRanks> + Unpin {
+        self.prefetch4(pos);
+        #[inline(always)]
+        #[coroutine]
+        move || self.rank4(pos)
+    }
+    #[inline(always)]
+    fn count_coro2(&self, pos: usize) -> impl Coroutine<Yield = (), Return = LongRanks> + Unpin {
+        #[inline(always)]
+        #[coroutine]
+        move || {
+            self.prefetch4(pos);
+            yield;
+            self.rank4(pos)
+        }
     }
 }

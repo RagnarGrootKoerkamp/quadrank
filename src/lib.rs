@@ -1,4 +1,4 @@
-#![feature(portable_simd)]
+#![feature(portable_simd, coroutines, coroutine_trait)]
 
 pub mod binary;
 pub mod count;
