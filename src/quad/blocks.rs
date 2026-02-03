@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 
-use std::{arch::x86_64::_mm_sign_epi32, array::from_fn, simd::u32x4};
+use std::{arch::x86_64::_mm_sign_epi32, array::from_fn};
+use wide::u32x4;
 
 use crate::{
     count::{count_u8x8, count_u64_mask, count_u64_mid_mask},
@@ -338,7 +339,7 @@ impl BasicBlock for QuadBlock7_18_7P {
         let sign = (pos as u32 % 64).wrapping_sub(32);
         ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
 
-        let self_ranks = u32x4::from_array(self.ranks);
+        let self_ranks = u32x4::new(self.ranks);
         ranks += self_ranks >> 14;
 
         let shuffle = u32x4::splat(0x000077u32);
@@ -500,7 +501,7 @@ impl BasicBlock for QuadBlock24_8 {
         let sign = (pos as u32 % 128).wrapping_sub(64);
         ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
 
-        let self_ranks = u32x4::from_array(self.ranks);
+        let self_ranks = u32x4::new(self.ranks);
         ranks += self_ranks >> 8;
 
         // for tri=0 and tri=1, shift down by 0
@@ -591,7 +592,7 @@ impl BasicBlock for QuadBlock64 {
         let sign = (pos as u32).wrapping_sub(64);
         ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
 
-        let self_ranks = u32x4::from_array(self.ranks[0]);
+        let self_ranks = u32x4::new(self.ranks[0]);
         ranks += self_ranks;
 
         // for tri=0 and tri=1, shift down by 0
@@ -673,7 +674,7 @@ impl BasicBlock for QuadBlock32 {
         let sign = (pos as u32).wrapping_sub(128);
         ranks += unsafe { t::<_, u32x4>(_mm_sign_epi32(t(inner_counts), t(u32x4::splat(sign)))) };
 
-        let self_ranks = u32x4::from_array(unsafe { t(self.seq[0]) });
+        let self_ranks = u32x4::new(unsafe { t(self.seq[0]) });
         ranks += self_ranks;
 
         ranks.to_array()
@@ -751,7 +752,7 @@ impl BasicBlock for QuadBlock16 {
 
         let u16s: &[u16; 8] = unsafe { t(&self.seq[0]) };
         // This becomes a single simd shuffle.
-        let self_ranks = u32x4::from_array([
+        let self_ranks = u32x4::new([
             u16s[0] as u32,
             u16s[1] as u32,
             u16s[4] as u32,

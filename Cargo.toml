@@ -20,6 +20,7 @@ packed-seq = "4.2.0"
 prefetch-index = "0.2.0"
 rayon = "1.11.0"
 dyn_size_of = "0.4.5"
+wide = "1.1.1"
 
 # In evals
 qwt = {version="0.3.4", optional=true}

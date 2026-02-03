@@ -1,11 +1,9 @@
 //! Various methods for counting the number of characters equal to 0,1,2,3.
 
-use std::{
-    arch::x86_64::{
-        _mm256_sad_epu8, _mm256_shuffle_epi8, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64,
-    },
-    simd::{u8x32, u32x8, u64x4},
+use std::arch::x86_64::{
+    _mm256_sad_epu8, _mm256_shuffle_epi8, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64,
 };
+use wide::{u8x32, u32x8, u64x4};
 
 use crate::{
     count::{count_u8, count_u64, count_u128},
@@ -122,10 +120,10 @@ impl CountFn<8, false> for U64Popcnt {
             let chunk = chunk & mask;
 
             let scatter = 0x5555555555555555u64;
-            let mask = u64x4::from_array(std::array::from_fn(|c| c as u64 * scatter));
+            let mask = u64x4::new(std::array::from_fn(|c| c as u64 * scatter));
             let chunk = u64x4::splat(chunk);
             let tmp = chunk ^ mask;
-            let union = (tmp | (tmp >> 1)) & u64x4::splat(scatter);
+            let union: u64x4 = (tmp | (tmp >> 1)) & u64x4::splat(scatter);
 
             for c in 0..4 {
                 ranks[c as usize] += 32 - union.as_array()[c].count_ones();
@@ -431,14 +429,14 @@ impl CountFn<16, false> for WideSimdCount {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 0000 | 1010  (0, 2)
-            const C02: u8x32 = u8x32::from_array(unsafe { t([[!0u8; 16], [!0xAAu8; 16]]) });
+            const C02: u8x32 = u8x32::new(unsafe { t([[!0u8; 16], [!0xAAu8; 16]]) });
             // 0101 | 1111  (1, 3)
-            const C13: u8x32 = u8x32::from_array(unsafe { t([[!0x55u8; 16], [!0xFFu8; 16]]) });
+            const C13: u8x32 = u8x32::new(unsafe { t([[!0x55u8; 16], [!0xFFu8; 16]]) });
 
             let x1 = simd ^ C02;
-            let y1 = (x1 & (x1 >> 1)) & mask5;
+            let y1 = (x1 & shr(x1, 1)) & mask5;
             let x2 = simd ^ C13;
-            let y2 = (x2 & (x2 >> 1)) & mask5;
+            let y2 = (x2 & shr(x2, 1)) & mask5;
 
             // Go from
             // c0 c0 | c1 c1
@@ -456,10 +454,10 @@ impl CountFn<16, false> for WideSimdCount {
             let sum8 = (sum4 & mask_f) + ((sum4 >> 4) & mask_f);
             let sum16 = sum8 + (sum8 >> 32);
             // Accumulate the 4 bytes in each u32 using multiplication.
-            let sum64 = (unsafe { t::<_, u32x8>(sum16) } * u32x8::splat(0x0101_0101)) >> 24;
+            let sum64: u32x8 = (unsafe { t::<_, u32x8>(sum16) } * u32x8::splat(0x0101_0101)) >> 24;
             for c in 0..4 {
                 // ranks[c] += sum64[c] as u8 as u32;
-                ranks[c] += sum64[2 * c] as u8 as u32;
+                ranks[c] += sum64.as_array()[2 * c] as u8 as u32;
             }
         }
         ranks
@@ -641,9 +639,8 @@ impl CountFn<8, false> for WideSimdCount {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = (x & (x >> 1)) & mask5;
@@ -657,7 +654,7 @@ impl CountFn<8, false> for WideSimdCount {
             let sum32: u32x8 = (unsafe { t::<_, u32x8>(sum8) } * u32x8::splat(0x0101_0101)) >> 24;
             for c in 0..4 {
                 // ranks[c] += sum64[c] as u8 as u32;
-                ranks[c] += sum32[2 * c] as u8 as u32;
+                ranks[c] += sum32.as_array()[2 * c] as u8 as u32;
             }
         }
 
@@ -688,9 +685,8 @@ impl CountFn<8, false> for SimdCount2 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = (x & (x >> 1)) & mask5;
@@ -702,7 +698,7 @@ impl CountFn<8, false> for SimdCount2 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -731,14 +727,13 @@ impl CountFn<8, false> for SimdCount3 {
             let mask5: u64x4 = unsafe { t(u8x32::splat(0x55)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = (x & (x >> 1)) & mask5;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount(0..16) (in fact, only 0b0000, 0b0001, 0b0100, 0b0101 matter)
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -753,7 +748,7 @@ impl CountFn<8, false> for SimdCount3 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -782,14 +777,13 @@ impl CountFn<8, false> for SimdCount4 {
             let mask5: u64x4 = unsafe { t(u8x32::splat(0x55)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = (x & (x >> 1)) & mask5;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount(0..16) (in fact, only 0b0000, 0b0001, 0b0100, 0b0101 matter)
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -807,7 +801,7 @@ impl CountFn<8, false> for SimdCount4 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -837,14 +831,13 @@ impl CountFn<8, false> for SimdCount5 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = (x & (x >> 1)) & mask5;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount(0..16) (in fact, only 0b0000, 0b0001, 0b0100, 0b0101 matter)
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -855,12 +848,12 @@ impl CountFn<8, false> for SimdCount5 {
             // no need for mask_f here.
             // Those are needed to get rid of possible 1 high bits that mask the value to 0,
             // but we already know those aren't 0 anyway in our case.
-            let mix = (y | (y >> 3)) & unsafe { t::<_, u8x32>(mask_f) };
+            let mix = (y | shr(y, 3)) & unsafe { t::<_, u8x32>(mask_f) };
             let sum4: u8x32 = unsafe { t(_mm256_shuffle_epi8(t(byte_counts), t(mix))) };
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -890,14 +883,13 @@ impl CountFn<8, false> for SimdCount6 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = x & (x >> 1);
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 0001
                 // +1 for 0100
                 0, 1, 0, 1, 1, 2, 1, 2, 0, 1, 0, 1, 1, 2, 1, 2, //
@@ -916,7 +908,7 @@ impl CountFn<8, false> for SimdCount6 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -950,14 +942,13 @@ impl CountFn<8, false> for SimdCount7 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -976,7 +967,7 @@ impl CountFn<8, false> for SimdCount7 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1003,14 +994,13 @@ impl CountFn<8, false> for SimdCount7 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1029,7 +1019,7 @@ impl CountFn<8, false> for SimdCount7 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1054,14 +1044,13 @@ impl CountFn<8, false> for SimdCount7 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = simd ^ C;
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1080,7 +1069,7 @@ impl CountFn<8, false> for SimdCount7 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1114,14 +1103,13 @@ impl CountFn<8, false> for SimdCount8 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1140,7 +1128,7 @@ impl CountFn<8, false> for SimdCount8 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1167,14 +1155,13 @@ impl CountFn<8, false> for SimdCount8 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1193,7 +1180,7 @@ impl CountFn<8, false> for SimdCount8 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1218,14 +1205,13 @@ impl CountFn<8, false> for SimdCount8 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1244,7 +1230,7 @@ impl CountFn<8, false> for SimdCount8 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1274,14 +1260,13 @@ impl CountFn<8, false> for SimdCount9 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1300,7 +1285,7 @@ impl CountFn<8, false> for SimdCount9 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1323,14 +1308,13 @@ impl CountFn<8, false> for SimdCount9 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1349,7 +1333,7 @@ impl CountFn<8, false> for SimdCount9 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1374,14 +1358,13 @@ impl CountFn<8, false> for SimdCount9 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1400,7 +1383,7 @@ impl CountFn<8, false> for SimdCount9 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1435,9 +1418,8 @@ impl CountFn<16, false> for WideSimdCount2 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x0 = simd0 ^ C;
             let y0 = (x0 & (x0 >> 1)) & mask5;
@@ -1447,7 +1429,7 @@ impl CountFn<16, false> for WideSimdCount2 {
             // New: interleave the two masks.
             let y = y0 | y1;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount(0..16)
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -1464,7 +1446,7 @@ impl CountFn<16, false> for WideSimdCount2 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1491,9 +1473,8 @@ impl CountFn<16, false> for WideSimdCount2 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 01 | 10 | 11  (0, 1, 2, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0x55u8; 8], [!0xAAu8; 8], [!0xFFu8; 8]]) });
 
             let x0 = simd0 ^ C;
             let y0 = (x0 & (x0 >> 1)) & mask5;
@@ -1503,7 +1484,7 @@ impl CountFn<16, false> for WideSimdCount2 {
             // New: interleave the two masks.
             let y = y0 | y1;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount(0..16)
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -1520,7 +1501,7 @@ impl CountFn<16, false> for WideSimdCount2 {
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
             for c in 0..4 {
-                ranks[c] += sum32[c] as u32;
+                ranks[c] += sum32.as_array()[c] as u32;
             }
         }
 
@@ -1573,14 +1554,13 @@ impl CountFn<8, false> for SimdCount10 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half of a nibble
                 // +1 for 11 in the high half of a nibble
                 // for 16 nibbles total
@@ -1600,10 +1580,10 @@ impl CountFn<8, false> for SimdCount10 {
             let sum4 = popcnt1 + popcnt2;
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
-            ranks[0] += sum32[0] as u32;
-            ranks[1] += sum32[2] as u32;
-            ranks[2] += sum32[1] as u32;
-            ranks[3] += sum32[3] as u32;
+            ranks[0] += sum32.as_array()[0] as u32;
+            ranks[1] += sum32.as_array()[2] as u32;
+            ranks[2] += sum32.as_array()[1] as u32;
+            ranks[3] += sum32.as_array()[3] as u32;
         }
 
         ranks
@@ -1625,14 +1605,13 @@ impl CountFn<8, false> for SimdCount10 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1650,10 +1629,10 @@ impl CountFn<8, false> for SimdCount10 {
             let sum4 = popcnt1 + popcnt2;
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
-            ranks[0] += sum32[0] as u32;
-            ranks[1] += sum32[2] as u32;
-            ranks[2] += sum32[1] as u32;
-            ranks[3] += sum32[3] as u32;
+            ranks[0] += sum32.as_array()[0] as u32;
+            ranks[1] += sum32.as_array()[2] as u32;
+            ranks[2] += sum32.as_array()[1] as u32;
+            ranks[3] += sum32.as_array()[3] as u32;
         }
 
         ranks
@@ -1677,14 +1656,13 @@ impl CountFn<8, false> for SimdCount10 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-            const C: u64x4 = u64x4::from_array(unsafe {
-                t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]])
-            });
+            const C: u64x4 =
+                u64x4::new(unsafe { t([[!0u8; 8], [!0xAAu8; 8], [!0x55u8; 8], [!0xFFu8; 8]]) });
 
             let x = (simd ^ C) & u64x4::splat(mask);
             let y = x;
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // +1 for 11 in the low half
                 // +1 for 11 in the high half
                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 2, //
@@ -1702,10 +1680,10 @@ impl CountFn<8, false> for SimdCount10 {
             let sum4 = popcnt1 + popcnt2;
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
-            ranks[0] += sum32[0] as u32;
-            ranks[1] += sum32[2] as u32;
-            ranks[2] += sum32[1] as u32;
-            ranks[3] += sum32[3] as u32;
+            ranks[0] += sum32.as_array()[0] as u32;
+            ranks[1] += sum32.as_array()[2] as u32;
+            ranks[2] += sum32.as_array()[1] as u32;
+            ranks[3] += sum32.as_array()[3] as u32;
         }
 
         ranks
@@ -1745,12 +1723,12 @@ impl CountFn<16, true> for SimdCount11 {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-            const CL: u64x4 = u64x4::from_array([!0, !0, 0, 0]);
-            const CH: u64x4 = u64x4::from_array([!0, 0, !0, 0]);
+            const CL: u64x4 = u64x4::new([!0, !0, 0, 0]);
+            const CH: u64x4 = u64x4::new([!0, 0, !0, 0]);
 
             let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount of every 4bit nibble
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
@@ -1767,10 +1745,10 @@ impl CountFn<16, true> for SimdCount11 {
             let sum4 = popcnt1 + popcnt2;
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
-            ranks[0] += sum32[0] as u32;
-            ranks[1] += sum32[2] as u32;
-            ranks[2] += sum32[1] as u32;
-            ranks[3] += sum32[3] as u32;
+            ranks[0] += sum32.as_array()[0] as u32;
+            ranks[1] += sum32.as_array()[2] as u32;
+            ranks[2] += sum32.as_array()[1] as u32;
+            ranks[3] += sum32.as_array()[3] as u32;
         }
 
         ranks
@@ -1812,12 +1790,12 @@ impl CountFn<16, true> for SimdCount11B {
             let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
             // bits of the 4 chars
             // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-            const CL: u64x4 = u64x4::from_array([!0, 0, !0, 0]);
-            const CH: u64x4 = u64x4::from_array([!0, !0, 0, 0]);
+            const CL: u64x4 = u64x4::new([!0, 0, !0, 0]);
+            const CH: u64x4 = u64x4::new([!0, !0, 0, 0]);
 
             let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
 
-            let byte_counts = u8x32::from_array([
+            let byte_counts = u8x32::new([
                 // popcount of every 4bit nibble
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
                 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
@@ -1834,10 +1812,10 @@ impl CountFn<16, true> for SimdCount11B {
             let sum4 = popcnt1 + popcnt2;
             // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
             let sum32: u64x4 = unsafe { t(_mm256_sad_epu8(t(sum4), t(zero))) };
-            ranks[0] += sum32[0] as u32;
-            ranks[1] += sum32[1] as u32;
-            ranks[2] += sum32[2] as u32;
-            ranks[3] += sum32[3] as u32;
+            ranks[0] += sum32.as_array()[0] as u32;
+            ranks[1] += sum32.as_array()[1] as u32;
+            ranks[2] += sum32.as_array()[2] as u32;
+            ranks[3] += sum32.as_array()[3] as u32;
         }
 
         ranks
@@ -1899,12 +1877,12 @@ pub fn double_mid(data: &[[u8; 16]; 2], pos: usize) -> Ranks {
         let mask_f: u64x4 = unsafe { t(u8x32::splat(0x0f)) };
         // bits of the 4 chars
         // 00 | 10 | 01 | 11  (0, 2, 1, 3)
-        const CL: u64x4 = u64x4::from_array([0, !0, 0, !0]);
-        const CH: u64x4 = u64x4::from_array([0, 0, !0, !0]);
+        const CL: u64x4 = u64x4::new([0, !0, 0, !0]);
+        const CH: u64x4 = u64x4::new([0, 0, !0, !0]);
 
         let y = (l ^ CL) & (h ^ CH) & u64x4::splat(mask);
 
-        let byte_counts = u8x32::from_array([
+        let byte_counts = u8x32::new([
             // popcount of every 4bit nibble
             0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
             0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, //
@@ -1926,10 +1904,10 @@ pub fn double_mid(data: &[[u8; 16]; 2], pos: usize) -> Ranks {
     // Accumulate the 8 bytes in each u64 and write them to the low 16 bits.
     let ranks: u64x4 = unsafe { t(_mm256_sad_epu8(t(byte_sums), t(zero))) };
     [
-        ranks[0] as u32,
-        ranks[1] as u32,
-        ranks[2] as u32,
-        ranks[3] as u32,
+        ranks.as_array()[0] as u32,
+        ranks.as_array()[1] as u32,
+        ranks.as_array()[2] as u32,
+        ranks.as_array()[3] as u32,
     ]
 }
 
@@ -1941,4 +1919,11 @@ impl CountFn<0, true> for NoCount {
     fn count(_data: &[u8; 0], _pos: usize) -> Ranks {
         unimplemented!()
     }
+}
+
+/// NOTE: This 'leaks' bits and needs further masking.
+#[inline(always)]
+fn shr(x: u8x32, shift: u32) -> u8x32 {
+    use std::mem::transmute;
+    unsafe { transmute(transmute::<_, u32x8>(x) >> shift) }
 }
