@@ -4,9 +4,7 @@
     portable_simd,
     coroutines,
     coroutine_trait,
-    exact_div,
-    associated_const_equality,
-    slice_as_array
+    associated_const_equality
 )]
 
 pub mod binary;

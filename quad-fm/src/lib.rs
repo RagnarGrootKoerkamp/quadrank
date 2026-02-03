@@ -1,6 +1,3 @@
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs, array_windows, iter_next_chunk)]
-
 pub mod bwt;
 mod quad_fm;
 

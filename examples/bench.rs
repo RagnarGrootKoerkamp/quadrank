@@ -1,5 +1,5 @@
 #![allow(incomplete_features, dead_code)]
-#![feature(generic_const_exprs, coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(generic_const_exprs, coroutines, coroutine_trait)]
 use std::{
     any::type_name,
     array::from_fn,

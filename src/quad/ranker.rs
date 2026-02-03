@@ -44,8 +44,9 @@ where
         let n_blocks = seq.len().div_ceil(BB::B) + (add_block as usize);
 
         // 1. Count ones in each superblock.
+        assert!(SB::BYTES_PER_SUPERBLOCK % 8 == 0);
         let mut sb_offsets: Vec<LongRanks> = seq_usize
-            .par_chunks(SB::BYTES_PER_SUPERBLOCK.exact_div(8))
+            .par_chunks(SB::BYTES_PER_SUPERBLOCK / 8)
             .map(|slice| {
                 slice
                     .iter()

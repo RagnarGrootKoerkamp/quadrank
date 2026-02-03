@@ -21,6 +21,10 @@ impl<T: TextWithRankSupport<i64> + Sync> crate::FmIndex for genedex::FmIndex<i64
         &self,
         texts: &[Vec<u8>; B],
     ) -> [usize; B] {
-        self.count_many(texts).next_chunk().unwrap()
+        let mut out = [0; B];
+        for (i, cnt) in self.count_many(texts).take(B).enumerate() {
+            out[i] = cnt;
+        }
+        out
     }
 }
