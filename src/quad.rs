@@ -9,7 +9,6 @@ mod test;
 use packed_seq::{PackedSeqVec, SeqVec};
 
 pub use ranker::Ranker;
-pub use super_blocks::TrivialSB;
 
 type Ranks = [u32; 4];
 pub type LongRanks = [u64; 4];

@@ -1,10 +1,8 @@
 use std::sync::LazyLock;
 
 use super::blocks::*;
-use super::super_blocks::ShiftPairedSB;
-use super::super_blocks::ShiftSB;
+use super::super_blocks::{ShiftPairedSB, ShiftSB, TrivialSB};
 use crate::quad;
-use crate::quad::TrivialSB;
 
 #[test]
 fn quad() {

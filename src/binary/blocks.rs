@@ -336,8 +336,8 @@ impl BasicBlock for BinaryBlock16 {
 /// Store a single 16 bit offset to the *start* and use Spider's iterative popcount.
 ///
 /// This is a not-quite-faithful reimplementation of the original C version at:
-/// [https://github.com/williams-cs/spider/blob/master/spider.c]
-/// that goes with the SPIDER paper: [https://doi.org/10.4230/LIPIcs.SEA.2024.21]
+/// <https://github.com/williams-cs/spider/blob/master/spider.c>
+/// that goes with the SPIDER paper: <https://doi.org/10.4230/LIPIcs.SEA.2024.21>
 #[repr(align(64))]
 #[repr(C)]
 #[derive(mem_dbg::MemSize)]
@@ -448,7 +448,7 @@ impl BasicBlock for BinaryBlock16Spider2 {
     }
 }
 
-pub static BINARY_MID_MASKS: [[u64; 2]; 256] = {
+static BINARY_MID_MASKS: [[u64; 2]; 256] = {
     let mut masks = [[0u64; 2]; 256];
     let mut i = 0;
     while i < 128 {
@@ -467,7 +467,7 @@ pub static BINARY_MID_MASKS: [[u64; 2]; 256] = {
     masks
 };
 
-pub static BINARY_MID_MASKS256: [[u64; 4]; 512] = {
+static BINARY_MID_MASKS256: [[u64; 4]; 512] = {
     let mut masks = [[0u64; 4]; 512];
     let mut i = 0;
     while i < 256 {
