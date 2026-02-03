@@ -2,6 +2,14 @@
 name = "quad-fm"
 version = "0.1.0"
 edition = "2024"
+authors = ["Ragnar Groot Koerkamp"]
+description = "Fast count-only FM-index size-4 DNA alphabets."
+repository = "https://github.com/RagnarGrootKoerkamp/quadrank"
+keywords = ['fm-index', 'prefetch', 'data-structure', 'succinct', 'bioinformatics']
+categories = ["science"]
+readme = "../README.md"
+license = "MIT"
+rust-version = "1.91"
 
 [dependencies]
 quadrank = { version = "0.1.0", path = ".." }

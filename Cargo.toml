@@ -8,14 +8,11 @@ edition = "2024"
 authors = ["Ragnar Groot Koerkamp"]
 description = "Fast rank over binary and size-4 DNA alphabets."
 repository = "https://github.com/RagnarGrootKoerkamp/quadrank"
-keywords = ['rank', 'simd', 'prefetch', 'data structures', 'succinct', 'bioinformatics']
+keywords = ['rank', 'prefetch', 'data-structure', 'succinct', 'bioinformatics']
 categories = ["science"]
 readme = "README.md"
 license = "MIT"
 rust-version = "1.91"
-
-[profile.release]
-debug = true
 
 [dependencies]
 mem_dbg = "0.3.2"
@@ -72,3 +69,9 @@ ext = ["dep:qwt", "dep:sux", "dep:genedex", "dep:bitm", "dep:bio", "dep:bv", "de
 [[example]]
 name = "bench"
 required-features = ["ext"]
+
+[package.metadata.release]
+pre-release-replacements = [
+  {file="CHANGELOG.md", search="## git", replace="## {{version}}", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n\n## git", exactly=1},
+]

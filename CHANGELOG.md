@@ -4,4 +4,5 @@
 
 ## git
 
-- Initial release at time of SEA submission, to claim crates.io names.
+- Initial release.
+- Not yet ready for general usage because of nightly features, but claiming the name.
