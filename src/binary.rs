@@ -1,5 +1,5 @@
 pub mod blocks;
-pub mod ranker;
+mod ranker;
 pub mod super_blocks;
 #[cfg(test)]
 mod test;
