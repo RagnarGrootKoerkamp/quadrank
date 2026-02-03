@@ -101,7 +101,7 @@ impl<BB: BasicBlock> SuperBlock<BB> for ShiftPairedSB {
     const BLOCKS_PER_SUPERBLOCK: usize = if BB::W <= SHIFT {
         // FIXME: Support W=0 for Shift=0
         panic!("W must be at least SHIFT")
-    } else if BB::W >= super::TARGET_BITS {
+    } else if BB::W == 64 {
         panic!("ShiftPairedSB does not make sense when superblocks are not needed anyway.")
     } else {
         (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two()

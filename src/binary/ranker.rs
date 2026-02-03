@@ -2,7 +2,7 @@ use std::{iter::zip, mem::MaybeUninit};
 
 use prefetch_index::prefetch_index;
 
-use super::{BasicBlock, RankerT, SuperBlock, TARGET_BITS, super_blocks::ShiftSB};
+use super::{BasicBlock, RankerT, SuperBlock, super_blocks::ShiftSB};
 use rayon::prelude::*;
 
 pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
@@ -114,11 +114,8 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
     fn prefetch(&self, pos: usize) {
         let block_idx = pos / BB::N;
         prefetch_index(&self.basic_blocks, block_idx);
-        // -3 to count bytes instead of bits, and to avoid 1<<64.
-        let max_superblocks: u64 =
-            (1u64 << (TARGET_BITS - 3)).div_ceil(SB::BYTES_PER_SUPERBLOCK as u64);
         // Prefetch superblocks if they (potentially) do not fit in L1.
-        if max_superblocks > 4096 {
+        if BB::W < 64 {
             let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
             prefetch_index(&self.super_blocks, long_pos);
         }
@@ -143,7 +140,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
             let block_pos = pos % BB::N;
             debug_assert!(block_idx < self.basic_blocks.len());
             let mut rank = self.basic_blocks.get_unchecked(block_idx).rank(block_pos);
-            if (BB::W) < TARGET_BITS {
+            if BB::W < 64 {
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
                 let long_rank = self
                     .super_blocks

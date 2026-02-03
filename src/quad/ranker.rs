@@ -16,8 +16,6 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
     super_blocks: Vec<SB>,
 }
 
-const TARGET_BITS: usize = 40;
-
 #[inline(always)]
 pub(super) fn strict_add(a: LongRanks, b: LongRanks) -> LongRanks {
     from_fn(|c| a[c].strict_add(b[c]))
@@ -139,7 +137,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
     fn prefetch1(&self, pos: usize, _c: u8) {
         let block_idx = pos / BB::N;
         prefetch_index(&self.blocks, block_idx);
-        if BB::W < TARGET_BITS - 12 {
+        if BB::W < 64 {
             let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
             prefetch_index(&self.super_blocks, long_pos);
         }
@@ -161,7 +159,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
                 .get_unchecked(block_idx)
                 .count4(block_pos)
                 .map(|x| x as u64);
-            if (BB::W) < TARGET_BITS {
+            if BB::W < 64 {
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
                 let long_ranks = self
                     .super_blocks
@@ -182,7 +180,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
             let block_idx = pos / BB::N;
             let block_pos = pos % BB::N;
             let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c) as usize;
-            if (BB::W) < TARGET_BITS {
+            if BB::W < 64 {
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
                 let long_rank = self
                     .super_blocks
@@ -203,7 +201,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
             self.blocks[block_idx0].count1x2(&self.blocks[block_idx1], block_pos0, block_pos1, c);
         let mut rank0 = rank0 as usize;
         let mut rank1 = rank1 as usize;
-        if (BB::W) < TARGET_BITS {
+        if BB::W < 64 {
             let long_pos0 = block_idx0 / SB::BLOCKS_PER_SUPERBLOCK;
             let long_pos1 = block_idx1 / SB::BLOCKS_PER_SUPERBLOCK;
             let long_ranks0 =

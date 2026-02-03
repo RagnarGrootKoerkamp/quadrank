@@ -13,10 +13,6 @@ pub use ranker::Ranker;
 type Ranks = [u32; 4];
 pub type LongRanks = [u64; 4];
 
-/// By default, the library works for arrays with counts up to `2^45`, corresponding to `8 TiB` of data.
-/// This controls whether superblocks are used and/or prefetched.
-pub const TARGET_BITS: usize = 45;
-
 pub trait BasicBlock: Sync + Send {
     /// Character width. 1 for binary, 2 for DNA.
     const X: usize;
@@ -68,7 +64,7 @@ pub trait SuperBlock<BB: BasicBlock>: Sync + Send {
     /// => `x < 2^32 / N - 1`
     const BLOCKS_PER_SUPERBLOCK: usize = if BB::W == 0 {
         1
-    } else if BB::W >= TARGET_BITS {
+    } else if BB::W == 64 {
         usize::MAX
     } else {
         (((1u128 << BB::W) / BB::N as u128) as usize - 1).next_power_of_two() / 2
