@@ -51,7 +51,11 @@ impl<BB: BasicBlock> SuperBlock<BB> for ShiftSB {
     #[inline(always)]
     fn new(ranks: LongRanks, _data: &[u8]) -> Self {
         Self {
-            block: ranks.map(|x| (x >> SHIFT) as u32),
+            block: ranks.map(|x| {
+                (x >> SHIFT).try_into().expect(
+                    "Rank (after shifting down by 11) too large for ShiftSB; does not fit in u32.",
+                )
+            }),
         }
     }
     #[inline(always)]
@@ -84,7 +88,11 @@ impl<BB: BasicBlock> SuperBlock<BB> for ShiftPairedSB {
 
         let rank = strict_add(rank, half_count).map(|x| x >> SHIFT);
         Self {
-            rank: rank.map(|r| r.try_into().unwrap()),
+            rank: rank.map(|r| {
+                r.try_into().expect(
+                    "Rank (after shifting down by 11) too large for ShiftPairedSB; does not fit in u32.",
+                )
+            }),
         }
     }
 
