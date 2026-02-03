@@ -326,7 +326,6 @@ impl BasicBlock for QuadBlock7_18_7P {
     #[inline(always)]
     fn count4(&self, pos: usize) -> Ranks {
         type CF = SimdCount10;
-        assert!(CF::S == 0);
         let mut ranks = u32x4::splat(0);
 
         let hex = pos / 32;
@@ -490,7 +489,6 @@ impl BasicBlock for QuadBlock24_8 {
     #[inline(always)]
     fn count4(&self, pos: usize) -> Ranks {
         type CF = SimdCount11B;
-        assert!(CF::S == 0);
         let mut ranks = u32x4::splat(0);
 
         let tri = pos / 64;
@@ -581,7 +579,6 @@ impl BasicBlock for QuadBlock64 {
     #[inline(always)]
     fn count4(&self, pos: usize) -> Ranks {
         type CF = SimdCount11B;
-        assert!(CF::S == 0);
         let mut ranks = u32x4::splat(0);
 
         let half = pos / 64;

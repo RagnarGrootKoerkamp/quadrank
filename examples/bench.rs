@@ -1,4 +1,4 @@
-use std::{any::type_name, array::from_fn, pin::pin, sync::OnceLock};
+use std::{any::type_name, sync::OnceLock};
 
 use clap::Parser;
 use prefetch_index::prefetch_index;
@@ -11,7 +11,7 @@ use quadrank::{
     },
     genedex,
     quad::{
-        LongRanks, Ranker, RankerT,
+        Ranker, RankerT,
         blocks::{QuadBlock16, QuadBlock24_8, QuadBlock64},
     },
     sux::*,
@@ -72,6 +72,7 @@ fn time_loop(queries: &QS, t: usize, f: impl Fn(usize) -> usize + Sync + Copy) {
     });
 }
 
+#[allow(unused)]
 fn time_batch(
     queries: &QS,
     t: usize,

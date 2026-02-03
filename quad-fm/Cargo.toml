@@ -9,7 +9,7 @@ keywords = ['fm-index', 'prefetch', 'data-structure', 'succinct', 'bioinformatic
 categories = ["science"]
 readme = "../README.md"
 license = "MIT"
-rust-version = "1.91"
+rust-version = "1.93"
 
 [dependencies]
 quadrank = { version = "0.1.0", path = ".." }

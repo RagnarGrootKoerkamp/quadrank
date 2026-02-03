@@ -12,7 +12,7 @@ keywords = ['rank', 'prefetch', 'data-structure', 'succinct', 'bioinformatics']
 categories = ["science"]
 readme = "README.md"
 license = "MIT"
-rust-version = "1.91"
+rust-version = "1.93"
 
 [dependencies]
 mem_dbg = "0.3.2"
