@@ -3,12 +3,10 @@
 use std::{arch::x86_64::_mm_sign_epi32, array::from_fn};
 use wide::u32x4;
 
-use crate::{
-    count::{count_u8x8, count_u64_mask, count_u64_mid_mask},
-    quad::{
-        BasicBlock, Ranks,
-        count4::{CountFn, SimdCount10, SimdCount11B, count4_u8x8, double_mid},
-    },
+use crate::quad::{
+    BasicBlock, Ranks,
+    count1::{count_u8x8, count_u64_mask, count_u64_mid_mask},
+    count4::{CountFn, SimdCount10, SimdCount11B, count4_u8x8, double_mid},
 };
 
 use super::count4::{

@@ -1,5 +1,4 @@
 pub mod binary;
-mod count;
 pub mod quad;
 
 #[cfg(feature = "ext")]

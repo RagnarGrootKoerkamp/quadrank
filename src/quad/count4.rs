@@ -6,8 +6,8 @@ use std::arch::x86_64::{
 use wide::{u8x32, u32x8, u64x4};
 
 use crate::{
-    count::{count_u8, count_u64, count_u128},
     quad::Ranks,
+    quad::count1::{count_u8, count_u64, count_u128},
 };
 
 pub fn count4_u8(data: u8) -> Ranks {

@@ -1,9 +1,10 @@
 pub mod blocks;
-pub mod count4;
+mod count1;
+mod count4;
 pub mod ranker;
 pub mod super_blocks;
 #[cfg(test)]
-pub mod test;
+mod test;
 
 use packed_seq::{PackedSeqVec, SeqVec};
 
