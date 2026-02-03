@@ -1,13 +1,4 @@
-#![allow(dead_code)]
-#![feature(coroutines, coroutine_trait)]
-
-use std::{
-    any::type_name,
-    array::from_fn,
-    ops::{Coroutine, CoroutineState::Complete},
-    pin::pin,
-    sync::OnceLock,
-};
+use std::{any::type_name, array::from_fn, pin::pin, sync::OnceLock};
 
 use clap::Parser;
 use prefetch_index::prefetch_index;
@@ -137,97 +128,6 @@ fn time_trip(
     }
 }
 
-#[inline(always)]
-fn time_coro2_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
-where
-    F: Coroutine<Return = LongRanks> + Unpin,
-{
-    time_fn(queries, 1, |queries| {
-        for batch in queries.as_chunks::<32>().0 {
-            let mut futures: [_; 32] = from_fn(|i| f(batch[i]));
-
-            for f in &mut futures {
-                pin!(f).resume(());
-            }
-
-            for (_q, func) in batch.iter().zip(&mut futures) {
-                let Complete(fq) = pin!(func).resume(()) else {
-                    panic!()
-                };
-                std::hint::black_box(fq);
-            }
-        }
-    });
-}
-
-#[inline(always)]
-fn time_coro2_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
-where
-    F: Coroutine<Return = LongRanks> + Unpin,
-{
-    time_fn(queries, 1, |queries| {
-        let mut funcs: [F; 32] = from_fn(|i| {
-            let mut func = f(queries[i]);
-            pin!(&mut func).resume(());
-            func
-        });
-
-        for i in 0..queries.len() - 32 {
-            // Finish the old fn.
-            let func = &mut funcs[i % 32];
-            let Complete(fq) = pin!(func).resume(()) else {
-                panic!()
-            };
-            std::hint::black_box(fq);
-
-            // Start a new fn.
-            funcs[i % 32] = f(queries[i + 32]);
-            pin!(&mut funcs[i % 32]).resume(());
-        }
-    });
-}
-
-#[inline(always)]
-fn time_coro_batch<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
-where
-    F: Coroutine<Return = LongRanks> + Unpin,
-{
-    time_fn(queries, 1, |queries| {
-        for batch in queries.as_chunks::<BATCH>().0 {
-            let mut funcs: [_; BATCH] = from_fn(|i| f(batch[i]));
-
-            for (_q, func) in batch.iter().zip(&mut funcs) {
-                let Complete(fq) = pin!(func).resume(()) else {
-                    panic!()
-                };
-                std::hint::black_box(fq);
-            }
-        }
-    });
-}
-
-#[inline(always)]
-fn time_coro_stream<F>(queries: &QS, f: impl Fn(usize) -> F + Sync)
-where
-    F: Coroutine<Return = LongRanks> + Unpin,
-{
-    time_fn(queries, 1, |queries| {
-        let mut funcs: [F; BATCH] = from_fn(|i| f(queries[i]));
-
-        for i in 0..queries.len() - BATCH {
-            // finish the old state
-            let func = &mut funcs[i % BATCH];
-            let Complete(fq) = pin!(func).resume(()) else {
-                panic!()
-            };
-            std::hint::black_box(fq);
-
-            // new future
-            funcs[i % BATCH] = f(queries[i + BATCH]);
-        }
-    });
-}
-
 fn bench_header() {
     eprint!("{:<60} {:>11} {:>6} |", "Ranker", "n", "size",);
     for t in THREADS.wait() {
@@ -314,13 +214,6 @@ fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
     }
     eprintln!();
     println!();
-}
-
-fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
-    let ranker = R::new_packed(&packed_seq);
-    time_coro_stream(&queries, |p| ranker.count_coro(p));
-    time_coro_stream(&queries, |p| ranker.count_coro(p));
-    time_coro_stream(&queries, |p| ranker.count_coro(p));
 }
 
 #[inline(never)]
