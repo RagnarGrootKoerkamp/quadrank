@@ -9,7 +9,7 @@ use crate::quad::{LongRanks, RankerT};
 
 impl RankerT for RSQVector256 {
     #[inline(always)]
-    fn new(seq: &[u8]) -> Self {
+    fn new_ascii_dna(seq: &[u8]) -> Self {
         let seq = seq.iter().map(|x| (x >> 1) & 3).collect::<Vec<_>>();
         RSQVector256::new(&seq)
     }
@@ -51,7 +51,7 @@ impl RankerT for RSQVector256 {
 
 impl RankerT for RSQVector512 {
     #[inline(always)]
-    fn new(seq: &[u8]) -> Self {
+    fn new_ascii_dna(seq: &[u8]) -> Self {
         let seq = seq.iter().map(|x| (x >> 1) & 3).collect::<Vec<_>>();
         RSQVector512::new(&seq)
     }

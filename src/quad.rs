@@ -74,7 +74,7 @@ pub trait SuperBlock<BB: BasicBlock>: Sync + Send {
 
 pub trait RankerT: Sync + Send + Sized {
     /// Construct from ASCII DNA input.
-    fn new(seq: &[u8]) -> Self {
+    fn new_ascii_dna(seq: &[u8]) -> Self {
         // let mut packed_seq = seq.to_vec();
         let mut packed_seq = PackedSeqVec::from_ascii(seq).into_raw();
         // eprintln!("packed_seq: {:?}", packed_seq);
