@@ -1,3 +1,4 @@
 [toolchain]
 # The latest nightly break const_generics
-channel = "nightly-2025-11-01"
+# channel = "nightly-2025-11-01"
+channel = "nightly"
