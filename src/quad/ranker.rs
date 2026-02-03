@@ -174,12 +174,12 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
     }
     /// Count the number of times character `c` occurs before position `pos`.
     #[inline(always)]
-    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize {
+    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> u64 {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;
             let block_pos = pos % BB::N;
-            let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c) as usize;
+            let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c) as u64;
             if BB::W < 64 {
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
                 let long_rank = self
@@ -192,15 +192,15 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
         }
     }
     #[inline(always)]
-    unsafe fn count1x2_unchecked(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
+    unsafe fn count1x2_unchecked(&self, pos0: usize, pos1: usize, c: u8) -> (u64, u64) {
         let block_idx0 = pos0 / BB::N;
         let block_pos0 = pos0 % BB::N;
         let block_idx1 = pos1 / BB::N;
         let block_pos1 = pos1 % BB::N;
         let (rank0, rank1) =
             self.blocks[block_idx0].count1x2(&self.blocks[block_idx1], block_pos0, block_pos1, c);
-        let mut rank0 = rank0 as usize;
-        let mut rank1 = rank1 as usize;
+        let mut rank0 = rank0 as u64;
+        let mut rank1 = rank1 as u64;
         if BB::W < 64 {
             let long_pos0 = block_idx0 / SB::BLOCKS_PER_SUPERBLOCK;
             let long_pos1 = block_idx1 / SB::BLOCKS_PER_SUPERBLOCK;

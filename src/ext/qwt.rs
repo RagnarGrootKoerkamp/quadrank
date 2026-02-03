@@ -44,8 +44,8 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize {
-        unsafe { self.rank_unchecked(c, pos) as usize }
+    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> u64 {
+        unsafe { self.rank_unchecked(c, pos) as u64 }
     }
 }
 
@@ -86,8 +86,8 @@ impl RankerT for RSQVector512 {
     }
 
     #[inline(always)]
-    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize {
-        unsafe { self.rank_unchecked(c, pos) as usize }
+    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> u64 {
+        unsafe { self.rank_unchecked(c, pos) as u64 }
     }
 }
 

@@ -52,7 +52,7 @@ fn time_fn(queries: &QS, t: usize, f: impl Fn(&[usize]) + Sync + Copy) {
 
 const BATCH: usize = 32;
 
-fn time_latency(queries: &QS, t: usize, f: impl Fn(usize) -> usize + Sync + Copy) {
+fn time_latency(queries: &QS, t: usize, f: impl Fn(usize) -> u64 + Sync + Copy) {
     time_fn(queries, t, |queries| {
         let mut acc = 0;
         for &q in queries {
@@ -64,7 +64,7 @@ fn time_latency(queries: &QS, t: usize, f: impl Fn(usize) -> usize + Sync + Copy
     });
 }
 
-fn time_loop(queries: &QS, t: usize, f: impl Fn(usize) -> usize + Sync + Copy) {
+fn time_loop(queries: &QS, t: usize, f: impl Fn(usize) -> u64 + Sync + Copy) {
     time_fn(queries, t, |queries| {
         for &q in queries {
             f(q);
@@ -77,7 +77,7 @@ fn time_batch(
     queries: &QS,
     t: usize,
     prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> usize + Sync,
+    f: impl Fn(usize) -> u64 + Sync,
 ) {
     time_fn(queries, t, |queries| {
         let qs = queries.as_chunks::<BATCH>().0;
@@ -96,7 +96,7 @@ fn time_stream(
     queries: &QS,
     t: usize,
     prefetch: impl Fn(usize) + Sync,
-    f: impl Fn(usize) -> usize + Sync,
+    f: impl Fn(usize) -> u64 + Sync,
 ) {
     time_fn(queries, t, |queries| {
         for i in 0..queries.len() - BATCH {
@@ -116,7 +116,7 @@ fn time_trip(
     queries: &QS,
     t: usize,
     prefetch: impl Fn(usize) + Sync + Copy,
-    f: impl Fn(usize) -> usize + Sync + Copy,
+    f: impl Fn(usize) -> u64 + Sync + Copy,
     stream: bool,
 ) {
     time_latency(queries, t, f);
@@ -169,7 +169,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[u64], queries: &QS) {
                     &queries,
                     t,
                     |q| ranker.prefetch4(q),
-                    |q| std::hint::black_box(unsafe { ranker.rank4_unchecked(q) })[0] as usize,
+                    |q| std::hint::black_box(unsafe { ranker.rank4_unchecked(q) })[0],
                     true,
                 );
             } else {
@@ -208,7 +208,7 @@ fn bench_one_binary<R: binary::RankerT>(packed_seq: &[u64], queries: &QS) {
             &queries,
             t,
             |q| ranker.prefetch(q),
-            |q| std::hint::black_box(unsafe { ranker.rank_unchecked(q) as usize }),
+            |q| std::hint::black_box(unsafe { ranker.rank_unchecked(q) }),
             R::HAS_PREFETCH,
         );
         eprint!(" |");

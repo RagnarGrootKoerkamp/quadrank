@@ -75,8 +75,8 @@ macro_rules! impl_rank {
             }
 
             #[inline(always)]
-            unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize {
-                unsafe { TextWithRankSupport::rank_unchecked(self, c, pos) as usize }
+            unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> u64 {
+                unsafe { TextWithRankSupport::rank_unchecked(self, c, pos) as u64 }
             }
         }
     };

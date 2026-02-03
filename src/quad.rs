@@ -53,8 +53,8 @@ pub trait SuperBlock<BB: BasicBlock>: Sync + Send {
 
     fn new(ranks: LongRanks, data: &[u8]) -> Self;
     fn get(&self, block_idx: usize) -> LongRanks;
-    fn get1(&self, block_idx: usize, c: u8) -> usize {
-        self.get(block_idx)[c as usize] as usize
+    fn get1(&self, block_idx: usize, c: u8) -> u64 {
+        self.get(block_idx)[c as usize]
     }
 
     /// Store a new superblock every this-many blocks.
@@ -99,10 +99,10 @@ pub trait RankerT: Sync + Send + Sized {
     unsafe fn rank4_unchecked(&self, pos: usize) -> LongRanks;
     /// Count the number of times character `c` occurs before position `pos`.
     /// Assumes pos<len.
-    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize;
+    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> u64;
     /// Assumes pos<len.
     #[inline(always)]
-    unsafe fn count1x2_unchecked(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
+    unsafe fn count1x2_unchecked(&self, pos0: usize, pos1: usize, c: u8) -> (u64, u64) {
         unsafe { (self.rank1_unchecked(pos0, c), self.rank1_unchecked(pos1, c)) }
     }
 }
