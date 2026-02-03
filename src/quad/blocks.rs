@@ -18,7 +18,7 @@ fn strict_add(a: Ranks, b: Ranks) -> Ranks {
 }
 
 #[inline(always)]
-fn extra_counted<const B: usize, C: CountFn<B>>(pos: usize) -> u32 {
+fn extra_counted<const B: usize, const T: bool, C: CountFn<B, T>>(pos: usize) -> u32 {
     if C::S == 0 {
         return 0;
     }
@@ -50,12 +50,9 @@ impl BasicBlock for Basic512 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<{ Self::C }, TRANSPOSED = { Self::TRANSPOSED }>>(
-        &self,
-        pos: usize,
-    ) -> Ranks {
+    fn count4<C: CountFn<{ Self::C }, { Self::TRANSPOSED }>>(&self, pos: usize) -> Ranks {
         let mut ranks = C::count(&self.seq, pos);
-        ranks[0] -= extra_counted::<_, C>(pos);
+        ranks[0] -= extra_counted::<_, _, C>(pos);
         ranks
     }
 }
@@ -80,9 +77,9 @@ impl BasicBlock for Basic256 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<{ Self::C }>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<{ Self::C }, false>>(&self, pos: usize) -> Ranks {
         let mut ranks = C::count(&self.seq, pos);
-        ranks[0] -= extra_counted::<_, C>(pos);
+        ranks[0] -= extra_counted::<_, _, C>(pos);
         ranks
     }
 }
@@ -107,9 +104,9 @@ impl BasicBlock for Basic128 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<{ Self::C }>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<{ Self::C }, false>>(&self, pos: usize) -> Ranks {
         let mut ranks = C::count(&self.seq, pos);
-        ranks[0] -= extra_counted::<_, C>(pos);
+        ranks[0] -= extra_counted::<_, false, C>(pos);
         ranks
     }
 }
@@ -148,7 +145,7 @@ impl BasicBlock for QuadBlock32x2P {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<16, false>>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
 
         // 0 or 1 for left or right half
@@ -158,7 +155,7 @@ impl BasicBlock for QuadBlock32x2P {
         let idx = half * 16;
         let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
 
-        ranks[0] -= extra_counted::<_, C>(pos);
+        ranks[0] -= extra_counted::<_, _, C>(pos);
 
         for c in 0..4 {
             ranks[c] += inner_counts[c];
@@ -211,7 +208,7 @@ impl BasicBlock for QuadBlock32_8_8_8FP {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<8>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<8, false>>(&self, pos: usize) -> Ranks {
         let mut ranks = [0; 4];
 
         let quart = pos / 32;
@@ -312,7 +309,7 @@ impl BasicBlock for QuadBlock7_18_7P {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<8>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<8, false>>(&self, pos: usize) -> Ranks {
         assert!(C::S == 0);
         let mut ranks = u32x4::splat(0);
 
@@ -474,7 +471,7 @@ impl BasicBlock for QuadBlock24_8 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<16, true>>(&self, pos: usize) -> Ranks {
         assert!(C::S == 0);
         let mut ranks = u32x4::splat(0);
 
@@ -563,7 +560,7 @@ impl BasicBlock for QuadBlock64 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<16>>(&self, pos: usize) -> Ranks {
+    fn count4<C: CountFn<16, true>>(&self, pos: usize) -> Ranks {
         assert!(C::S == 0);
         let mut ranks = u32x4::splat(0);
 
@@ -642,7 +639,7 @@ impl BasicBlock for QuadBlock32 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<0>>(&self, mut pos: usize) -> Ranks {
+    fn count4<C: CountFn<0, true>>(&self, mut pos: usize) -> Ranks {
         let mut ranks = u32x4::splat(0);
 
         // correct for 128bits of ranks
@@ -716,7 +713,7 @@ impl BasicBlock for QuadBlock16 {
     }
 
     #[inline(always)]
-    fn count4<CF: CountFn<0, TRANSPOSED = true>>(&self, mut pos: usize) -> Ranks {
+    fn count4<CF: CountFn<0, true>>(&self, mut pos: usize) -> Ranks {
         let mut ranks = u32x4::splat(0);
 
         // correct for 128bits of ranks

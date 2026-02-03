@@ -8,7 +8,7 @@ use std::iter::zip;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB>, CF: CountFn<{ BB::C }>> {
+pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB>, CF: CountFn<{ BB::C }, { BB::TRANSPOSED }>> {
     /// Cacheline-sized counts.
     blocks: Vec<BB>,
     /// Additional sparse counts.
@@ -23,11 +23,8 @@ pub(super) fn strict_add(a: LongRanks, b: LongRanks) -> LongRanks {
     from_fn(|c| a[c].strict_add(b[c]))
 }
 
-impl<
-    BB: BasicBlock,
-    SB: SuperBlock<BB, NBB = 1>,
-    CF: CountFn<{ BB::C }, TRANSPOSED = { BB::TRANSPOSED }>,
-> RankerT for Ranker<BB, SB, CF>
+impl<BB: BasicBlock, SB: SuperBlock<BB, NBB = 1>, CF: CountFn<{ BB::C }, { BB::TRANSPOSED }>>
+    RankerT for Ranker<BB, SB, CF>
 where
     [(); BB::B]:,
     [(); SB::NBB]:,

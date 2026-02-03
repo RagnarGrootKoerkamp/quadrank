@@ -1,11 +1,5 @@
 #![allow(incomplete_features)]
-#![feature(
-    generic_const_exprs,
-    portable_simd,
-    coroutines,
-    coroutine_trait,
-    associated_const_equality
-)]
+#![feature(generic_const_exprs, portable_simd, coroutines, coroutine_trait)]
 
 pub mod binary;
 pub mod count;
