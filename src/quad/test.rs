@@ -59,7 +59,7 @@ fn test<R: quad::RankerT>() {
         );
         let ranker = R::new_packed(&test.seq);
         for (q, a) in &test.queries {
-            let r = ranker.rank4(*q);
+            let r = unsafe { ranker.rank4_unchecked(*q) };
             let r = r.map(|x| x as usize);
             assert_eq!(
                 r,
@@ -85,7 +85,7 @@ fn test1<R: quad::RankerT>() {
         let ranker = R::new_packed(&test.seq);
         for (q, a) in &test.queries {
             for c in 0..4 {
-                let r = ranker.rank1(*q, c) as usize;
+                let r = unsafe { ranker.rank1_unchecked(*q, c) as usize };
                 assert_eq!(
                     r,
                     a[c as usize],

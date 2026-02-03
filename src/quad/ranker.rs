@@ -151,7 +151,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
 
     /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
-    fn rank4(&self, pos: usize) -> LongRanks {
+    unsafe fn rank4_unchecked(&self, pos: usize) -> LongRanks {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;
@@ -176,7 +176,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
     }
     /// Count the number of times character `c` occurs before position `pos`.
     #[inline(always)]
-    fn rank1(&self, pos: usize, c: u8) -> usize {
+    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize {
         // assert!(pos < self.len);
         unsafe {
             let block_idx = pos / BB::N;
@@ -194,7 +194,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
         }
     }
     #[inline(always)]
-    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
+    unsafe fn count1x2_unchecked(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
         let block_idx0 = pos0 / BB::N;
         let block_pos0 = pos0 % BB::N;
         let block_idx1 = pos1 / BB::N;

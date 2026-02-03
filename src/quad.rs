@@ -99,11 +99,14 @@ pub trait RankerT: Sync + Send + Sized {
     }
     fn size(&self) -> usize;
     /// Count the number of times each character occurs before position `pos`.
-    fn rank4(&self, pos: usize) -> LongRanks;
+    /// Assumes pos<len.
+    unsafe fn rank4_unchecked(&self, pos: usize) -> LongRanks;
     /// Count the number of times character `c` occurs before position `pos`.
-    fn rank1(&self, pos: usize, c: u8) -> usize;
+    /// Assumes pos<len.
+    unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> usize;
+    /// Assumes pos<len.
     #[inline(always)]
-    fn count1x2(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
-        (self.rank1(pos0, c), self.rank1(pos1, c))
+    unsafe fn count1x2_unchecked(&self, pos0: usize, pos1: usize, c: u8) -> (usize, usize) {
+        unsafe { (self.rank1_unchecked(pos0, c), self.rank1_unchecked(pos1, c)) }
     }
 }

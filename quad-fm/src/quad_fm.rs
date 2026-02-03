@@ -22,13 +22,15 @@ impl<Ranker: RankerT> QuadFm<Ranker> {
         for &c in text.iter().rev() {
             steps += 1;
             let occ = self.occ[c as usize];
-            let ranks_s = self
-                .ranker
-                .rank1(s as usize - (s > self.sentinel) as usize, c);
+            let ranks_s = unsafe {
+                self.ranker
+                    .rank1_unchecked(s as usize - (s > self.sentinel) as usize, c)
+            };
             s = occ + ranks_s as usize;
-            let ranks_t = self
-                .ranker
-                .rank1(t as usize - (t > self.sentinel) as usize, c);
+            let ranks_t = unsafe {
+                self.ranker
+                    .rank1_unchecked(t as usize - (t > self.sentinel) as usize, c)
+            };
             t = occ + ranks_t as usize;
             if s == t {
                 return (s, t);
@@ -101,20 +103,24 @@ impl<Ranker: RankerT> QuadFm<Ranker> {
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
                 if false {
-                    let ranks_s = self
-                        .ranker
-                        .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                    let ranks_s = unsafe {
+                        self.ranker
+                            .rank1_unchecked(s[i] as usize - (s[i] > self.sentinel) as usize, c)
+                    };
                     s[i] = occ + ranks_s as usize;
-                    let ranks_t = self
-                        .ranker
-                        .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                    let ranks_t = unsafe {
+                        self.ranker
+                            .rank1_unchecked(t[i] as usize - (t[i] > self.sentinel) as usize, c)
+                    };
                     t[i] = occ + ranks_t as usize;
                 } else {
-                    let (ranks_s, ranks_t) = self.ranker.count1x2(
-                        s[i] as usize - (s[i] > self.sentinel) as usize,
-                        t[i] as usize - (t[i] > self.sentinel) as usize,
-                        c,
-                    );
+                    let (ranks_s, ranks_t) = unsafe {
+                        self.ranker.count1x2_unchecked(
+                            s[i] as usize - (s[i] > self.sentinel) as usize,
+                            t[i] as usize - (t[i] > self.sentinel) as usize,
+                            c,
+                        )
+                    };
                     s[i] = occ + ranks_s as usize;
                     t[i] = occ + ranks_t as usize;
                 }
@@ -216,13 +222,15 @@ impl<Ranker: RankerT> QuadFm<Ranker> {
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
-                let ranks_s = self
-                    .ranker
-                    .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                let ranks_s = unsafe {
+                    self.ranker
+                        .rank1_unchecked(s[i] as usize - (s[i] > self.sentinel) as usize, c)
+                };
                 s[i] = occ + ranks_s as usize;
-                let ranks_t = self
-                    .ranker
-                    .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                let ranks_t = unsafe {
+                    self.ranker
+                        .rank1_unchecked(t[i] as usize - (t[i] > self.sentinel) as usize, c)
+                };
                 t[i] = occ + ranks_t as usize;
                 text_idx[i] += 1;
             }
@@ -356,13 +364,15 @@ impl<Ranker: RankerT> FmIndex for QuadFm<Ranker> {
 
                 steps[i] += 1;
                 let occ = self.occ[c as usize];
-                let ranks_s = self
-                    .ranker
-                    .rank1(s[i] as usize - (s[i] > self.sentinel) as usize, c);
+                let ranks_s = unsafe {
+                    self.ranker
+                        .rank1_unchecked(s[i] as usize - (s[i] > self.sentinel) as usize, c)
+                };
                 s[i] = occ + ranks_s as usize;
-                let ranks_t = self
-                    .ranker
-                    .rank1(t[i] as usize - (t[i] > self.sentinel) as usize, c);
+                let ranks_t = unsafe {
+                    self.ranker
+                        .rank1_unchecked(t[i] as usize - (t[i] > self.sentinel) as usize, c)
+                };
                 t[i] = occ + ranks_t as usize;
             }
             text_idx += 1;
