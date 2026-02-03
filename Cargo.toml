@@ -5,6 +5,15 @@ members = ["quad-fm"]
 name = "quadrank"
 version = "0.1.0"
 edition = "2024"
+authors = ["Ragnar Groot Koerkamp"]
+description = "Fast rank over binary and size-4 DNA alphabets."
+repository = "https://github.com/RagnarGrootKoerkamp/quadrank"
+keywords = ['rank', 'simd', 'prefetch', 'data structures', 'succinct', 'bioinformatics']
+categories = ["science"]
+readme = "README.md"
+license = "MIT"
+rust-version = "1.91"
+
 
 [dependencies]
 mem_dbg = "0.3.2"
