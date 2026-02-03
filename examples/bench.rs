@@ -9,12 +9,12 @@ use quadrank::{
             BinaryBlock16, BinaryBlock16Spider, BinaryBlock16x2, BinaryBlock32x2, BinaryBlock64x2,
         },
     },
-    genedex,
+    ext::genedex,
+    ext::sux::*,
     quad::{
         Ranker, RankerT,
         blocks::{QuadBlock16, QuadBlock24_8, QuadBlock64},
     },
-    sux::*,
 };
 use sux::prelude::Rank9;
 

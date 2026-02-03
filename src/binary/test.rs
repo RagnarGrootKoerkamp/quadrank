@@ -37,8 +37,8 @@ fn binary() {
 
     #[cfg(feature = "ext")]
     {
-        use crate::genedex;
-        use crate::sux;
+        use crate::ext::genedex;
+        use crate::ext::sux;
         test::<genedex::Flat64>(All);
         test::<genedex::Flat512>(All);
         test::<genedex::Condensed64>(All);

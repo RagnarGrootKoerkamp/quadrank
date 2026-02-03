@@ -177,12 +177,12 @@ fn main() {
     bench::<QuadFm<quadrank::QuadRank16>>(&text, &bwt, &reads, ts);
     bench::<QuadFm<quadrank::QuadRank24_8>>(&text, &bwt, &reads, ts);
     bench::<QuadFm<quadrank::QuadRank64>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<quadrank::qwt::RSQVector256>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<quadrank::qwt::RSQVector512>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<quadrank::genedex::Flat64>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<quadrank::genedex::Flat512>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<quadrank::genedex::Condensed64>>(&text, &bwt, &reads, ts);
-    bench::<QuadFm<quadrank::genedex::Condensed512>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::ext::qwt::RSQVector256>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::ext::qwt::RSQVector512>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::ext::genedex::Flat64>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::ext::genedex::Flat512>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::ext::genedex::Condensed64>>(&text, &bwt, &reads, ts);
+    bench::<QuadFm<quadrank::ext::genedex::Condensed512>>(&text, &bwt, &reads, ts);
     bench::<genedex::FmIndexFlat64<i64>>(&text, &bwt, &reads, ts);
     bench::<genedex::FmIndexFlat512<i64>>(&text, &bwt, &reads, ts);
     bench::<genedex::FmIndexCondensed64<i64>>(&text, &bwt, &reads, ts);

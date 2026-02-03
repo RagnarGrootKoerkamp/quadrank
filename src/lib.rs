@@ -13,8 +13,6 @@ pub mod ext {
     pub mod sux;
     pub mod vers;
 }
-#[cfg(feature = "ext")]
-pub use ext::*;
 
 // Type aliases
 pub type BiRank = BiRank16;

@@ -36,7 +36,7 @@ fn quad() {
 
     #[cfg(feature = "ext")]
     {
-        use crate::genedex;
+        use crate::ext::genedex;
         test::<qwt::RSQVector256>();
         test::<qwt::RSQVector512>();
         test::<genedex::Flat64>();
