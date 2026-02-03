@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[derive(clap::Parser)]
 struct Args {
     input: PathBuf,
-    #[clap(short, default_value_t = 10_000_000)]
+    #[clap(short, default_value_t = 500_000)]
     n: usize,
     #[clap(short, default_value_t = 0.01)]
     error: f32,

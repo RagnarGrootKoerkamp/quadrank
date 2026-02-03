@@ -448,7 +448,7 @@ bits_per_symbol = None
 def plot_st():
     global threads, sigma, server, df, bits_per_symbol
     for cpu in ["laptop", "server"]:
-        df_all = pd.read_csv(f"{cpu}.csv")
+        df_all = pd.read_csv(f"rank-{cpu}.csv")
 
         server = "latency_96" in df_all.columns
         if server:
@@ -482,8 +482,8 @@ plot_st()
 
 def plot_small():
     global sigma, bits_per_symbol, server
-    df_laptop = pd.read_csv("laptop.csv")
-    df_server = pd.read_csv("server.csv")
+    df_laptop = pd.read_csv("rank-laptop.csv")
+    df_server = pd.read_csv("rank-server.csv")
     df_laptop["cpu"] = "laptop"
     df_server["cpu"] = "server"
     df_all = pd.concat([df_laptop, df_server], ignore_index=True)
