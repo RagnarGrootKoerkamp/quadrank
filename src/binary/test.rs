@@ -1,11 +1,10 @@
 use std::sync::LazyLock;
 
 use crate::binary::{self, blocks::*};
-use crate::genedex;
-use crate::sux;
 
 use super::super_blocks::ShiftPairedSB;
 
+#[allow(unused)]
 enum Support {
     All,
     // can't query 0
@@ -36,27 +35,32 @@ fn binary() {
     test::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(All);
     test::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(All);
 
-    test::<genedex::Flat64>(All);
-    test::<genedex::Flat512>(All);
-    test::<genedex::Condensed64>(All);
-    test::<genedex::Condensed512>(All);
-    test::<qwt::RSNarrow>(All);
-    test::<qwt::RSWide>(All);
-    test::<sux::Rank9>(NoN);
-    test::<sux::RankSmall0>(NoN);
-    test::<sux::RankSmall1>(NoN);
-    test::<sux::RankSmall2>(NoN);
-    test::<sux::RankSmall3>(NoN);
-    test::<sux::RankSmall4>(NoN);
+    #[cfg(feature = "ext")]
+    {
+        use crate::genedex;
+        use crate::sux;
+        test::<genedex::Flat64>(All);
+        test::<genedex::Flat512>(All);
+        test::<genedex::Condensed64>(All);
+        test::<genedex::Condensed512>(All);
+        test::<qwt::RSNarrow>(All);
+        test::<qwt::RSWide>(All);
+        test::<sux::Rank9>(NoN);
+        test::<sux::RankSmall0>(NoN);
+        test::<sux::RankSmall1>(NoN);
+        test::<sux::RankSmall2>(NoN);
+        test::<sux::RankSmall3>(NoN);
+        test::<sux::RankSmall4>(NoN);
 
-    test::<succinct::Rank9<Vec<u64>>>(NoZero);
-    test::<succinct::JacobsonRank<Vec<u64>>>(NotEmptyNoZero);
-    test::<sucds::bit_vectors::Rank9Sel>(All);
-    test::<rsdict::RsDict>(NoN);
-    test::<bio::data_structures::rank_select::RankSelect>(NoZero);
-    test::<vers_vecs::RsVec>(All);
-    test::<bitm::RankSimple>(U32NoN);
-    test::<bitm::RankSelect101111>(NoN);
+        test::<succinct::Rank9<Vec<u64>>>(NoZero);
+        test::<succinct::JacobsonRank<Vec<u64>>>(NotEmptyNoZero);
+        test::<sucds::bit_vectors::Rank9Sel>(All);
+        test::<rsdict::RsDict>(NoN);
+        test::<bio::data_structures::rank_select::RankSelect>(NoZero);
+        test::<vers_vecs::RsVec>(All);
+        test::<bitm::RankSimple>(U32NoN);
+        test::<bitm::RankSelect101111>(NoN);
+    }
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());

@@ -52,16 +52,19 @@ name = "bench"
 required-features = ["ext"]
 
 [patch.crates-io]
-# bio.path = "../forks/rust-bio"
-bio = { git = "https://github.com/ragnargrootkoerkamp/rust-bio", branch = "quadrank" }
-# bitm.path = "../forks/bsuccinct-rs/bitm"
-bitm = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
-# dyn_size_of.path = "../forks/bsuccinct-rs/dyn_size_of"
-dyn_size_of = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
-# genedex = { path = "../forks/genedex" }
-genedex = { git = "https://github.com/ragnargrootkoerkamp/genedex", branch = "quadrank"}
 mem_dbg = { git = "https://github.com/zommiommy/mem_dbg-rs.git", branch = "main" }
-# qwt.path = "../forks/qwt"
+
+# RANK
+
+#bio.path = "../forks/rust-bio"
+bio = { git = "https://github.com/ragnargrootkoerkamp/rust-bio", branch = "quadrank" }
+#bitm.path = "../forks/bsuccinct-rs/bitm"
+bitm = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
+#dyn_size_of.path = "../forks/bsuccinct-rs/dyn_size_of"
+dyn_size_of = { git = "https://github.com/ragnargrootkoerkamp/bsuccinct-rs", branch = "no_select" }
+#genedex = { path = "../forks/genedex" }
+genedex = { git = "https://github.com/ragnargrootkoerkamp/genedex", branch = "quadrank"}
+#qwt.path = "../forks/qwt"
 qwt = { git = "https://github.com/ragnargrootkoerkamp/qwt", branch = "from_slice" }
-# sux.path = "../forks/sux-rs"
+#sux.path = "../forks/sux-rs"
 sux = { git = "https://github.com/ragnargrootkoerkamp/sux-rs", branch = "quadrank" }

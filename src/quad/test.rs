@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 use super::blocks::*;
 use super::super_blocks::ShiftPairedSB;
 use super::super_blocks::ShiftSB;
-use crate::genedex;
 use crate::quad;
 use crate::quad::TrivialSB;
 use crate::quad::count4::*;
@@ -27,12 +26,6 @@ fn quad() {
     test::<quad::Ranker<QuadBlock64, TrivialSB, SimdCount11B>>();
     test::<quad::Ranker<QuadBlock32, TrivialSB, NoCount>>();
     test::<quad::Ranker<QuadBlock16, TrivialSB, NoCount>>();
-    test::<qwt::RSQVector256>();
-    test::<qwt::RSQVector512>();
-    test::<genedex::Flat64>();
-    test::<genedex::Flat512>();
-    test::<genedex::Condensed64>();
-    test::<genedex::Condensed512>();
 
     test1::<quad::Ranker<QuadBlock64, ShiftSB, SimdCount11B>>();
     test1::<quad::Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>();
@@ -43,6 +36,17 @@ fn quad() {
     test::<quad::Ranker<QuadBlock24_8, ShiftPairedSB, TransposedPopcount>>();
     test::<quad::Ranker<QuadBlock32, ShiftPairedSB, NoCount>>();
     test::<quad::Ranker<QuadBlock16, ShiftPairedSB, NoCount>>();
+
+    #[cfg(feature = "ext")]
+    {
+        use crate::genedex;
+        test::<qwt::RSQVector256>();
+        test::<qwt::RSQVector512>();
+        test::<genedex::Flat64>();
+        test::<genedex::Flat512>();
+        test::<genedex::Condensed64>();
+        test::<genedex::Condensed512>();
+    }
 }
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
