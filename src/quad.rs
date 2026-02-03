@@ -60,18 +60,16 @@ pub trait BasicBlock: Sync + Send {
 }
 
 pub trait SuperBlock<BB: BasicBlock>: Sync + Send {
-    /// Number of basic blocks.
-    const NBB: usize;
     /// Bit-width of the basic block ranks.
     const W: usize;
 
     /// This many low bits are shifted out.
     const SHIFT: usize;
 
-    fn new(ranks: [LongRanks; Self::NBB], data: &[u8]) -> Self;
-    fn get(&self, idx: usize, block_idx: usize) -> LongRanks;
-    fn get1(&self, idx: usize, block_idx: usize, c: u8) -> usize {
-        self.get(idx, block_idx)[c as usize] as usize
+    fn new(ranks: LongRanks, data: &[u8]) -> Self;
+    fn get(&self, block_idx: usize) -> LongRanks;
+    fn get1(&self, block_idx: usize, c: u8) -> usize {
+        self.get(block_idx)[c as usize] as usize
     }
 
     /// Store a new superblock every this-many blocks.

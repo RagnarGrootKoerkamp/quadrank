@@ -23,11 +23,10 @@ pub(super) fn strict_add(a: LongRanks, b: LongRanks) -> LongRanks {
     from_fn(|c| a[c].strict_add(b[c]))
 }
 
-impl<BB: BasicBlock, SB: SuperBlock<BB, NBB = 1>, CF: CountFn<{ BB::C }, { BB::TRANSPOSED }>>
-    RankerT for Ranker<BB, SB, CF>
+impl<BB: BasicBlock, SB: SuperBlock<BB>, CF: CountFn<{ BB::C }, { BB::TRANSPOSED }>> RankerT
+    for Ranker<BB, SB, CF>
 where
     [(); BB::B]:,
-    [(); SB::NBB]:,
 {
     fn new_packed(seq: &[usize]) -> Self {
         let seq_usize = seq;
@@ -75,9 +74,7 @@ where
             .zip(&sb_offsets)
             .zip(blocks.par_chunks_mut(SB::BLOCKS_PER_SUPERBLOCK))
             .map(|((sb_chunk, &sb_offset), blocks)| {
-                // FIXME: Support SB8.
-                assert_eq!(SB::NBB, 1);
-                let sb = SB::new([sb_offset; SB::NBB], sb_chunk);
+                let sb = SB::new(sb_offset, sb_chunk);
 
                 let bb_chunks = sb_chunk.chunks(BB::B);
                 let num_chunks = bb_chunks.len();
@@ -86,7 +83,7 @@ where
                 for (i, (block, bb_chunk)) in zip(blocks.iter_mut(), bb_chunks).enumerate() {
                     // This must be wrapping since `get_for_block` can return negative values.
                     let a = strict_add(sb_offset, delta);
-                    let b = sb.get(0, i);
+                    let b = sb.get(i);
                     let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
 
                     let mut bb_chunk_buffer = [0u8; BB::B];
@@ -109,7 +106,7 @@ where
                     assert_eq!(blocks.len(), num_chunks + 1);
                     let i = num_chunks;
                     let a = strict_add(sb_offset, delta);
-                    let b = sb.get(0, i);
+                    let b = sb.get(i);
                     let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
                     blocks[i].write(BB::new(remaining_delta, &[0u8; BB::B]));
                 }
@@ -121,10 +118,10 @@ where
         if add_superblock {
             let sb_offset = *sb_offsets.last().unwrap();
             assert_eq!(sb_offset.iter().sum::<u64>(), seq.len() as u64 * 4);
-            super_blocks.push(SB::new([sb_offset; SB::NBB], &[]));
+            super_blocks.push(SB::new(sb_offset, &[]));
             let sb = super_blocks.last().unwrap();
             let a = sb_offset;
-            let b = sb.get(0, 0);
+            let b = sb.get(0);
             let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
             blocks
                 .last_mut()
@@ -146,7 +143,7 @@ where
         prefetch_index(&self.blocks, block_idx);
         if BB::W < TARGET_BITS - 12 {
             let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
-            prefetch_index(&self.super_blocks, long_pos / SB::NBB);
+            prefetch_index(&self.super_blocks, long_pos);
         }
     }
 
@@ -170,8 +167,8 @@ where
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
                 let long_ranks = self
                     .super_blocks
-                    .get_unchecked(long_pos / SB::NBB)
-                    .get(long_pos % SB::NBB, block_idx % SB::BLOCKS_PER_SUPERBLOCK);
+                    .get_unchecked(long_pos)
+                    .get(block_idx % SB::BLOCKS_PER_SUPERBLOCK);
                 for c in 0..4 {
                     ranks[c] = ranks[c].wrapping_add(long_ranks[c]);
                 }
@@ -189,11 +186,10 @@ where
             let mut rank = self.blocks.get_unchecked(block_idx).count1(block_pos, c) as usize;
             if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
-                let long_rank = self.super_blocks.get_unchecked(long_pos / SB::NBB).get1(
-                    long_pos % SB::NBB,
-                    block_idx % SB::BLOCKS_PER_SUPERBLOCK,
-                    c,
-                );
+                let long_rank = self
+                    .super_blocks
+                    .get_unchecked(long_pos)
+                    .get1(block_idx % SB::BLOCKS_PER_SUPERBLOCK, c);
                 rank += long_rank;
             }
             rank
@@ -212,16 +208,10 @@ where
         if (BB::W) < TARGET_BITS {
             let long_pos0 = block_idx0 / SB::BLOCKS_PER_SUPERBLOCK;
             let long_pos1 = block_idx1 / SB::BLOCKS_PER_SUPERBLOCK;
-            let long_ranks0 = self.super_blocks[long_pos0 / SB::NBB].get1(
-                long_pos0 % SB::NBB,
-                block_idx0 % SB::BLOCKS_PER_SUPERBLOCK,
-                c,
-            );
-            let long_ranks1 = self.super_blocks[long_pos1 / SB::NBB].get1(
-                long_pos1 % SB::NBB,
-                block_idx1 % SB::BLOCKS_PER_SUPERBLOCK,
-                c,
-            );
+            let long_ranks0 =
+                self.super_blocks[long_pos0].get1(block_idx0 % SB::BLOCKS_PER_SUPERBLOCK, c);
+            let long_ranks1 =
+                self.super_blocks[long_pos1].get1(block_idx1 % SB::BLOCKS_PER_SUPERBLOCK, c);
             rank0 += long_ranks0;
             rank1 += long_ranks1;
         }
