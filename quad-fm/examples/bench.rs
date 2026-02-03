@@ -1,6 +1,3 @@
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs, array_windows, iter_next_chunk)]
-
 use clap::Parser;
 use quad_fm::bwt::{BWT, DiskBWT, read_text, write_bwt};
 use quad_fm::{FmIndex, QuadFm};

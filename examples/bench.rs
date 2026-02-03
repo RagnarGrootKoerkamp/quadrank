@@ -1,5 +1,6 @@
-#![allow(incomplete_features, dead_code)]
-#![feature(generic_const_exprs, coroutines, coroutine_trait)]
+#![allow(dead_code)]
+#![feature(coroutines, coroutine_trait)]
+
 use std::{
     any::type_name,
     array::from_fn,
@@ -21,7 +22,6 @@ use quadrank::{
     quad::{
         LongRanks, Ranker, RankerT,
         blocks::{QuadBlock16, QuadBlock24_8, QuadBlock64},
-        count4::{NoCount, SimdCount11B},
     },
     sux::*,
 };
@@ -337,9 +337,9 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<genedex::Condensed64>(seq, queries);
     bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench_one_quad::<Ranker<QuadBlock64, ShiftSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock16, ShiftSB, NoCount>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock64, ShiftSB>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB>>(seq, queries);
+    bench_one_quad::<Ranker<QuadBlock16, ShiftSB>>(seq, queries);
 
     // use quadrank::quad::super_blocks::ShiftPairedSB;
     // bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);

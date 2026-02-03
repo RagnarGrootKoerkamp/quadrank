@@ -10,10 +10,7 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
     super_blocks: Vec<SB>,
 }
 
-impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB>
-where
-    [(); BB::B]:,
-{
+impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
     fn new_packed(seq: &[usize]) -> Self {
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
         assert!(head.is_empty());
@@ -63,12 +60,15 @@ where
                     // This must be wrapping since `get_for_block` can return negative values.
                     let remaining_delta = (sb_offset + delta).wrapping_sub(sb.get(i));
 
-                    let mut bb_chunk_buffer = [0u8; BB::B];
-                    let bb_chunk = bb_chunk.as_array().unwrap_or_else(|| {
+                    let mut bb_chunk_buffer = vec![];
+                    let bb_chunk = if bb_chunk.len() == BB::B {
+                        bb_chunk
+                    } else {
+                        bb_chunk_buffer.resize(BB::B, 0u8);
                         bb_chunk_buffer[..bb_chunk.len()].copy_from_slice(bb_chunk);
                         bb_chunk_buffer[bb_chunk.len()..].fill(0);
                         &bb_chunk_buffer
-                    });
+                    };
 
                     block.write(BB::new(remaining_delta, bb_chunk));
 
@@ -82,7 +82,7 @@ where
                     assert_eq!(blocks.len(), num_chunks + 1);
                     let i = num_chunks;
                     let remaining_delta = (sb_offset + delta).wrapping_sub(sb.get(i));
-                    blocks[i].write(BB::new(remaining_delta, &[0u8; BB::B]));
+                    blocks[i].write(BB::new(remaining_delta, &vec![0u8; BB::B]));
                 }
 
                 sb
@@ -98,7 +98,7 @@ where
             blocks
                 .last_mut()
                 .unwrap()
-                .write(BB::new(remaining_delta, &[0u8; BB::B]));
+                .write(BB::new(remaining_delta, &vec![0u8; BB::B]));
         }
 
         Self {

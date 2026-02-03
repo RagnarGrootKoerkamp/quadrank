@@ -5,37 +5,36 @@ use super::super_blocks::ShiftPairedSB;
 use super::super_blocks::ShiftSB;
 use crate::quad;
 use crate::quad::TrivialSB;
-use crate::quad::count4::*;
 
 #[test]
 fn quad() {
-    test::<quad::Ranker<Basic128, TrivialSB, WideSimdCount2>>();
-    test::<quad::Ranker<Basic256, TrivialSB, SimdCountSlice>>();
-    test::<quad::Ranker<Basic512, TrivialSB, SimdCountSlice>>();
-    // test::<quad::Ranker<Basic512, SB8, U128Popcnt3>>();
-    // test::<quad::Ranker<Basic512, SB8, SimdCountSlice>>();
-    // test::<quad::Ranker<FullBlock, NoSB, U64PopcntSlice>>();
-    // test::<quad::Ranker<FullBlockMid, NoSB, U64PopcntSlice>>();
-    // test::<quad::Ranker<FullBlockMid, NoSB, WideSimdCount2>>();
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB, SimdCount8>>();
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB, SimdCount9>>();
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB, SimdCount10>>();
-    test::<quad::Ranker<QuadBlock7_18_7P, TrivialSB, SimdCount10>>();
-    test::<quad::Ranker<QuadBlock24_8, TrivialSB, SimdCount11B>>();
-    test::<quad::Ranker<QuadBlock24_8, TrivialSB, TransposedPopcount>>();
-    test::<quad::Ranker<QuadBlock64, TrivialSB, SimdCount11B>>();
-    test::<quad::Ranker<QuadBlock32, TrivialSB, NoCount>>();
-    test::<quad::Ranker<QuadBlock16, TrivialSB, NoCount>>();
+    test::<quad::Ranker<Basic128, TrivialSB>>();
+    test::<quad::Ranker<Basic256, TrivialSB>>();
+    test::<quad::Ranker<Basic512, TrivialSB>>();
+    // test::<quad::Ranker<Basic512, SB8>>();
+    // test::<quad::Ranker<Basic512, SB8>>();
+    // test::<quad::Ranker<FullBlock, NoSB>>();
+    // test::<quad::Ranker<FullBlockMid, NoSB>>();
+    // test::<quad::Ranker<FullBlockMid, NoSB>>();
+    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock7_18_7P, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock24_8, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock24_8, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock64, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock32, TrivialSB>>();
+    test::<quad::Ranker<QuadBlock16, TrivialSB>>();
 
-    test1::<quad::Ranker<QuadBlock64, ShiftSB, SimdCount11B>>();
-    test1::<quad::Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>();
-    test1::<quad::Ranker<QuadBlock16, ShiftSB, NoCount>>();
+    test1::<quad::Ranker<QuadBlock64, ShiftSB>>();
+    test1::<quad::Ranker<QuadBlock24_8, ShiftSB>>();
+    test1::<quad::Ranker<QuadBlock16, ShiftSB>>();
 
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, ShiftPairedSB, SimdCount10>>();
-    test::<quad::Ranker<QuadBlock7_18_7P, ShiftPairedSB, SimdCount10>>();
-    test::<quad::Ranker<QuadBlock24_8, ShiftPairedSB, TransposedPopcount>>();
-    test::<quad::Ranker<QuadBlock32, ShiftPairedSB, NoCount>>();
-    test::<quad::Ranker<QuadBlock16, ShiftPairedSB, NoCount>>();
+    test::<quad::Ranker<QuadBlock32_8_8_8FP, ShiftPairedSB>>();
+    test::<quad::Ranker<QuadBlock7_18_7P, ShiftPairedSB>>();
+    test::<quad::Ranker<QuadBlock24_8, ShiftPairedSB>>();
+    test::<quad::Ranker<QuadBlock32, ShiftPairedSB>>();
+    test::<quad::Ranker<QuadBlock16, ShiftPairedSB>>();
 
     #[cfg(feature = "ext")]
     {

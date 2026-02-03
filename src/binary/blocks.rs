@@ -16,7 +16,8 @@ impl BasicBlock for BinaryBlock64x2 {
     const N: usize = 384;
     const W: usize = 64;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts in each u64 block.
         let mut bs = [0u64; 6];
         let mut sum = 0u64;
@@ -63,7 +64,8 @@ impl BasicBlock for BinaryBlock32x2 {
     const N: usize = 448;
     const W: usize = 32;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts in each u64 block.
         let mut bs = [0; 8];
         // count each part half.
@@ -120,7 +122,8 @@ impl BasicBlock for BinaryBlock23_9 {
     const N: usize = 480;
     const W: usize = 23;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts in each u64 block.
         let mut bs = [0; 8];
         // count each part half.
@@ -189,7 +192,8 @@ impl BasicBlock for BinaryBlock16x2 {
     const N: usize = 480;
     const W: usize = 16;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts in each u64 block.
         let mut bs = [0; 8];
         // count each part half.
@@ -244,7 +248,8 @@ impl BasicBlock for BinaryBlock32 {
     const N: usize = 480;
     const W: usize = 32;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts in each u64 block.
         let mut bs = [0; 8];
         // count each part half.
@@ -293,7 +298,8 @@ impl BasicBlock for BinaryBlock16 {
     const N: usize = 496;
     const W: usize = 16;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts in each u64 block.
         let mut bs = [0; 8];
         // count each part half.
@@ -347,7 +353,8 @@ impl BasicBlock for BinaryBlock16Spider {
     const W: usize = 16;
     const INCLUSIVE: bool = true;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         let mut seq = [0; 64];
         seq[0] = (rank & 0xff) as u8;
         seq[1] = ((rank >> 8) & 0xff) as u8;
@@ -407,7 +414,8 @@ impl BasicBlock for BinaryBlock16Spider2 {
     const W: usize = 16;
     const INCLUSIVE: bool = true;
 
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self {
+    fn new(rank: u64, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         let mut seq = [0; 64];
         seq[..62].copy_from_slice(&data[0..62]);
         seq[62] = (rank & 0xff) as u8;

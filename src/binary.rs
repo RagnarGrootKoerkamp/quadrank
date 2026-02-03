@@ -25,7 +25,9 @@ pub trait BasicBlock: Send + Sync {
 
     /// Construct a new basic block with the given bits and given rank of the
     /// start of the block.
-    fn new(rank: u64, data: &[u8; Self::B]) -> Self;
+    ///
+    /// `data` must have length exactly `B` bytes.
+    fn new(rank: u64, data: &[u8]) -> Self;
     /// Count the number of times each character occurs before position `pos`.
     fn rank(&self, pos: usize) -> u64 {
         assert!(pos < Self::N);

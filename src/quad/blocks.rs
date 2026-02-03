@@ -6,11 +6,13 @@ use crate::{
     count::{count_u8x8, count_u64_mask, count_u64_mid_mask},
     quad::{
         BasicBlock, Ranks,
-        count4::{CountFn, count4_u8x8, double_mid},
+        count4::{CountFn, SimdCount10, SimdCount11B, count4_u8x8, double_mid},
     },
 };
 
-use super::count4::{DOUBLE_TRANSPOSED_MID_MASKS, TRANSPOSED_MID_MASKS};
+use super::count4::{
+    DOUBLE_TRANSPOSED_MID_MASKS, SimdCountSlice, TRANSPOSED_MID_MASKS, WideSimdCount2,
+};
 
 #[inline(always)]
 fn strict_add(a: Ranks, b: Ranks) -> Ranks {
@@ -18,14 +20,14 @@ fn strict_add(a: Ranks, b: Ranks) -> Ranks {
 }
 
 #[inline(always)]
-fn extra_counted<const B: usize, const T: bool, C: CountFn<B, T>>(pos: usize) -> u32 {
-    if C::S == 0 {
+fn extra_counted<const B: usize, const T: bool, CF: CountFn<B, T>>(pos: usize) -> u32 {
+    if CF::S == 0 {
         return 0;
     }
-    let ans = (if C::FIXED {
-        (C::S * 4) - pos % (C::S * 4)
+    let ans = (if CF::FIXED {
+        (CF::S * 4) - pos % (CF::S * 4)
     } else {
-        -(pos as isize) as usize % (C::S * 4)
+        -(pos as isize) as usize % (CF::S * 4)
     }) as u32;
     ans
 }
@@ -45,14 +47,17 @@ impl BasicBlock for Basic512 {
     const W: usize = 0;
     const TRANSPOSED: bool = false;
 
-    fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
-        Basic512 { seq: *data }
+    fn new(_ranks: Ranks, data: &[u8]) -> Self {
+        Basic512 {
+            seq: *data.as_array().unwrap(),
+        }
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<{ Self::C }, { Self::TRANSPOSED }>>(&self, pos: usize) -> Ranks {
-        let mut ranks = C::count(&self.seq, pos);
-        ranks[0] -= extra_counted::<_, _, C>(pos);
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCountSlice;
+        let mut ranks = CF::count(&self.seq, pos);
+        ranks[0] -= extra_counted::<64, false, CF>(pos);
         ranks
     }
 }
@@ -72,14 +77,16 @@ impl BasicBlock for Basic256 {
     const W: usize = 0;
     const TRANSPOSED: bool = false;
 
-    fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(_ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; _] = data.as_array().unwrap();
         Self { seq: *data }
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<{ Self::C }, false>>(&self, pos: usize) -> Ranks {
-        let mut ranks = C::count(&self.seq, pos);
-        ranks[0] -= extra_counted::<_, _, C>(pos);
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCountSlice;
+        let mut ranks = CF::count(&self.seq, pos);
+        ranks[0] -= extra_counted::<32, false, CF>(pos);
         ranks
     }
 }
@@ -99,14 +106,16 @@ impl BasicBlock for Basic128 {
     const W: usize = 0;
     const TRANSPOSED: bool = false;
 
-    fn new(_ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(_ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; _] = data.as_array().unwrap();
         Self { seq: *data }
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<{ Self::C }, false>>(&self, pos: usize) -> Ranks {
-        let mut ranks = C::count(&self.seq, pos);
-        ranks[0] -= extra_counted::<_, false, C>(pos);
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = WideSimdCount2;
+        let mut ranks = CF::count(&self.seq, pos);
+        ranks[0] -= extra_counted::<_, false, CF>(pos);
         ranks
     }
 }
@@ -129,7 +138,8 @@ impl BasicBlock for QuadBlock32x2P {
     const W: usize = 32;
     const TRANSPOSED: bool = false;
 
-    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         let mut half_ranks = ranks;
         // count first half.
         for chunk in &data.as_chunks::<8>().0[0..2] {
@@ -145,7 +155,8 @@ impl BasicBlock for QuadBlock32x2P {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<16, false>>(&self, pos: usize) -> Ranks {
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCount10;
         let mut ranks = [0; 4];
 
         // 0 or 1 for left or right half
@@ -153,9 +164,9 @@ impl BasicBlock for QuadBlock32x2P {
         let half_pos = pos % 64;
 
         let idx = half * 16;
-        let inner_counts = C::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
+        let inner_counts = CF::count(&self.seq[idx..idx + 16].try_into().unwrap(), half_pos);
 
-        ranks[0] -= extra_counted::<_, _, C>(pos);
+        ranks[0] -= extra_counted::<_, _, CF>(pos);
 
         for c in 0..4 {
             ranks[c] += inner_counts[c];
@@ -187,7 +198,8 @@ impl BasicBlock for QuadBlock32_8_8_8FP {
     const W: usize = 32;
     const TRANSPOSED: bool = false;
 
-    fn new(ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         let mut part_ranks = [0; 4];
         let mut block_ranks = [0u32; 4];
         // count each part half.
@@ -208,7 +220,8 @@ impl BasicBlock for QuadBlock32_8_8_8FP {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<8, false>>(&self, pos: usize) -> Ranks {
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCount10;
         let mut ranks = [0; 4];
 
         let quart = pos / 32;
@@ -216,7 +229,7 @@ impl BasicBlock for QuadBlock32_8_8_8FP {
 
         let idx = quart * 8;
         let chunk = &self.seq[idx..idx + 8].try_into().unwrap();
-        let inner_counts = C::count(chunk, quart_pos);
+        let inner_counts = CF::count(chunk, quart_pos);
         for c in 0..4 {
             ranks[c] += inner_counts[c];
         }
@@ -290,7 +303,8 @@ impl BasicBlock for QuadBlock7_18_7P {
     const W: usize = 18;
     const TRANSPOSED: bool = false;
 
-    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(mut ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts before each u64 block.
         let mut bs = [[0u32; 4]; 6];
         // count each part half.
@@ -309,15 +323,16 @@ impl BasicBlock for QuadBlock7_18_7P {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<8, false>>(&self, pos: usize) -> Ranks {
-        assert!(C::S == 0);
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCount10;
+        assert!(CF::S == 0);
         let mut ranks = u32x4::splat(0);
 
         let hex = pos / 32;
 
         let idx = hex * 8;
 
-        let inner_counts = C::count_mid(&self.seq[idx..idx + 8].try_into().unwrap(), pos % 64);
+        let inner_counts = CF::count_mid(&self.seq[idx..idx + 8].try_into().unwrap(), pos % 64);
 
         use std::mem::transmute as t;
         let sign = (pos as u32 % 64).wrapping_sub(32);
@@ -448,7 +463,8 @@ impl BasicBlock for QuadBlock24_8 {
     const W: usize = 24;
     const TRANSPOSED: bool = true;
 
-    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(mut ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts before each u64 block.
         let mut bs = [[0u32; 4]; 6];
         let mut sum = [0u32; 4];
@@ -471,13 +487,14 @@ impl BasicBlock for QuadBlock24_8 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<16, true>>(&self, pos: usize) -> Ranks {
-        assert!(C::S == 0);
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCount11B;
+        assert!(CF::S == 0);
         let mut ranks = u32x4::splat(0);
 
         let tri = pos / 64;
 
-        let inner_counts = C::count_mid(&self.seq[tri], pos % 128);
+        let inner_counts = CF::count_mid(&self.seq[tri], pos % 128);
 
         use std::mem::transmute as t;
         let sign = (pos as u32 % 128).wrapping_sub(64);
@@ -538,7 +555,8 @@ impl BasicBlock for QuadBlock64 {
     const W: usize = 32;
     const TRANSPOSED: bool = true;
 
-    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(mut ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts before each u64 block.
         let mut bs = [[0u32; 4]; 4];
         let mut sum = [0u32; 4];
@@ -560,13 +578,14 @@ impl BasicBlock for QuadBlock64 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<16, true>>(&self, pos: usize) -> Ranks {
-        assert!(C::S == 0);
+    fn count4(&self, pos: usize) -> Ranks {
+        type CF = SimdCount11B;
+        assert!(CF::S == 0);
         let mut ranks = u32x4::splat(0);
 
         let half = pos / 64;
 
-        let inner_counts = C::count_mid(&self.seq[half], pos % 128);
+        let inner_counts = CF::count_mid(&self.seq[half], pos % 128);
 
         use std::mem::transmute as t;
         let sign = (pos as u32).wrapping_sub(64);
@@ -615,7 +634,8 @@ impl BasicBlock for QuadBlock32 {
     const W: usize = 32;
     const TRANSPOSED: bool = true;
 
-    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(mut ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // Counts before each u64 block.
         let mut bs = [[0u32; 4]; 6];
         // count each part half.
@@ -639,7 +659,7 @@ impl BasicBlock for QuadBlock32 {
     }
 
     #[inline(always)]
-    fn count4<C: CountFn<0, true>>(&self, mut pos: usize) -> Ranks {
+    fn count4(&self, mut pos: usize) -> Ranks {
         let mut ranks = u32x4::splat(0);
 
         // correct for 128bits of ranks
@@ -678,7 +698,8 @@ impl BasicBlock for QuadBlock16 {
     const W: usize = 16;
     const TRANSPOSED: bool = true;
 
-    fn new(mut ranks: Ranks, data: &[u8; Self::B]) -> Self {
+    fn new(mut ranks: Ranks, data: &[u8]) -> Self {
+        let data: &[u8; Self::B] = data.as_array().unwrap();
         // FIXME
         // Counts before each u64 block.
         // count each part half.
@@ -713,7 +734,7 @@ impl BasicBlock for QuadBlock16 {
     }
 
     #[inline(always)]
-    fn count4<CF: CountFn<0, true>>(&self, mut pos: usize) -> Ranks {
+    fn count4(&self, mut pos: usize) -> Ranks {
         let mut ranks = u32x4::splat(0);
 
         // correct for 128bits of ranks

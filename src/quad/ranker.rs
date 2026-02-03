@@ -1,19 +1,16 @@
-use super::count4::CountFn;
 use super::{BasicBlock, LongRanks, RankerT, SuperBlock};
 use crate::quad::count4::{count4_u8, count4_u64};
 use prefetch_index::prefetch_index;
 use rayon::prelude::*;
 use std::array::from_fn;
 use std::iter::zip;
-use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB>, CF: CountFn<{ BB::C }, { BB::TRANSPOSED }>> {
+pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB>> {
     /// Cacheline-sized counts.
     blocks: Vec<BB>,
     /// Additional sparse counts.
     super_blocks: Vec<SB>,
-    cf: PhantomData<CF>,
 }
 
 const TARGET_BITS: usize = 40;
@@ -23,11 +20,7 @@ pub(super) fn strict_add(a: LongRanks, b: LongRanks) -> LongRanks {
     from_fn(|c| a[c].strict_add(b[c]))
 }
 
-impl<BB: BasicBlock, SB: SuperBlock<BB>, CF: CountFn<{ BB::C }, { BB::TRANSPOSED }>> RankerT
-    for Ranker<BB, SB, CF>
-where
-    [(); BB::B]:,
-{
+impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
     fn new_packed(seq: &[usize]) -> Self {
         let seq_usize = seq;
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
@@ -86,12 +79,15 @@ where
                     let b = sb.get(i);
                     let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
 
-                    let mut bb_chunk_buffer = [0u8; BB::B];
-                    let bb_chunk = bb_chunk.as_array().unwrap_or_else(|| {
+                    let mut bb_chunk_buffer = vec![];
+                    let bb_chunk = if bb_chunk.len() == BB::B {
+                        bb_chunk
+                    } else {
+                        bb_chunk_buffer.resize(BB::B, 0u8);
                         bb_chunk_buffer[..bb_chunk.len()].copy_from_slice(bb_chunk);
                         bb_chunk_buffer[bb_chunk.len()..].fill(0);
                         &bb_chunk_buffer
-                    });
+                    };
 
                     block.write(BB::new(remaining_delta, bb_chunk));
 
@@ -108,7 +104,7 @@ where
                     let a = strict_add(sb_offset, delta);
                     let b = sb.get(i);
                     let remaining_delta = from_fn(|i| a[i].wrapping_sub(b[i]) as u32);
-                    blocks[i].write(BB::new(remaining_delta, &[0u8; BB::B]));
+                    blocks[i].write(BB::new(remaining_delta, &vec![0u8; BB::B]));
                 }
 
                 sb
@@ -126,13 +122,12 @@ where
             blocks
                 .last_mut()
                 .unwrap()
-                .write(BB::new(remaining_delta, &[0u8; BB::B]));
+                .write(BB::new(remaining_delta, &vec![0u8; BB::B]));
         }
 
         Self {
             blocks: unsafe { std::mem::transmute::<Vec<MaybeUninit<BB>>, Vec<BB>>(blocks) },
             super_blocks,
-            cf: PhantomData,
         }
     }
 
@@ -161,7 +156,7 @@ where
             let mut ranks = self
                 .blocks
                 .get_unchecked(block_idx)
-                .count4::<CF>(block_pos)
+                .count4(block_pos)
                 .map(|x| x as u64);
             if (BB::W) < TARGET_BITS {
                 let long_pos = block_idx / SB::BLOCKS_PER_SUPERBLOCK;
