@@ -11,6 +11,7 @@ rayon = "1.11.0"
 bincode = "2.0.1"
 needletail = "0.6.3"
 
+# Optional external implementations
 awry = { version = "0.3.1", optional = true }
 genedex = { version = "0.2.2", optional = true }
 fm-index = { version = "0.3.0", optional = true }
@@ -25,6 +26,7 @@ regex = "1.12.2"
 
 
 [features]
+# External implementations.
 ext = ["dep:awry", "dep:genedex", "dep:fm-index", "dep:tempfile", "quadrank/ext"]
 
 [[example]]

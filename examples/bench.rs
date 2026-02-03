@@ -14,23 +14,14 @@ use quadrank::{
     binary::{
         self,
         blocks::{
-            BinaryBlock16, BinaryBlock16Spider, BinaryBlock16Spider2, BinaryBlock16x2,
-            BinaryBlock23_9, BinaryBlock32, BinaryBlock32x2, BinaryBlock64x2,
+            BinaryBlock16, BinaryBlock16Spider, BinaryBlock16x2, BinaryBlock32x2, BinaryBlock64x2,
         },
-        super_blocks::ShiftSB,
     },
     genedex,
     quad::{
         LongRanks, Ranker, RankerT,
-        blocks::{
-            Basic128, Basic256, Basic512, QuadBlock7_18_7P, QuadBlock16, QuadBlock24_8,
-            QuadBlock32, QuadBlock32_8_8_8FP, QuadBlock64,
-        },
-        count4::{
-            NoCount, SimdCount7, SimdCount8, SimdCount9, SimdCount10, SimdCount11, SimdCount11B,
-            SimdCountSlice, TransposedPopcount, U64PopcntSlice, U128Popcnt3, WideSimdCount2,
-        },
-        super_blocks::{NoSB, SB8, TrivialSB},
+        blocks::{QuadBlock16, QuadBlock24_8, QuadBlock64},
+        count4::{NoCount, SimdCount11B},
     },
     sux::*,
 };
@@ -159,7 +150,7 @@ where
                 pin!(f).resume(());
             }
 
-            for (q, func) in batch.iter().zip(&mut futures) {
+            for (_q, func) in batch.iter().zip(&mut futures) {
                 let Complete(fq) = pin!(func).resume(()) else {
                     panic!()
                 };
@@ -205,7 +196,7 @@ where
         for batch in queries.as_chunks::<BATCH>().0 {
             let mut funcs: [_; BATCH] = from_fn(|i| f(batch[i]));
 
-            for (q, func) in batch.iter().zip(&mut funcs) {
+            for (_q, func) in batch.iter().zip(&mut funcs) {
                 let Complete(fq) = pin!(func).resume(()) else {
                     panic!()
                 };
@@ -244,7 +235,7 @@ fn bench_header() {
     }
     eprintln!();
     eprint!("{:<60} {:>11} {:>6} |", "", "", "");
-    for t in THREADS.wait() {
+    for _t in THREADS.wait() {
         eprint!(" {:>8} {:>8} {:>8} |", "latncy", "loop", "stream",);
     }
     eprintln!();
@@ -277,7 +268,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
                     &queries,
                     t,
                     |q| ranker.prefetch4(q),
-                    |q| std::hint::black_box(unsafe { ranker.rank4(q) })[0] as usize,
+                    |q| std::hint::black_box(ranker.rank4(q))[0] as usize,
                     true,
                 );
             } else {
@@ -285,7 +276,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
                     &queries,
                     t,
                     |q| ranker.prefetch1(q, q as u8 & 3),
-                    |q| std::hint::black_box(unsafe { ranker.rank1(q, q as u8 & 3) }),
+                    |q| std::hint::black_box(ranker.rank1(q, q as u8 & 3)),
                     true,
                 );
             }
@@ -334,7 +325,6 @@ fn bench_coro<R: RankerT>(packed_seq: &[usize], queries: &QS) {
 
 #[inline(never)]
 fn bench_quad(seq: &[usize], queries: &QS) {
-    use quadrank::quad::super_blocks::ShiftPairedSB;
     use quadrank::quad::super_blocks::ShiftSB;
 
     bench_header();
@@ -351,6 +341,7 @@ fn bench_quad(seq: &[usize], queries: &QS) {
     bench_one_quad::<Ranker<QuadBlock24_8, ShiftSB, SimdCount11B>>(seq, queries);
     bench_one_quad::<Ranker<QuadBlock16, ShiftSB, NoCount>>(seq, queries);
 
+    // use quadrank::quad::super_blocks::ShiftPairedSB;
     // bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);
     // bench_one_quad::<Ranker<QuadBlock16, ShiftPairedSB, NoCount>>(seq, queries);
 }
@@ -418,19 +409,21 @@ fn main() {
     //     .map(|i| 1usize << i)
     //     .collect::<Vec<_>>();
 
-    THREADS.set({
-        let mut ts = vec![];
-        let mut t = args.threads.unwrap_or(12);
-        loop {
-            ts.push(t);
-            if t == 1 {
-                break;
+    THREADS
+        .set({
+            let mut ts = vec![];
+            let mut t = args.threads.unwrap_or(12);
+            loop {
+                ts.push(t);
+                if t == 1 {
+                    break;
+                }
+                t /= 2;
             }
-            t /= 2;
-        }
-        ts.reverse();
-        ts
-    });
+            ts.reverse();
+            ts
+        })
+        .unwrap();
 
     if let Some(n) = args.n {
         sizes = vec![n];

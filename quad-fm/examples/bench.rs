@@ -2,11 +2,11 @@
 #![feature(generic_const_exprs, array_windows, iter_next_chunk)]
 
 use clap::Parser;
-use quad_fm::bwt::{BWT, DiskBWT, build_bwt_packed, pack_text, read_text, write_bwt};
+use quad_fm::bwt::{BWT, DiskBWT, read_text, write_bwt};
 use quad_fm::{FmIndex, QuadFm};
 use quadrank::quad::*;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::{path::PathBuf, process::exit, sync::atomic::AtomicUsize, time::Duration};
+use std::{path::PathBuf, sync::atomic::AtomicUsize, time::Duration};
 
 fn time2<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = std::time::Instant::now();
