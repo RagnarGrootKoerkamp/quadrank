@@ -10,7 +10,7 @@ macro_rules! impl_rank {
     ($T: ty) => {
         impl binary::RankerT for $T {
             #[inline(always)]
-            fn new_packed(seq: &[usize]) -> Self {
+            fn new_packed(seq: &[u64]) -> Self {
                 // convert bitvec to vec of 0 and 1 u8s
                 let bits = seq
                     .iter()
@@ -39,7 +39,7 @@ macro_rules! impl_rank {
 
         impl quad::RankerT for $T {
             #[inline(always)]
-            fn new_packed(seq: &[usize]) -> Self {
+            fn new_packed(seq: &[u64]) -> Self {
                 // convert bitvec to vec of 0 and 1 u8s
                 let bits = seq
                     .iter()

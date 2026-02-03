@@ -9,10 +9,13 @@ macro_rules! impl_rank_small {
     ($T: ty) => {
         impl RankerT for $T {
             #[inline(always)]
-            fn new_packed(seq: &[usize]) -> Self {
+            fn new_packed(seq: &[u64]) -> Self {
                 // RankUnchecked::rank_unchecked does not work for `len`, so we add some padding.
                 let bits = unsafe {
-                    BitVec::from_raw_parts(seq.to_vec(), seq.len() * usize::BITS as usize)
+                    BitVec::from_raw_parts(
+                        seq.align_to::<usize>().1.to_vec(),
+                        seq.len() * u64::BITS as usize,
+                    )
                 };
                 <$T>::new(bits)
             }

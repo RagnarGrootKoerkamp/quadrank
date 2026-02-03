@@ -67,6 +67,8 @@ awry = { git = "https://github.com/ragnargrootkoerkamp/awry", branch = "main" }
 # where the patches below are applied to replace them with github versions.
 ext = ["dep:qwt", "dep:sux", "dep:genedex", "dep:bitm", "dep:bio", "dep:bv", "dep:rsdict", "dep:succinct", "dep:sucds", "dep:vers-vecs"]
 
+# default = ["ext"]
+
 [[example]]
 name = "bench"
 required-features = ["ext"]

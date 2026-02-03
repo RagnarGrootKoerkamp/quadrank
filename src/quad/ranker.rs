@@ -24,7 +24,7 @@ pub(super) fn strict_add(a: LongRanks, b: LongRanks) -> LongRanks {
 }
 
 impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
-    fn new_packed(seq: &[usize]) -> Self {
+    fn new_packed(seq: &[u64]) -> Self {
         let seq_usize = seq;
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
         assert!(head.is_empty());

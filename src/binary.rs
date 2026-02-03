@@ -63,7 +63,7 @@ pub trait SuperBlock<BB: BasicBlock>: Sync + Send + Sized {
 
 pub trait RankerT: Sync + Sized {
     /// Construct from bitpacked data.
-    fn new_packed(seq: &[usize]) -> Self;
+    fn new_packed(seq: &[u64]) -> Self;
     /// Size in bytes of the data structure.
     fn size(&self) -> usize;
     const HAS_PREFETCH: bool = false;

@@ -1,8 +1,8 @@
 use crate::binary::RankerT;
 
 impl RankerT for rsdict::RsDict {
-    fn new_packed(seq: &[usize]) -> Self {
-        Self::from_blocks(seq.iter().map(|x| *x as u64))
+    fn new_packed(seq: &[u64]) -> Self {
+        Self::from_blocks(seq.iter().map(|x| *x))
     }
 
     fn size(&self) -> usize {

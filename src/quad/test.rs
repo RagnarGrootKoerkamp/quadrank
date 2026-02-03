@@ -99,7 +99,7 @@ fn test1<R: quad::RankerT>() {
     }
 }
 struct Test {
-    seq: Vec<usize>,
+    seq: Vec<u64>,
     queries: Vec<(usize, [usize; 4])>,
 }
 
@@ -114,14 +114,14 @@ fn tests() -> Vec<Test> {
         .collect()
 }
 
-fn seqs() -> Vec<Vec<usize>> {
+fn seqs() -> Vec<Vec<u64>> {
     // 01230123...
-    let m = 0b1110010011100100111001001110010011100100111001001110010011100100usize;
+    let m = 0b1110010011100100111001001110010011100100111001001110010011100100u64;
     let mut seqs = vec![];
     for len in 1..2 {
         seqs.push(vec![0; len]);
         seqs.push(vec![m; len]);
-        seqs.push(vec![rand::random::<u64>() as usize; len]);
+        seqs.push(vec![rand::random::<u64>() as u64; len]);
     }
     for len in [
         // specific sizes matching an exact super block
@@ -150,7 +150,7 @@ fn seqs() -> Vec<Vec<usize>> {
         let prefix = rand::random_range(0..len / 4);
         let mut seq = vec![0; len];
         for i in 0..prefix {
-            seq[i] = rand::random::<u64>() as usize;
+            seq[i] = rand::random::<u64>() as u64;
         }
         seqs.push(seq);
     }
@@ -158,8 +158,8 @@ fn seqs() -> Vec<Vec<usize>> {
     seqs
 }
 
-fn queries(seq: &Vec<usize>) -> Vec<(usize, [usize; 4])> {
-    let n = seq.len() * usize::BITS as usize / 2;
+fn queries(seq: &Vec<u64>) -> Vec<(usize, [usize; 4])> {
+    let n = seq.len() * u64::BITS as usize / 2;
     let mut queries = vec![];
     if n <= 1000 {
         for i in 0..=n {
@@ -181,8 +181,8 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, [usize; 4])> {
     let mut a = [0, 0, 0, 0];
     for q in queries {
         while i < q {
-            let word_idx = (2 * i) / usize::BITS as usize;
-            let bit_idx = (2 * i) % usize::BITS as usize;
+            let word_idx = (2 * i) / u64::BITS as usize;
+            let bit_idx = (2 * i) % u64::BITS as usize;
             let c = (seq[word_idx] >> bit_idx) & 3;
             a[c as usize] += 1;
             i += 1;

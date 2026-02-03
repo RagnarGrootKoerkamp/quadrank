@@ -11,7 +11,7 @@ pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
 }
 
 impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
-    fn new_packed(seq: &[usize]) -> Self {
+    fn new_packed(seq: &[u64]) -> Self {
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
         assert!(head.is_empty());
         assert!(tail.is_empty());

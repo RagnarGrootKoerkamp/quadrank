@@ -6,7 +6,7 @@ use sucds::{
 use crate::binary::RankerT;
 
 impl RankerT for Rank9Sel {
-    fn new_packed(seq: &[usize]) -> Self {
+    fn new_packed(seq: &[u64]) -> Self {
         Self::from_bits(
             seq.iter()
                 .flat_map(|x| (0..64).map(move |i| (x >> i) & 1 == 1)),

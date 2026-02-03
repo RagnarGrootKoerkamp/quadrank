@@ -67,7 +67,7 @@ static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
 
 fn test<R: binary::RankerT>(support: Support) {
     for test in &*TESTS {
-        let n = test.seq.len() * usize::BITS as usize;
+        let n = test.seq.len() * u64::BITS as usize;
         eprintln!(
             "testing ranker {} on len {} n={n}",
             std::any::type_name::<R>(),
@@ -121,7 +121,7 @@ fn test<R: binary::RankerT>(support: Support) {
 }
 
 struct Test {
-    seq: Vec<usize>,
+    seq: Vec<u64>,
     queries: Vec<(usize, usize)>,
 }
 
@@ -136,12 +136,12 @@ fn tests() -> Vec<Test> {
         .collect()
 }
 
-fn seqs() -> Vec<Vec<usize>> {
+fn seqs() -> Vec<Vec<u64>> {
     let mut seqs = vec![];
     for len in 0..100 {
         seqs.push(vec![0; len]);
-        seqs.push(vec![usize::MAX; len]);
-        seqs.push(vec![rand::random::<u64>() as usize; len]);
+        seqs.push(vec![u64::MAX; len]);
+        seqs.push(vec![rand::random::<u64>(); len]);
     }
     for len in [
         // block and superblock sizes
@@ -169,9 +169,9 @@ fn seqs() -> Vec<Vec<usize>> {
         eprintln!("generating seq of len {}", len);
         // random prefix of length 0%..25%, then 1
         let prefix = rand::random_range(0..len / 4);
-        let mut seq = vec![usize::MAX; len];
+        let mut seq = vec![u64::MAX; len];
         for i in 0..prefix {
-            seq[i] = rand::random::<u64>() as usize;
+            seq[i] = rand::random::<u64>();
         }
         seqs.push(seq);
     }
@@ -179,8 +179,8 @@ fn seqs() -> Vec<Vec<usize>> {
     seqs
 }
 
-fn queries(seq: &Vec<usize>) -> Vec<(usize, usize)> {
-    let n = seq.len() * usize::BITS as usize;
+fn queries(seq: &Vec<u64>) -> Vec<(usize, usize)> {
+    let n = seq.len() * u64::BITS as usize;
     let mut queries = vec![];
     if n <= 10000 {
         for i in 0..=n {
@@ -202,8 +202,8 @@ fn queries(seq: &Vec<usize>) -> Vec<(usize, usize)> {
     let mut a = 0;
     for q in queries {
         while i < q {
-            let word_idx = i / usize::BITS as usize;
-            let bit_idx = i % usize::BITS as usize;
+            let word_idx = i / u64::BITS as usize;
+            let bit_idx = i % u64::BITS as usize;
             let bit = (seq[word_idx] >> bit_idx) & 1;
             a += bit as usize;
             i += 1;

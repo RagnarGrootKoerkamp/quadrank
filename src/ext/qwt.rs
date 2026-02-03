@@ -13,7 +13,7 @@ impl RankerT for RSQVector256 {
     }
 
     #[inline(always)]
-    fn new_packed(seq: &[usize]) -> Self {
+    fn new_packed(seq: &[u64]) -> Self {
         let bits = seq
             .iter()
             .flat_map(|word| {
@@ -55,7 +55,7 @@ impl RankerT for RSQVector512 {
     }
 
     #[inline(always)]
-    fn new_packed(seq: &[usize]) -> Self {
+    fn new_packed(seq: &[u64]) -> Self {
         let bits = seq
             .iter()
             .flat_map(|word| {
@@ -91,7 +91,7 @@ impl RankerT for RSQVector512 {
 
 impl crate::binary::RankerT for qwt::RSNarrow {
     #[inline(always)]
-    fn new_packed(seq: &[usize]) -> Self {
+    fn new_packed(seq: &[u64]) -> Self {
         let mut bitvec = qwt::BitVectorMut::default();
         for &x in seq {
             bitvec.append_bits(x as u64, usize::BITS as usize);
@@ -120,8 +120,10 @@ impl crate::binary::RankerT for qwt::RSNarrow {
 
 impl crate::binary::RankerT for qwt::RSWide {
     #[inline(always)]
-    fn new_packed(seq: &[usize]) -> Self {
-        Self::new(qwt::BitVector::from_slice(seq))
+    fn new_packed(seq: &[u64]) -> Self {
+        Self::new(qwt::BitVector::from_slice(unsafe {
+            seq.align_to::<usize>().1
+        }))
     }
 
     const HAS_PREFETCH: bool = true;

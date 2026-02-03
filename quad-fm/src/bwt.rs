@@ -16,13 +16,13 @@ impl DiskBWT {
         let mut packed = bwt
             .par_chunks(32)
             .map(|cc| {
-                let mut x = 0usize;
+                let mut x = 0u64;
                 for (i, c) in cc.iter().enumerate() {
-                    x |= (*c as usize) << (i * 2);
+                    x |= (*c as u64) << (i * 2);
                 }
                 x
             })
-            .collect::<Vec<usize>>();
+            .collect::<Vec<_>>();
         for _ in 0..128 {
             packed.push(0);
         }
@@ -39,7 +39,7 @@ pub struct BWT {
     /// A vector of u8 encoded values 0/1/2/3.
     pub bwt: Vec<u8>,
     /// each u8 stores 4 values.
-    pub packed: Vec<usize>,
+    pub packed: Vec<u64>,
     pub sentinel: usize,
 }
 

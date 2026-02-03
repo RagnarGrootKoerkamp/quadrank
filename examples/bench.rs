@@ -147,8 +147,8 @@ fn bench_header() {
     println!();
 }
 
-fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
-    let ranker = R::new_packed(&packed_seq);
+fn bench_one_quad<R: RankerT>(packed_seq: &[u64], queries: &QS) {
+    let ranker = R::new_packed(packed_seq);
     for count4 in [true, false] {
         let name = type_name::<R>();
         let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
@@ -188,7 +188,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[usize], queries: &QS) {
     }
 }
 
-fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
+fn bench_one_binary<R: binary::RankerT>(packed_seq: &[u64], queries: &QS) {
     let name = type_name::<R>();
     let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
         .unwrap()
@@ -198,7 +198,7 @@ fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
     let n = packed_seq.len() * 64;
     eprint!("{n:>11} ");
 
-    let ranker = R::new_packed(&packed_seq);
+    let ranker = R::new_packed(packed_seq);
     let rel_size = (ranker.size() * 8) as f64 / (packed_seq.len() * 64) as f64;
     eprint!("{rel_size:>5.3}x |");
     print!("\"{name}\",2,{n},{rel_size:>.3},0");
@@ -218,9 +218,7 @@ fn bench_one_binary<R: binary::RankerT>(packed_seq: &[usize], queries: &QS) {
 }
 
 #[inline(never)]
-fn bench_quad(seq: &[usize], queries: &QS) {
-    use quadrank::quad::super_blocks::ShiftSB;
-
+fn bench_quad(seq: &[u64], queries: &QS) {
     bench_header();
 
     bench_one_quad::<qwt::RSQVector256>(seq, queries);
@@ -241,7 +239,7 @@ fn bench_quad(seq: &[usize], queries: &QS) {
 }
 
 #[inline(never)]
-fn bench_binary(seq: &[usize], queries: &QS) {
+fn bench_binary(seq: &[u64], queries: &QS) {
     bench_header();
 
     bench_one_binary::<qwt::RSNarrow>(seq, queries);

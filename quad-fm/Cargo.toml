@@ -37,6 +37,8 @@ regex = "1.12.2"
 # External implementations.
 ext = ["dep:awry", "dep:genedex", "dep:fm-index", "dep:tempfile", "quadrank/ext"]
 
+# default = ["ext"]
+
 [[example]]
 name = "bench"
 required-features = ["ext"]

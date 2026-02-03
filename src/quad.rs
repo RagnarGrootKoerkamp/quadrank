@@ -84,13 +84,13 @@ pub trait RankerT: Sync + Send + Sized {
         // eprintln!("packed_seq: {:?}", packed_seq);
         // Add one block of padding.
         packed_seq.resize(packed_seq.len() + 1024, 0);
-        let (head, data, tail) = unsafe { packed_seq.align_to::<usize>() };
+        let (head, data, tail) = unsafe { packed_seq.align_to::<u64>() };
         assert!(head.is_empty());
         assert!(tail.is_empty());
         Self::new_packed(data)
     }
     /// Construct from bitpacked data.
-    fn new_packed(seq: &[usize]) -> Self;
+    fn new_packed(seq: &[u64]) -> Self;
     /// Prefetch the cachelines for the given position and character.
     fn prefetch1(&self, pos: usize, c: u8);
     /// Prefetch the cachelines for all characters for the given position.

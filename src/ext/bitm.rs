@@ -2,11 +2,8 @@ use crate::binary::RankerT;
 use dyn_size_of::GetSize;
 
 impl RankerT for bitm::RankSimple {
-    fn new_packed(seq: &[usize]) -> Self {
-        let seq_u64 = unsafe { seq.align_to::<u64>().1 }
-            .to_vec()
-            .into_boxed_slice();
-        Self::build(seq_u64).0
+    fn new_packed(seq: &[u64]) -> Self {
+        Self::build(seq.to_vec().into()).0
     }
 
     fn size(&self) -> usize {
@@ -19,11 +16,8 @@ impl RankerT for bitm::RankSimple {
 }
 
 impl RankerT for bitm::RankSelect101111 {
-    fn new_packed(seq: &[usize]) -> Self {
-        let seq_u64 = unsafe { seq.align_to::<u64>().1 }
-            .to_vec()
-            .into_boxed_slice();
-        Self::build(seq_u64).0
+    fn new_packed(seq: &[u64]) -> Self {
+        Self::build(seq.to_vec().into()).0
     }
 
     fn size(&self) -> usize {
