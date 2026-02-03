@@ -9,7 +9,8 @@ impl<BB: BasicBlock> SuperBlock<BB> for NoSB {
     const W: usize = 32;
     const SHIFT: usize = 0;
     #[inline(always)]
-    fn new(_ranks: LongRanks, _data: &[u8]) -> Self {
+    fn new(ranks: LongRanks, _data: &[u8]) -> Self {
+        assert_eq!(ranks, [0; 4]);
         Self
     }
     #[inline(always)]

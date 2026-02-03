@@ -1,5 +1,21 @@
 use super::{BasicBlock, SuperBlock};
 
+/// Do not store superblocks at all.
+#[derive(mem_dbg::MemSize)]
+pub struct NoSB;
+
+impl<BB: BasicBlock> SuperBlock<BB> for NoSB {
+    #[inline(always)]
+    fn new(rank: u64, _data: &[u8]) -> Self {
+        assert_eq!(rank, 0);
+        Self
+    }
+    #[inline(always)]
+    fn get(&self, _block_idx: usize) -> u64 {
+        0
+    }
+}
+
 /// Simply stores a `u64` rank.
 #[derive(mem_dbg::MemSize)]
 pub struct TrivialSB {
