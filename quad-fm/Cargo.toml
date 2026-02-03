@@ -4,25 +4,30 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-caps-sa-rs = { git = "https://github.com/imartayan/caps-sa-rs.git" }
-simple-saca = { path = "../../forks/simple-saca" }
-# simple-saca = { git = "https://github.com/ragnargrootkoerkamp/simple-saca", branch = "main" }
-clap = { version = "4.5.51", features = ["derive"] }
-needletail = "0.6.3"
-small-bwt = "0.2.0"
-rayon = "1.11.0"
 quadrank = { version = "0.1.0", path = ".." }
-qwt = "0.3.1"
-fm-index = "0.3.0"
-bincode = "2.0.1"
-# genedex = "0.2.2"
-# genedex = { path = "../../forks/genedex", features = ["mem_dbg"]}
-genedex = { git = "https://github.com/ragnargrootkoerkamp/genedex", branch = "prefetch", features = ["mem_dbg"] }
-rand = "0.9.2"
 mem_dbg = "0.3.2"
-# awry = "0.3.1"
-awry = { path = "../../clones/AWRY" }
-rand_distr = "0.5.1"
 libsais = "0.2.0"
+rayon = "1.11.0"
+bincode = "2.0.1"
+needletail = "0.6.3"
+
+awry = { version = "0.3.1", optional = true }
+genedex = { version = "0.2.2", optional = true }
+fm-index = { version = "0.3.0", optional = true }
+# for awry
+tempfile = { version = "3.24.0", optional = true}
+
+[dev-dependencies]
+clap = { version = "4.5.51", features = ["derive"] }
+rand = "0.9.2"
+rand_distr = "0.5.1"
 regex = "1.12.2"
-tempfile = "3.24.0"
+
+
+[features]
+ext = ["dep:awry", "dep:genedex", "dep:fm-index", "dep:tempfile", "quadrank/ext"]
+
+[[example]]
+name = "bench"
+required-features = ["ext"]
+

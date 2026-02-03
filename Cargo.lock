@@ -365,15 +365,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "caps-sa-rs"
-version = "0.1.0"
-source = "git+https://github.com/imartayan/caps-sa-rs.git#0bfc2d1a515290ad26c95cb20a1bb28d9b9edb35"
-dependencies = [
- "cmake",
- "paste",
-]
-
-[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,15 +482,6 @@ name = "clap_lex"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e64b0cc0439b12df2fa678eae89a1c56a529fd067a9115f7827f1fffd22b32"
-
-[[package]]
-name = "cmake"
-version = "0.1.57"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75443c44cd6b379beb8c5b45d85d0773baf31cce901fe7bb252f4eff3008ef7d"
-dependencies = [
- "cc",
-]
 
 [[package]]
 name = "co_sort"
@@ -1877,7 +1859,6 @@ version = "0.1.0"
 dependencies = [
  "awry",
  "bincode 2.0.1",
- "caps-sa-rs",
  "clap",
  "fm-index",
  "genedex",
@@ -1885,13 +1866,10 @@ dependencies = [
  "mem_dbg",
  "needletail",
  "quadrank",
- "qwt",
  "rand 0.9.2",
  "rand_distr 0.5.1",
  "rayon",
  "regex",
- "simple-saca",
- "small-bwt",
  "tempfile",
 ]
 
@@ -2318,26 +2296,6 @@ name = "simd-adler32"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
-
-[[package]]
-name = "simple-saca"
-version = "0.1.0"
-source = "git+https://github.com/ragnargrootkoerkamp/simple-saca?branch=main#55ed4b71aef7b33c73b972407253742a3badbc75"
-dependencies = [
- "clap",
- "libc",
- "needletail",
- "rayon",
-]
-
-[[package]]
-name = "small-bwt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1ef1db95292f2d742d9e8ab81eaa741bde2c12cd3b894b21a8c09f1391083d3"
-dependencies = [
- "anyhow",
-]
 
 [[package]]
 name = "smallvec"

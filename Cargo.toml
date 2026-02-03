@@ -45,6 +45,8 @@ regex = "1.12.2"
 debug = true
 
 [features]
+# Enable external dependencies. Only use this when running from the git source,
+# where the patches below are applied to replace them with github versions.
 ext = ["dep:qwt", "dep:sux", "dep:genedex", "dep:bitm", "dep:bio", "dep:bv", "dep:rsdict", "dep:succinct", "dep:sucds", "dep:vers-vecs"]
 
 [[example]]
@@ -68,3 +70,8 @@ genedex = { git = "https://github.com/ragnargrootkoerkamp/genedex", branch = "qu
 qwt = { git = "https://github.com/ragnargrootkoerkamp/qwt", branch = "from_slice" }
 #sux.path = "../forks/sux-rs"
 sux = { git = "https://github.com/ragnargrootkoerkamp/sux-rs", branch = "quadrank" }
+
+# FM
+
+#awry.path = "../../clones/AWRY"
+awry = { git = "https://github.com/ragnargrootkoerkamp/awry", branch = "main" }
