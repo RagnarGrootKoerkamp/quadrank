@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Various methods for counting the number of characters equal to c.
 
 use std::array::from_fn;
