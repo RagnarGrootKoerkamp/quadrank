@@ -4,6 +4,8 @@
 
 ## git
 
+## 0.2.0
+
 - Now works on stable rust!
   - portable_simd => wide
   - refactors/simplifications to drop `const_generics` requirement

@@ -3,7 +3,7 @@ members = ["quad-fm"]
 
 [package]
 name = "quadrank"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Ragnar Groot Koerkamp"]
 description = "Fast rank over binary and size-4 DNA alphabets."
