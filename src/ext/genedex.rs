@@ -8,7 +8,7 @@ use mem_dbg::MemSize;
 
 macro_rules! impl_rank {
     ($T: ty) => {
-        impl binary::RankerT for $T {
+        impl binary::BiRanker for $T {
             #[inline(always)]
             fn new_packed(seq: &[u64]) -> Self {
                 // convert bitvec to vec of 0 and 1 u8s
@@ -37,7 +37,7 @@ macro_rules! impl_rank {
             }
         }
 
-        impl quad::RankerT for $T {
+        impl quad::QuadRanker for $T {
             #[inline(always)]
             fn new_packed(seq: &[u64]) -> Self {
                 // convert bitvec to vec of 0 and 1 u8s

@@ -2,17 +2,20 @@
 //!
 //! This crate provides data structures for `rank` queries over binary and size-4 alphabets.
 //! The main entrypoints are [`BiRank`] and [`QuadRank`], and usually you won't need anything else.
-//! They are aliases for instantiations of [`binary::Ranker`] and [`quad::Ranker`],
-//! which implement the [`binary::RankerT`] and [`quad::RankerT`] traits respectively.
+//! They are aliases for instantiations of [`binary::BiRank`] and [`quad::QuadRank`],
+//! which implement the [`binary::BiRanker`] and [`quad::QuadRanker`] traits respectively.
+//!
+//! By default, the smallest variants are used.
+//! Type aliases are provided for larger but possibly slightly faster variants.
 //!
 //! See also the [GitHub README](https://github.com/ragnargrootkoerkamp/quadrank).
 //!
 //! ```
-//! use quadrank::BiRank;
-//! use quadrank::QuadRank;
+//! use quadrank::{BiRank, BiRanker};
+//! use quadrank::{QuadRank, QuadRanker};
 //!
 //! let packed = [0xf0f0f0f0f0f0f0f0, u64::MAX];
-//! let rank = quadrank::BiRank::new(packed);
+//! let rank = BiRank::new_packed(&packed);
 //! unsafe {
 //!     assert_eq!(rank.rank_unchecked(0), 0);
 //!     assert_eq!(rank.rank_unchecked(4), 0);
@@ -21,9 +24,10 @@
 //!     assert_eq!(rank.rank_unchecked(128), 96);
 //! }
 //!
+//! // ACTG maps to 0123 in that specific order.
 //! let dna = b"ACGCGCGACTTACGCAT";
 //! let n = dna.len(); // 17
-//! let rank = quadrank::QuadRank::new_ascii_dna(dna);
+//! let rank = QuadRank::new_ascii_dna(dna);
 //! unsafe {
 //!     assert_eq!(rank.rank1_unchecked(0, 0), 0);
 //!     assert_eq!(rank.rank4_unchecked(0), [0; 4]);
@@ -37,7 +41,7 @@ pub mod binary;
 /// Rank over size-4 alphabet.
 pub mod quad;
 
-/// Implementations of [`binary::RankerT`] and [`quad::RankerT`] for external crates.
+/// Implementations of [`binary::BiRanker`] and [`quad::QuadRanker`] for external crates.
 ///
 /// Each module re-exports the relevant types.
 #[cfg(feature = "ext")]
@@ -53,25 +57,24 @@ pub mod ext {
     pub mod vers;
 }
 
+pub use binary::{BiRank, BiRanker};
+pub use quad::{QuadRank, QuadRanker};
+
 // Type aliases
-/// Default binary rank structure. Alias for [`BiRank16`].
-pub type BiRank = BiRank16;
 /// Binary rank structure with 3.28% space overhead.
 /// Smallest, and usually sufficiently fast.
-pub type BiRank16 = binary::Ranker<binary::blocks::BinaryBlock16>;
+pub type BiRank16 = binary::BiRank<binary::blocks::BinaryBlock16>;
 /// Binary rank structure with 6.72% space overhead.
-pub type BiRank16x2 = binary::Ranker<binary::blocks::BinaryBlock16x2>;
+pub type BiRank16x2 = binary::BiRank<binary::blocks::BinaryBlock16x2>;
 /// Binary rank structure with 14.3% space overhead.
-pub type BiRank32x2 = binary::Ranker<binary::blocks::BinaryBlock32x2>;
+pub type BiRank32x2 = binary::BiRank<binary::blocks::BinaryBlock32x2>;
 /// Binary rank structure with 33.3 space overhead.
-pub type BiRank64x2 = binary::Ranker<binary::blocks::BinaryBlock64x2>;
+pub type BiRank64x2 = binary::BiRank<binary::blocks::BinaryBlock64x2>;
 
-/// Default quad rank structure. Alias for [`QuadRank16`].
-pub type QuadRank = QuadRank16;
 /// Quad rank structure with 14.40% space overhead.
 /// Smallest, and usually sufficiently fast.
-pub type QuadRank16 = quad::Ranker<quad::blocks::QuadBlock16>;
+pub type QuadRank16 = quad::QuadRank<quad::blocks::QuadBlock16>;
 /// Quad rank structure with 33% space overhead.
-pub type QuadRank24_8 = quad::Ranker<quad::blocks::QuadBlock24_8>;
+pub type QuadRank24_8 = quad::QuadRank<quad::blocks::QuadBlock24_8>;
 /// Quad rank structure with 100% space overhead.
-pub type QuadRank64 = quad::Ranker<quad::blocks::QuadBlock64>;
+pub type QuadRank64 = quad::QuadRank<quad::blocks::QuadBlock64>;

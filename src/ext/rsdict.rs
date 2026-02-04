@@ -1,8 +1,8 @@
-use crate::binary::RankerT;
+use crate::binary::BiRanker;
 
 pub use rsdict::RsDict;
 
-impl RankerT for rsdict::RsDict {
+impl BiRanker for rsdict::RsDict {
     fn new_packed(seq: &[u64]) -> Self {
         Self::from_blocks(seq.iter().map(|x| *x))
     }

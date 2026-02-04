@@ -1,7 +1,6 @@
 use crate::quad::{
-    BasicBlock, LongRanks, RankerT, SuperBlock,
+    BasicBlock, LongRanks, QuadRanker, SuperBlock,
     count4::{count4_u8, count4_u64},
-    super_blocks::ShiftSB,
 };
 use prefetch_index::prefetch_index;
 use rayon::prelude::*;
@@ -9,7 +8,14 @@ use std::array::from_fn;
 use std::iter::zip;
 use std::mem::MaybeUninit;
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
+/// Rank queries over size-4 alphabet.
+///
+/// Supports various block and superblock implementations.
+/// Has 14.40% space overhead by default.
+pub struct QuadRank<
+    BB: BasicBlock = super::blocks::QuadBlock16,
+    SB: SuperBlock<BB> = super::super_blocks::ShiftSB,
+> {
     /// Cacheline-sized counts.
     blocks: Vec<BB>,
     /// Additional sparse counts.
@@ -21,7 +27,7 @@ pub(super) fn strict_add(a: LongRanks, b: LongRanks) -> LongRanks {
     from_fn(|c| a[c].strict_add(b[c]))
 }
 
-impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
+impl<BB: BasicBlock, SB: SuperBlock<BB>> QuadRanker for QuadRank<BB, SB> {
     fn new_packed(seq: &[u64]) -> Self {
         let seq_usize = seq;
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
@@ -132,7 +138,6 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
         }
     }
 
-    /// Prefetch the cacheline for the given position.
     #[inline(always)]
     fn prefetch1(&self, pos: usize, _c: u8) {
         let block_idx = pos / BB::N;
@@ -147,7 +152,6 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
         self.blocks.len() * size_of::<BB>() + self.super_blocks.len() * size_of::<SB>()
     }
 
-    /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
     unsafe fn rank4_unchecked(&self, pos: usize) -> LongRanks {
         // assert!(pos < self.len);
@@ -172,7 +176,7 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
             ranks
         }
     }
-    /// Count the number of times character `c` occurs before position `pos`.
+
     #[inline(always)]
     unsafe fn rank1_unchecked(&self, pos: usize, c: u8) -> u64 {
         // assert!(pos < self.len);

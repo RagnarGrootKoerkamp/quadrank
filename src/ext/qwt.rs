@@ -5,9 +5,9 @@ pub use qwt::RSQVector256;
 pub use qwt::RSQVector512;
 pub use qwt::RSWide;
 
-use crate::quad::{LongRanks, RankerT};
+use crate::quad::{LongRanks, QuadRanker};
 
-impl RankerT for RSQVector256 {
+impl QuadRanker for RSQVector256 {
     #[inline(always)]
     fn new_ascii_dna(seq: &[u8]) -> Self {
         let seq = seq.iter().map(|x| (x >> 1) & 3).collect::<Vec<_>>();
@@ -49,7 +49,7 @@ impl RankerT for RSQVector256 {
     }
 }
 
-impl RankerT for RSQVector512 {
+impl QuadRanker for RSQVector512 {
     #[inline(always)]
     fn new_ascii_dna(seq: &[u8]) -> Self {
         let seq = seq.iter().map(|x| (x >> 1) & 3).collect::<Vec<_>>();
@@ -91,7 +91,7 @@ impl RankerT for RSQVector512 {
     }
 }
 
-impl crate::binary::RankerT for qwt::RSNarrow {
+impl crate::binary::BiRanker for qwt::RSNarrow {
     #[inline(always)]
     fn new_packed(seq: &[u64]) -> Self {
         let mut bitvec = qwt::BitVectorMut::default();
@@ -120,7 +120,7 @@ impl crate::binary::RankerT for qwt::RSNarrow {
     }
 }
 
-impl crate::binary::RankerT for qwt::RSWide {
+impl crate::binary::BiRanker for qwt::RSWide {
     #[inline(always)]
     fn new_packed(seq: &[u64]) -> Self {
         Self::new(qwt::BitVector::from_slice(unsafe {

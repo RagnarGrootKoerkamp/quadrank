@@ -1,10 +1,10 @@
-use crate::binary::RankerT;
+use crate::binary::BiRanker;
 use dyn_size_of::GetSize;
 
 pub use bitm::RankSelect101111;
 pub use bitm::RankSimple;
 
-impl RankerT for bitm::RankSimple {
+impl BiRanker for bitm::RankSimple {
     fn new_packed(seq: &[u64]) -> Self {
         Self::build(seq.to_vec().into()).0
     }
@@ -18,7 +18,7 @@ impl RankerT for bitm::RankSimple {
     }
 }
 
-impl RankerT for bitm::RankSelect101111 {
+impl BiRanker for bitm::RankSelect101111 {
     fn new_packed(seq: &[u64]) -> Self {
         Self::build(seq.to_vec().into()).0
     }

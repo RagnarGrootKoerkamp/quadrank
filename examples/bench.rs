@@ -12,7 +12,7 @@ use quadrank::{
     ext::genedex,
     ext::sux::*,
     quad::{
-        Ranker, RankerT,
+        QuadRank, QuadRanker,
         blocks::{QuadBlock16, QuadBlock24_8, QuadBlock64},
     },
 };
@@ -147,7 +147,7 @@ fn bench_header() {
     println!();
 }
 
-fn bench_one_quad<R: RankerT>(packed_seq: &[u64], queries: &QS) {
+fn bench_one_quad<R: QuadRanker>(packed_seq: &[u64], queries: &QS) {
     let ranker = R::new_packed(packed_seq);
     for count4 in [true, false] {
         let name = type_name::<R>();
@@ -188,7 +188,7 @@ fn bench_one_quad<R: RankerT>(packed_seq: &[u64], queries: &QS) {
     }
 }
 
-fn bench_one_binary<R: binary::RankerT>(packed_seq: &[u64], queries: &QS) {
+fn bench_one_binary<R: binary::BiRanker>(packed_seq: &[u64], queries: &QS) {
     let name = type_name::<R>();
     let name = regex::Regex::new(r"[a-zA-Z0-9_]+::")
         .unwrap()
@@ -229,9 +229,9 @@ fn bench_quad(seq: &[u64], queries: &QS) {
     bench_one_quad::<genedex::Condensed64>(seq, queries);
     bench_one_quad::<genedex::Condensed512>(seq, queries);
 
-    bench_one_quad::<Ranker<QuadBlock64>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock24_8>>(seq, queries);
-    bench_one_quad::<Ranker<QuadBlock16>>(seq, queries);
+    bench_one_quad::<QuadRank<QuadBlock64>>(seq, queries);
+    bench_one_quad::<QuadRank<QuadBlock24_8>>(seq, queries);
+    bench_one_quad::<QuadRank<QuadBlock16>>(seq, queries);
 
     // use quadrank::quad::super_blocks::ShiftPairedSB;
     // bench_one_quad::<Ranker<QuadBlock24_8, ShiftPairedSB, SimdCount11B>>(seq, queries);
@@ -258,11 +258,11 @@ fn bench_binary(seq: &[u64], queries: &QS) {
     bench_one_binary::<RankSmall3>(seq, queries);
     bench_one_binary::<RankSmall4>(seq, queries);
 
-    bench_one_binary::<binary::Ranker<BinaryBlock64x2>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock32x2>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16x2>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16>>(seq, queries);
-    bench_one_binary::<binary::Ranker<BinaryBlock16Spider>>(seq, queries);
+    bench_one_binary::<binary::BiRank<BinaryBlock64x2>>(seq, queries);
+    bench_one_binary::<binary::BiRank<BinaryBlock32x2>>(seq, queries);
+    bench_one_binary::<binary::BiRank<BinaryBlock16x2>>(seq, queries);
+    bench_one_binary::<binary::BiRank<BinaryBlock16>>(seq, queries);
+    bench_one_binary::<binary::BiRank<BinaryBlock16Spider>>(seq, queries);
     // bench_one_binary::<binary::Ranker<BinaryBlock16Spider2>>(seq, queries);
 
     // bench_one_binary::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>(seq, queries);

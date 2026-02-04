@@ -6,33 +6,33 @@ use crate::quad;
 
 #[test]
 fn quad() {
-    test::<quad::Ranker<Basic128, TrivialSB>>();
-    test::<quad::Ranker<Basic256, TrivialSB>>();
-    test::<quad::Ranker<Basic512, TrivialSB>>();
+    test::<quad::QuadRank<Basic128, TrivialSB>>();
+    test::<quad::QuadRank<Basic256, TrivialSB>>();
+    test::<quad::QuadRank<Basic512, TrivialSB>>();
     // test::<quad::Ranker<Basic512, SB8>>();
     // test::<quad::Ranker<Basic512, SB8>>();
     // test::<quad::Ranker<FullBlock, NoSB>>();
     // test::<quad::Ranker<FullBlockMid, NoSB>>();
     // test::<quad::Ranker<FullBlockMid, NoSB>>();
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock7_18_7P, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock24_8, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock24_8, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock64, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock32, TrivialSB>>();
-    test::<quad::Ranker<QuadBlock16, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock32_8_8_8FP, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock32_8_8_8FP, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock32_8_8_8FP, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock7_18_7P, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock24_8, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock24_8, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock64, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock32, TrivialSB>>();
+    test::<quad::QuadRank<QuadBlock16, TrivialSB>>();
 
-    test1::<quad::Ranker<QuadBlock64, ShiftSB>>();
-    test1::<quad::Ranker<QuadBlock24_8, ShiftSB>>();
-    test1::<quad::Ranker<QuadBlock16, ShiftSB>>();
+    test1::<quad::QuadRank<QuadBlock64, ShiftSB>>();
+    test1::<quad::QuadRank<QuadBlock24_8, ShiftSB>>();
+    test1::<quad::QuadRank<QuadBlock16, ShiftSB>>();
 
-    test::<quad::Ranker<QuadBlock32_8_8_8FP, ShiftPairedSB>>();
-    test::<quad::Ranker<QuadBlock7_18_7P, ShiftPairedSB>>();
-    test::<quad::Ranker<QuadBlock24_8, ShiftPairedSB>>();
-    test::<quad::Ranker<QuadBlock32, ShiftPairedSB>>();
-    test::<quad::Ranker<QuadBlock16, ShiftPairedSB>>();
+    test::<quad::QuadRank<QuadBlock32_8_8_8FP, ShiftPairedSB>>();
+    test::<quad::QuadRank<QuadBlock7_18_7P, ShiftPairedSB>>();
+    test::<quad::QuadRank<QuadBlock24_8, ShiftPairedSB>>();
+    test::<quad::QuadRank<QuadBlock32, ShiftPairedSB>>();
+    test::<quad::QuadRank<QuadBlock16, ShiftPairedSB>>();
 
     #[cfg(feature = "ext")]
     {
@@ -48,7 +48,7 @@ fn quad() {
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
 
-fn test<R: quad::RankerT>() {
+fn test<R: quad::QuadRanker>() {
     for test in &*TESTS {
         eprintln!(
             "testing ranker {} on len {} words",
@@ -73,7 +73,7 @@ fn test<R: quad::RankerT>() {
     }
 }
 
-fn test1<R: quad::RankerT>() {
+fn test1<R: quad::QuadRanker>() {
     for test in &*TESTS {
         eprintln!(
             "testing ranker {} on len {} words for count1",

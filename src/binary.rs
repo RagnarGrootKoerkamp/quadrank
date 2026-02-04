@@ -4,7 +4,7 @@ pub mod super_blocks;
 #[cfg(test)]
 mod test;
 
-pub use ranker::Ranker;
+pub use ranker::BiRank;
 
 /// A basic block covers one cache line of bits.
 pub trait BasicBlock: Send + Sync {
@@ -57,15 +57,27 @@ pub trait SuperBlock<BB: BasicBlock>: Sync + Send + Sized {
     const BYTES_PER_SUPERBLOCK: usize = Self::BLOCKS_PER_SUPERBLOCK.saturating_mul(BB::B);
 }
 
-pub trait RankerT: Sync + Sized {
-    /// Construct from bitpacked data.
+/// A data structure that can answer rank queries over a (binary) bitvector.
+pub trait BiRanker: Sync + Sized {
+    /// Construct a new rank data structure from bitpacked data.
+    ///
+    /// Data is little-endian: the low-order bits of the first element come first.
     fn new_packed(seq: &[u64]) -> Self;
+
     /// Size in bytes of the data structure.
     fn size(&self) -> usize;
-    const HAS_PREFETCH: bool = false;
-    /// Prefetch the cacheline for the given position.
-    fn prefetch(&self, _pos: usize) {}
-    /// Unsafe version that assumes `pos < len`.
-    /// Pad the input to allow `pos=len`.
+
+    /// Compute the rank of the given position.
+    ///
+    /// This is the number of 1-bits _before_ position `pos`.
+    ///
+    /// This assumes that `0 <= pos < n`, where `n` is the length in bits of the input.
+    /// Some implementations, including [`BiRank`] also support `pos` equal to `n`.
     unsafe fn rank_unchecked(&self, pos: usize) -> u64;
+
+    /// Does this implementation support prefetching?
+    const HAS_PREFETCH: bool = false;
+
+    /// Prefetch the cacheline(s) needed to compute the rank of the given position.
+    fn prefetch(&self, _pos: usize) {}
 }

@@ -2,15 +2,22 @@ use std::{iter::zip, mem::MaybeUninit};
 
 use prefetch_index::prefetch_index;
 
-use super::{BasicBlock, RankerT, SuperBlock, super_blocks::ShiftSB};
+use super::{BasicBlock, BiRanker, SuperBlock};
 use rayon::prelude::*;
 
-pub struct Ranker<BB: BasicBlock, SB: SuperBlock<BB> = ShiftSB> {
+/// Rank queries over binary alphabet.
+///
+/// Supports various block and superblock implementations.
+/// Has 3.28% space overhead by default.
+pub struct BiRank<
+    BB: BasicBlock = super::blocks::BinaryBlock16,
+    SB: SuperBlock<BB> = super::super_blocks::ShiftSB,
+> {
     basic_blocks: Vec<BB>,
     super_blocks: Vec<SB>,
 }
 
-impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
+impl<BB: BasicBlock, SB: SuperBlock<BB>> BiRanker for BiRank<BB, SB> {
     fn new_packed(seq: &[u64]) -> Self {
         let (head, seq, tail) = unsafe { seq.align_to::<u8>() };
         assert!(head.is_empty());
@@ -109,7 +116,6 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
 
     const HAS_PREFETCH: bool = true;
 
-    /// Prefetch the cacheline for the given position.
     #[inline(always)]
     fn prefetch(&self, pos: usize) {
         let block_idx = pos / BB::N;
@@ -125,7 +131,6 @@ impl<BB: BasicBlock, SB: SuperBlock<BB>> RankerT for Ranker<BB, SB> {
         self.basic_blocks.len() * size_of::<BB>() + self.super_blocks.len() * size_of::<SB>()
     }
 
-    /// Count the number of times each character occurs before position `pos`.
     #[inline(always)]
     unsafe fn rank_unchecked(&self, mut pos: usize) -> u64 {
         unsafe {

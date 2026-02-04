@@ -1,11 +1,11 @@
 use std::arch::x86_64::_pext_u64;
 
-use quadrank::quad::RankerT;
+use quadrank::quad::QuadRanker;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{FmIndex, bwt::BWT};
 
-pub struct QuadFm<Rank: RankerT> {
+pub struct QuadFm<Rank: QuadRanker> {
     n: usize,
     ranker: Rank,
     sentinel: usize,
@@ -14,7 +14,7 @@ pub struct QuadFm<Rank: RankerT> {
     prefix_lookup: Vec<(usize, usize)>,
 }
 
-impl<Ranker: RankerT> QuadFm<Ranker> {
+impl<Ranker: QuadRanker> QuadFm<Ranker> {
     fn query(&self, text: &[u8]) -> (usize, usize) {
         let mut s = 0;
         let mut t = self.n + 1;
@@ -238,7 +238,7 @@ impl<Ranker: RankerT> QuadFm<Ranker> {
     }
 }
 
-impl<Ranker: RankerT> FmIndex for QuadFm<Ranker> {
+impl<Ranker: QuadRanker> FmIndex for QuadFm<Ranker> {
     fn new_with_prefix(_text: &[u8], bwt: &BWT, prefix: usize) -> Self {
         let n = bwt.bwt.len();
 

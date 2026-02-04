@@ -20,20 +20,20 @@ enum Support {
 #[test]
 fn binary() {
     use Support::*;
-    test::<binary::Ranker<BinaryBlock64x2>>(All);
-    test::<binary::Ranker<BinaryBlock32x2>>(All);
-    test::<binary::Ranker<BinaryBlock23_9>>(All);
-    test::<binary::Ranker<BinaryBlock16x2>>(All);
-    test::<binary::Ranker<BinaryBlock32x2>>(All);
-    test::<binary::Ranker<BinaryBlock16>>(All);
-    test::<binary::Ranker<BinaryBlock16Spider>>(All);
-    test::<binary::Ranker<BinaryBlock16Spider2>>(All);
+    test::<binary::BiRank<BinaryBlock64x2>>(All);
+    test::<binary::BiRank<BinaryBlock32x2>>(All);
+    test::<binary::BiRank<BinaryBlock23_9>>(All);
+    test::<binary::BiRank<BinaryBlock16x2>>(All);
+    test::<binary::BiRank<BinaryBlock32x2>>(All);
+    test::<binary::BiRank<BinaryBlock16>>(All);
+    test::<binary::BiRank<BinaryBlock16Spider>>(All);
+    test::<binary::BiRank<BinaryBlock16Spider2>>(All);
 
-    test::<binary::Ranker<BinaryBlock32x2, ShiftPairedSB>>(All);
-    test::<binary::Ranker<BinaryBlock23_9, ShiftPairedSB>>(All);
-    test::<binary::Ranker<BinaryBlock32, ShiftPairedSB>>(All);
-    test::<binary::Ranker<BinaryBlock16x2, ShiftPairedSB>>(All);
-    test::<binary::Ranker<BinaryBlock16, ShiftPairedSB>>(All);
+    test::<binary::BiRank<BinaryBlock32x2, ShiftPairedSB>>(All);
+    test::<binary::BiRank<BinaryBlock23_9, ShiftPairedSB>>(All);
+    test::<binary::BiRank<BinaryBlock32, ShiftPairedSB>>(All);
+    test::<binary::BiRank<BinaryBlock16x2, ShiftPairedSB>>(All);
+    test::<binary::BiRank<BinaryBlock16, ShiftPairedSB>>(All);
 
     #[cfg(feature = "ext")]
     {
@@ -65,7 +65,7 @@ fn binary() {
 
 static TESTS: LazyLock<Vec<Test>> = LazyLock::new(|| tests());
 
-fn test<R: binary::RankerT>(support: Support) {
+fn test<R: binary::BiRanker>(support: Support) {
     for test in &*TESTS {
         let n = test.seq.len() * u64::BITS as usize;
         eprintln!(

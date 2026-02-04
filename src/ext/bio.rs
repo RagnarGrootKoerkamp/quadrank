@@ -1,8 +1,8 @@
-use crate::binary::RankerT;
+use crate::binary::BiRanker;
 
 pub use bio::data_structures::rank_select::RankSelect;
 
-impl RankerT for RankSelect {
+impl BiRanker for RankSelect {
     fn new_packed(seq: &[u64]) -> Self {
         let seq_u8 = unsafe { seq.align_to::<u8>().1 };
         let bitvec = bv::BitVec::<u8>::from_bits(seq_u8);

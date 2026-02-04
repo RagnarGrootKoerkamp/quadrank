@@ -1,9 +1,9 @@
-use crate::binary::RankerT;
+use crate::binary::BiRanker;
 use succinct::{BitRankSupport, SpaceUsage};
 
 pub use succinct::{JacobsonRank, Rank9};
 
-impl RankerT for succinct::Rank9<Vec<u64>> {
+impl BiRanker for succinct::Rank9<Vec<u64>> {
     fn new_packed(seq: &[u64]) -> Self {
         Self::new(seq.to_vec())
     }
@@ -17,7 +17,7 @@ impl RankerT for succinct::Rank9<Vec<u64>> {
     }
 }
 
-impl RankerT for succinct::JacobsonRank<Vec<u64>> {
+impl BiRanker for succinct::JacobsonRank<Vec<u64>> {
     fn new_packed(seq: &[u64]) -> Self {
         Self::new(seq.to_vec())
     }

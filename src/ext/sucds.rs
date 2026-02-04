@@ -2,7 +2,7 @@ use sucds::{Serializable, bit_vectors::Rank};
 
 pub use sucds::bit_vectors::Rank9Sel;
 
-impl crate::binary::RankerT for Rank9Sel {
+impl crate::binary::BiRanker for Rank9Sel {
     fn new_packed(seq: &[u64]) -> Self {
         Self::from_bits(
             seq.iter()
