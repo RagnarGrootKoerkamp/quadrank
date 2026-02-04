@@ -9,6 +9,8 @@
   - refactors/simplifications to drop `const_generics` requirement
 - API cleanup (make some stuff private; expose some type aliases)
 - Make `RankerT::rank` method unsafe and rename to `rank_unchecked`.
+- Improved docs
+- Rename `RankerT => {BiRanker,QuadRanker}` and `Ranker => {BiRank,QuadRank}`.
 
 ## 0.1.0
 

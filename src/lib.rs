@@ -10,12 +10,24 @@
 //!
 //! See also the [GitHub README](https://github.com/ragnargrootkoerkamp/quadrank).
 //!
+//! ## Indexing and safety
+//!
+//! In this library, `rank(pos)` counts the number of 1-bits in the first `pos` bits of the input.
+//! I.e., it counts the number of 1-bits _before_ position `pos`.
+//!
+//! For performance, we only provide [`BiRanker::rank_unchecked`] and [`QuadRanker::rank1_unchecked`].
+//! In general (for external implementations of the trait),
+//! this requires `0 <= pos < n` when the input consists of `n` symbols (bits or 2-bit characters),
+//! but both [`BiRank`] and [`QuadRank`] also support `pos == n`.
+//!
+//! ## Example
+//!
 //! ```
 //! use quadrank::{BiRank, BiRanker};
 //! use quadrank::{QuadRank, QuadRanker};
 //!
 //! let packed = [0xf0f0f0f0f0f0f0f0, u64::MAX];
-//! let rank = BiRank::new_packed(&packed);
+//! let rank = <BiRank>::new_packed(&packed);
 //! unsafe {
 //!     assert_eq!(rank.rank_unchecked(0), 0);
 //!     assert_eq!(rank.rank_unchecked(4), 0);
@@ -27,7 +39,7 @@
 //! // ACTG maps to 0123 in that specific order.
 //! let dna = b"ACGCGCGACTTACGCAT";
 //! let n = dna.len(); // 17
-//! let rank = QuadRank::new_ascii_dna(dna);
+//! let rank = <QuadRank>::new_ascii_dna(dna);
 //! unsafe {
 //!     assert_eq!(rank.rank1_unchecked(0, 0), 0);
 //!     assert_eq!(rank.rank4_unchecked(0), [0; 4]);
