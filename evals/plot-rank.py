@@ -436,6 +436,7 @@ def plot_grid(plotn=False):
     fig.savefig(
         f"plots/plot-{srv}-{infix}-{sigma}{sizelabel}.png", bbox_inches="tight", dpi=300
     )
+    fig.savefig(f"plots/plot-{srv}-{infix}-{sigma}{sizelabel}.svg", bbox_inches="tight")
 
 
 threads = None
@@ -526,6 +527,7 @@ def plot_small():
         add_legend([ax], plotn=False, small=True)
 
         fig.savefig(f"plots/plot-st-{sigma}-small.png", bbox_inches="tight", dpi=300)
+        fig.savefig(f"plots/plot-st-{sigma}-small.svg", bbox_inches="tight")
 
 
 plot_small()

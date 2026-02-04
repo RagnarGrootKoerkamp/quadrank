@@ -171,6 +171,7 @@ def plot_grid(plotn=False):
     add_legend(ax, plotn)
 
     fig.savefig(f"plots/plot-fm.png", bbox_inches="tight", dpi=300)
+    fig.savefig(f"plots/plot-fm.svg", bbox_inches="tight")
 
 
 df = pd.read_csv(f"fm.csv")
