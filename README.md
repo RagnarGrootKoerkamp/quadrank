@@ -11,6 +11,10 @@ up to 2x faster than other methods in high-throughput settings.
 QuadFm is up to 4x faster than genedex (https://github.com/feldroop/genedex),
 which seems to be the fastest Rust-based FM-index currently.
 
+- Arxiv paper: https://arxiv.org/abs/2602.04103
+- Blog version of paper: https://curiouscoding.nl/posts/quadrank/
+- Slides: https://curiouscoding.nl/slides/quadrank
+
 **NOTE:** Currently only AVX2 is supported!
 
 ## Usage
