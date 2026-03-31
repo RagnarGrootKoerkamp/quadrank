@@ -21,6 +21,7 @@ use sux::prelude::Rank9;
 type QS = Vec<Vec<usize>>;
 
 static THREADS: OnceLock<Vec<usize>> = OnceLock::new();
+static CACHE_MISSES: OnceLock<bool> = OnceLock::new();
 
 const REPEATS: usize = 3;
 
@@ -129,20 +130,61 @@ fn time_trip(
     }
 }
 
-fn bench_header() {
-    eprint!("{:<60} {:>11} {:>6} |", "Ranker", "n", "size",);
-    for t in THREADS.wait() {
-        eprint!(" {:>7}t {:>8} {:>8} |", t, "", "");
+fn cache_misses_fn(queries: &QS, f: impl Fn(&[usize]) + Sync + Copy) {
+    use perfcnt::linux::*;
+    use perfcnt::{AbstractPerfCounter, PerfCounter};
+
+    let mut c1 = vec![];
+    for _ in 0..REPEATS {
+        let mut pc: PerfCounter = PerfCounterBuilderLinux::from_cache_event(
+            CacheId::LL,
+            CacheOpId::Read,
+            CacheOpResultId::Miss,
+        )
+            .finish()
+            .expect("Could not initialize perfcnt. Run:\necho '1' | sudo tee /proc/sys/kernel/perf_event_paranoid\n");
+        // This is probably L1 cache misses or so.
+        // let mut pc: PerfCounter =
+        //     PerfCounterBuilderLinux::from_hardware_event(HardwareEventType::CacheMisses)
+        //         .finish()
+        //         .unwrap();
+        pc.start().unwrap();
+        f(&queries[0]);
+        pc.stop().unwrap();
+        let cache_misses = pc.read().unwrap();
+        c1.push(cache_misses);
     }
-    eprintln!();
-    eprint!("{:<60} {:>11} {:>6} |", "", "", "");
-    for _t in THREADS.wait() {
-        eprint!(" {:>8} {:>8} {:>8} |", "latncy", "loop", "stream",);
+    c1.sort();
+    for c in c1 {
+        let cm_per_q = c as f64 / queries[0].len() as f64;
+        eprint!(" {cm_per_q:>6.2}");
+        print!(",{cm_per_q:.5}");
+    }
+}
+
+fn bench_header() {
+    eprint!("{:<60} {:>11} {:>6} |", "Ranker", "n", "size");
+
+    if CACHE_MISSES.wait() == &true {
+        eprint!(" {:>6} | ", "c-miss");
+    } else {
+        for t in THREADS.wait() {
+            eprint!(" {:>7}t {:>8} {:>8} |", t, "", "");
+        }
+        eprintln!();
+        eprint!("{:<60} {:>11} {:>6} |", "", "", "");
+        for _t in THREADS.wait() {
+            eprint!(" {:>8} {:>8} {:>8} |", "latncy", "loop", "stream",);
+        }
     }
     eprintln!();
     print!("ranker,sigma,n,rel_size,count4");
-    for t in THREADS.wait() {
-        print!(",latency_{},loop_{},stream_{}", t, t, t);
+    if CACHE_MISSES.wait() == &true {
+        print!(",cache_misses");
+    } else {
+        for t in THREADS.wait() {
+            print!(",latency_{},loop_{},stream_{}", t, t, t);
+        }
     }
     println!();
 }
@@ -163,25 +205,43 @@ fn bench_one_quad<R: QuadRanker>(packed_seq: &[u64], queries: &QS) {
         eprint!("{rel_size:>5.3}x |");
         print!("\"{name}\",4,{n},{rel_size:>.3},{}", count4 as u8);
 
-        for &t in THREADS.wait() {
+        if CACHE_MISSES.wait() == &true {
+            // cache misses
             if count4 {
-                time_trip(
-                    &queries,
-                    t,
-                    |q| ranker.prefetch4(q),
-                    |q| std::hint::black_box(unsafe { ranker.rank4_unchecked(q) })[0],
-                    true,
-                );
+                cache_misses_fn(queries, |queries| {
+                    for &q in queries {
+                        std::hint::black_box(unsafe { ranker.rank4_unchecked(q) })[0];
+                    }
+                });
             } else {
-                time_trip(
-                    &queries,
-                    t,
-                    |q| ranker.prefetch1(q, q as u8 & 3),
-                    |q| std::hint::black_box(unsafe { ranker.rank1_unchecked(q, q as u8 & 3) }),
-                    true,
-                );
+                cache_misses_fn(queries, |queries| {
+                    for &q in queries {
+                        std::hint::black_box(unsafe { ranker.rank1_unchecked(q, q as u8 & 3) });
+                    }
+                });
             }
-            eprint!(" |");
+        } else {
+            // timings
+            for &t in THREADS.wait() {
+                if count4 {
+                    time_trip(
+                        &queries,
+                        t,
+                        |q| ranker.prefetch4(q),
+                        |q| std::hint::black_box(unsafe { ranker.rank4_unchecked(q) })[0],
+                        true,
+                    );
+                } else {
+                    time_trip(
+                        &queries,
+                        t,
+                        |q| ranker.prefetch1(q, q as u8 & 3),
+                        |q| std::hint::black_box(unsafe { ranker.rank1_unchecked(q, q as u8 & 3) }),
+                        true,
+                    );
+                }
+                eprint!(" |");
+            }
         }
         eprintln!();
         println!();
@@ -203,15 +263,25 @@ fn bench_one_binary<R: binary::BiRanker>(packed_seq: &[u64], queries: &QS) {
     eprint!("{rel_size:>5.3}x |");
     print!("\"{name}\",2,{n},{rel_size:>.3},0");
 
-    for &t in THREADS.wait() {
-        time_trip(
-            &queries,
-            t,
-            |q| ranker.prefetch(q),
-            |q| std::hint::black_box(unsafe { ranker.rank_unchecked(q) }),
-            R::HAS_PREFETCH,
-        );
-        eprint!(" |");
+    if CACHE_MISSES.wait() == &true {
+        // cache misses
+        cache_misses_fn(queries, |queries| {
+            for &q in queries {
+                std::hint::black_box(unsafe { ranker.rank_unchecked(q) });
+            }
+        });
+    } else {
+        // timings
+        for &t in THREADS.wait() {
+            time_trip(
+                &queries,
+                t,
+                |q| ranker.prefetch(q),
+                |q| std::hint::black_box(unsafe { ranker.rank_unchecked(q) }),
+                R::HAS_PREFETCH,
+            );
+            eprint!(" |");
+        }
     }
     eprintln!();
     println!();
@@ -245,7 +315,6 @@ fn bench_binary(seq: &[u64], queries: &QS) {
     bench_one_binary::<qwt::RSNarrow>(seq, queries);
     bench_one_binary::<qwt::RSWide>(seq, queries);
 
-    bench_one_binary::<genedex::Flat512>(seq, queries);
     bench_one_binary::<genedex::Condensed64>(seq, queries);
     bench_one_binary::<genedex::Condensed512>(seq, queries);
 
@@ -283,6 +352,8 @@ struct Args {
     binary: bool,
     #[clap(short = 'q')]
     quad: bool,
+    #[clap(long)]
+    cache_misses: bool,
 }
 
 fn main() {
@@ -304,15 +375,19 @@ fn main() {
     THREADS
         .set({
             let mut ts = vec![];
-            let mut t = args.threads.unwrap_or(12);
-            loop {
-                ts.push(t);
-                if t == 1 {
-                    break;
+            if args.cache_misses {
+                ts.push(1);
+            } else {
+                let mut t = args.threads.unwrap_or(12);
+                loop {
+                    ts.push(t);
+                    if t == 1 {
+                        break;
+                    }
+                    t /= 2;
                 }
-                t /= 2;
+                ts.reverse();
             }
-            ts.reverse();
             ts
         })
         .unwrap();
@@ -320,6 +395,11 @@ fn main() {
     if let Some(n) = args.n {
         sizes = vec![n];
     }
+
+    if args.cache_misses {
+        sizes = vec![1 << 32];
+    }
+    CACHE_MISSES.set(args.cache_misses).unwrap();
 
     for size in sizes {
         eprintln!(

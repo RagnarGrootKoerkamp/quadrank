@@ -4,7 +4,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import colorsys
-from math import log
 
 
 # Return (crate, name, symbol, oder)
@@ -23,13 +22,15 @@ def get_shortname(name, sigma):
             if "512" in name:
                 return ("genedex", "genedex::Condensed512", "*", 1)
             return ("genedex", "genedex::Condensed64", "v", 5)
-        if "Ranker" in name:
+        if "QuadRank" in name:
             if "QuadBlock64" in name:
                 return ("quadrank", "QuadRank64", "o", 6)
             if "QuadBlock24_8" in name:
                 return ("quadrank", "QuadRank24_8", "d", 4)
             if "QuadBlock16" in name:
                 return ("quadrank", "QuadRank16", "x", 3)
+            if "QuadRank" == name:
+                return ("quadrank", "QuadRank", "x", 3)
     if sigma == 2:
         if name == "RSNarrow":
             return ("qwt", "qwt::RSNarrow", "v", 14)
@@ -60,14 +61,14 @@ def get_shortname(name, sigma):
                 return ("sux", "sux::RankSmall3", "*", 3)
             if "3, 13" in name:
                 return ("sux", "sux::RankSmall4", "+", 1)
-        if "Ranker" in name:
+        if "BiRank" in name:
             if "64x2" in name:
                 return ("quadrank", "BiRank64x2", "o", 15)
             if "32x2" in name:
                 return ("quadrank", "BiRank32x2", "d", 11)
             if "16x2" in name:
                 return ("quadrank", "BiRank16x2", "x", 7)
-            if "16>" in name:
+            if "BiRank" == name:
                 return ("quadrank", "BiRank16", "*", 2)
             if "Spider" in name:
                 return ("spider", "birank::Spider", "*", 4)
@@ -135,7 +136,7 @@ def plot(ax, data, r, c, rows, mode, threads, plotn=False, small=False):
     groups = data.groupby(["ranker", "count4"], sort=False)
 
     for (ranker, count4), group in groups:
-        (crate, shortname, marker, _order) = get_shortname(ranker, sigma)
+        crate, shortname, marker, _order = get_shortname(ranker, sigma)
         color = styles[crate][1]
         label = shortname
 
@@ -478,7 +479,8 @@ def plot_st():
             # plot_grid(plotn=True)
 
 
-plot_st()
+if __name__ == "__main__":
+    plot_st()
 
 
 def plot_small():
@@ -530,4 +532,5 @@ def plot_small():
         fig.savefig(f"plots/plot-st-{sigma}-small.svg", bbox_inches="tight")
 
 
-plot_small()
+if __name__ == "__main__":
+    plot_small()
