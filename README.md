@@ -10,10 +10,17 @@ BiRank and QuadRank need only a single cache-miss per query, making them
 up to 2x faster than other methods in high-throughput settings.
 QuadFm is up to 4x faster than genedex (https://github.com/feldroop/genedex),
 which seems to be the fastest Rust-based FM-index currently.
+Apart from having few cache misses, most speedup comes from batching queries and
+prefetching the required cache lines.
 
-- Arxiv paper: https://arxiv.org/abs/2602.04103
 - Blog version of paper: https://curiouscoding.nl/posts/quadrank/
 - Slides: https://curiouscoding.nl/slides/quadrank
+- Arxiv paper:
+
+> Ragnar Groot Koerkamp.  
+> QuadRank: Engineering a High Throughput Rank  
+> arXiv, April 2026  
+> https://doi.org/10.48550/arXiv.2602.04103
 
 **NOTE:** Currently only AVX2 is supported!
 
